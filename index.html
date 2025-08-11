@@ -379,7 +379,7 @@
 
 
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
 
     <script>
         // 1. Configuração do Firebase
@@ -387,6 +387,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
             authDomain: "turno-noturno.firebaseapp.com",
+            databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com/", // Adicionado a URL do Realtime Database
             projectId: "turno-noturno",
             storageBucket: "turno-noturno.firebasestorage.app",
             messagingSenderId: "452104216659",
@@ -396,8 +397,9 @@
       
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const personagensRef = db.collection("personagens");
+        // Acessa o serviço do Realtime Database
+        const db = firebase.database();
+        const personagensRef = db.ref("personagens"); // Referência para a raiz dos dados dos personagens
         
         const XP_PARA_UPAR = 100;
         const HABILIDADES = ["aura", "forca", "carisma", "velocidade", "lealdade", "mentalidade", "sorte", "destreza"];
@@ -444,9 +446,9 @@
         };
         
         // 3. Função para renderizar um personagem na tela
-        function renderPersonagem(doc) {
-            const personagem = doc.data();
-            const id = doc.id;
+        function renderPersonagem(snapshot) {
+            const personagem = snapshot.val();
+            const id = snapshot.key;
             
             // Remove o card antigo se existir
             const oldCard = document.getElementById(`card-${id}`);
@@ -512,7 +514,7 @@
                     alert(`${personagem.nome} subiu de nível! Você ganhou ${pontosAdicionais} ponto(s) de habilidade!`);
                 }
                 
-                personagensRef.doc(id).update(updateData)
+                personagensRef.child(id).update(updateData)
                     .catch(error => console.error("Erro ao atualizar XP:", error));
             });
             
@@ -521,10 +523,12 @@
             botoesAumentar.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const habilidade = btn.dataset.habilidade;
-                    personagensRef.doc(id).update({
-                        [habilidade]: firebase.firestore.FieldValue.increment(1),
-                        pontosHabilidade: firebase.firestore.FieldValue.increment(-1)
-                    }).catch(error => console.error("Erro ao aumentar habilidade:", error));
+                    const updates = {};
+                    updates[habilidade] = personagem[habilidade] + 1;
+                    updates['pontosHabilidade'] = (personagem.pontosHabilidade || 0) - 1;
+                    
+                    personagensRef.child(id).update(updates)
+                    .catch(error => console.error("Erro ao aumentar habilidade:", error));
                 });
             });
 
@@ -549,7 +553,7 @@
             const removerButton = card.querySelector('.remover-personagem');
             removerButton.addEventListener('click', () => {
                 if (confirm(`Tem certeza que deseja remover ${personagem.nome}? Essa ação não pode ser desfeita.`)) {
-                    personagensRef.doc(id).delete()
+                    personagensRef.child(id).remove()
                         .then(() => {
                             card.remove();
                             alert(`${personagem.nome} foi removido com sucesso.`);
@@ -583,7 +587,7 @@
             const efeitos = personagem.efeitos || [];
             efeitos.forEach(efeito => {
                 const li = document.createElement('li');
-                li.innerHTML = `
+    li.innerHTML = `
                     <span>${efeito.nome}</span>
                     <button class="efeito-btn remover" data-nome="${efeito.nome}">Remover</button>
                 `;
@@ -618,24 +622,25 @@
             `;
         }
         
-        // 4. Ouvinte de eventos em tempo real do Firestore
-        personagensRef.onSnapshot(snapshot => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added' || change.type === 'modified') {
-                    renderPersonagem(change.doc);
-                    // Atualiza o modal se estiver aberto e for o personagem correto
-                    if (modalGerenciar.style.display === 'block' && personagemSendoGerenciadoId === change.doc.id) {
-                        renderModalGerenciar(change.doc.data());
-                    }
-                }
-                if (change.type === 'removed') {
-                    const id = change.doc.id;
-                    const card = document.getElementById(`card-${id}`);
-                    if (card) {
-                        card.remove();
-                    }
-                }
-            });
+        // 4. Ouvinte de eventos em tempo real do Realtime Database
+        personagensRef.on("child_added", snapshot => {
+            renderPersonagem(snapshot);
+        });
+        
+        personagensRef.on("child_changed", snapshot => {
+            renderPersonagem(snapshot);
+            // Atualiza o modal se estiver aberto e for o personagem correto
+            if (modalGerenciar.style.display === 'block' && personagemSendoGerenciadoId === snapshot.key) {
+                renderModalGerenciar(snapshot.val());
+            }
+        });
+
+        personagensRef.on("child_removed", snapshot => {
+            const id = snapshot.key;
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.remove();
+            }
         });
 
         // 5. Lidar com o formulário de cadastro
@@ -663,9 +668,9 @@
                 equipamentos: {}
             };
             
-            // Adiciona o personagem no Firestore
+            // Adiciona o personagem no Realtime Database
             try {
-                await personagensRef.add(novoPersonagem);
+                await personagensRef.push(novoPersonagem);
                 nomePersonagemInput.value = ''; // Limpa o formulário
                 alert(`Personagem ${nomePersonagem} cadastrado com sucesso!`);
             } catch (error) {
@@ -685,10 +690,10 @@
                 return;
             }
             
-            const docRef = personagensRef.doc(personagemSendoGerenciadoId);
-            const doc = await docRef.get();
-            const personagem = doc.data();
-            
+            const docRef = personagensRef.child(personagemSendoGerenciadoId);
+            const snapshot = await docRef.once('value');
+            const personagem = snapshot.val();
+
             if (tipo === 'item' || tipo === 'equipamento') {
                 const novoInventario = [...(personagem.inventario || []), { nome, tipo, descricao }];
                 await docRef.update({ inventario: novoInventario });
@@ -704,9 +709,9 @@
         // 7. Lidar com os botões de ação do modal (remover, equipar, desequipar)
         modalGerenciar.addEventListener('click', async (e) => {
             const btn = e.target;
-            const docRef = personagensRef.doc(personagemSendoGerenciadoId);
-            const doc = await docRef.get();
-            const personagem = doc.data();
+            const docRef = personagensRef.child(personagemSendoGerenciadoId);
+            const snapshot = await docRef.once('value');
+            const personagem = snapshot.val();
 
             if (btn.classList.contains('remover') && btn.classList.contains('item-btn')) {
                 const nomeItem = btn.dataset.nome;
