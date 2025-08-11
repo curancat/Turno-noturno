@@ -37,10 +37,15 @@
             margin: 20px 0;
         }
 
-        #cadastro-personagem {
+        #cadastro-personagem, #cadastro-itens-efeitos {
             text-align: center;
+            margin-bottom: 20px;
         }
-
+        
+        form label, form input, form button {
+            margin: 5px;
+        }
+        
         #form-cadastro input {
             padding: 10px;
             border: 1px solid #7f8c8d;
@@ -50,7 +55,7 @@
             margin-right: 10px;
         }
 
-        #form-cadastro button {
+        #form-cadastro button, .acao-btn {
             padding: 10px 20px;
             background-color: #27ae60;
             color: white;
@@ -78,6 +83,7 @@
             padding: 15px;
             width: 250px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            position: relative;
         }
 
         .personagem-card h3 {
@@ -95,6 +101,23 @@
             justify-content: space-between;
             margin-bottom: 5px;
         }
+        
+        .personagem-card .habilidade-ajustavel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .personagem-card .habilidade-ajustavel button {
+            padding: 2px 8px;
+            font-size: 1em;
+            background-color: #e74c3c;
+        }
+        
+        .personagem-card .habilidade-ajustavel button:hover {
+            background-color: #c0392b;
+        }
 
         .botoes-acao {
             display: flex;
@@ -102,7 +125,7 @@
             margin-top: 15px;
         }
 
-        .botoes-acao button, .xp-btn {
+        .botoes-acao button, .xp-btn, .acao-btn {
             padding: 8px 12px;
             border: none;
             border-radius: 4px;
@@ -117,6 +140,9 @@
 
         .inventario-btn { background-color: #f1c40f; }
         .inventario-btn:hover { background-color: #f39c12; }
+        
+        .gerenciar-btn { background-color: #9b59b6; }
+        .gerenciar-btn:hover { background-color: #8e44ad; }
 
         .xp-btn { background-color: #e74c3c; }
         .xp-btn:hover { background-color: #c0392b; }
@@ -130,13 +156,152 @@
         .xp-container span {
             font-size: 1.2em;
         }
-
-        footer {
-            text-align: center;
-            padding: 10px;
-            background-color: #34495e;
-            margin-top: 20px;
+        
+        .xp-container .pontos-disponiveis {
+            color: #2ecc71;
+            font-weight: bold;
         }
+        
+        .xp-container .pontos-disponiveis.zerado {
+            color: #e74c3c;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #34495e;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+        }
+
+        .modal-content h3 {
+            text-align: center;
+        }
+        
+        .modal-content input, .modal-content button, .modal-content select {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #7f8c8d;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        #inventario-lista, #efeitos-lista, #equipamentos-lista {
+            list-style: none;
+            padding: 0;
+        }
+        
+        #inventario-lista li, #efeitos-lista li, #equipamentos-lista li {
+            background-color: #2c3e50;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-btn, .efeito-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .item-btn.equipar {
+            background-color: #27ae60;
+        }
+        
+        .item-btn.equipar:hover {
+            background-color: #2ecc71;
+        }
+        
+        .item-btn:hover, .efeito-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .equipamento-slot {
+            margin-bottom: 10px;
+        }
+        .equipamento-slot .nome-equipamento {
+            font-weight: bold;
+        }
+
+        .personagem-card .info-personagem {
+            display: none;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #2c3e50;
+            border-radius: 4px;
+        }
+        
+        .info-personagem.active {
+            display: block;
+        }
+        
+        .info-personagem h4 {
+            margin-top: 0;
+        }
+        
+        .info-personagem ul {
+            padding-left: 20px;
+        }
+
+        .botoes-topo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .botoes-topo button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px;
+            font-size: 1em;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+        }
+
+        .botoes-topo button:hover {
+            background-color: #c0392b;
+        }
+
     </style>
 </head>
 <body>
@@ -159,13 +324,59 @@
         <section id="lista-personagens">
             <h2>Meus Personagens</h2>
             <div id="personagens-container">
-                </div>
+            </div>
         </section>
     </main>
 
     <footer>
         <p>&copy; 2025 RPG Firebase</p>
     </footer>
+
+    <div id="modal-gerenciar" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="close-gerenciar-modal">&times;</span>
+        <h3 id="gerenciar-titulo">Gerenciar Personagem</h3>
+        
+        <div id="form-adicionar-item-efeito">
+            <h4>Adicionar Item ou Efeito</h4>
+            <input type="text" id="nome-item-efeito" placeholder="Nome do Item/Efeito">
+            <select id="tipo-item-efeito">
+                <option value="item">Item</option>
+                <option value="efeito">Efeito</option>
+                <option value="equipamento">Equipamento</option>
+            </select>
+            <input type="text" id="descricao-item-efeito" placeholder="Descrição (opcional)">
+            <button class="acao-btn" id="btn-adicionar-item-efeito">Adicionar</button>
+        </div>
+        
+        <hr>
+        
+        <div class="secao-gerenciar">
+            <h4>Inventário</h4>
+            <ul id="inventario-lista"></ul>
+        </div>
+        
+        <div class="secao-gerenciar">
+            <h4>Efeitos Ativos</h4>
+            <ul id="efeitos-lista"></ul>
+        </div>
+        
+        <div class="secao-gerenciar">
+            <h4>Equipamentos</h4>
+            <div id="equipamentos-lista"></div>
+        </div>
+
+      </div>
+    </div>
+    
+    <div id="modal-info" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-info-modal">&times;</span>
+            <h3 id="info-titulo">Informações do Personagem</h3>
+            <div id="info-conteudo"></div>
+        </div>
+    </div>
+
 
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
@@ -174,53 +385,112 @@
         // 1. Configuração do Firebase
         // SUBSTITUA PELAS SUAS PRÓPRIAS CHAVES DE PROJETO
         const firebaseConfig = {
-    apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
-    authDomain: "turno-noturno.firebaseapp.com",
-    projectId: "turno-noturno",
-    storageBucket: "turno-noturno.firebasestorage.app",
-    messagingSenderId: "452104216659",
-    appId: "1:452104216659:web:982293f3f30b372e1b26a6",
-    measurementId: "G-YQVGM2LLHW"
-  };
+            apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
+            authDomain: "turno-noturno.firebaseapp.com",
+            projectId: "turno-noturno",
+            storageBucket: "turno-noturno.firebasestorage.app",
+            messagingSenderId: "452104216659",
+            appId: "1:452104216659:web:982293f3f30b372e1b26a6",
+            measurementId: "G-YQVGM2LLHW"
+        };
       
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const personagensRef = db.collection("personagens");
+        
+        const XP_PARA_UPAR = 100;
+        const HABILIDADES = ["aura", "forca", "carisma", "velocidade", "lealdade", "mentalidade", "sorte", "destreza"];
 
         // 2. Elementos do DOM
         const formCadastro = document.getElementById('form-cadastro');
         const nomePersonagemInput = document.getElementById('nome-personagem');
         const personagensContainer = document.getElementById('personagens-container');
+        
+        const modalGerenciar = document.getElementById('modal-gerenciar');
+        const btnCloseGerenciar = document.getElementById('close-gerenciar-modal');
+        const gerenciarTitulo = document.getElementById('gerenciar-titulo');
+        const inventarioLista = document.getElementById('inventario-lista');
+        const efeitosLista = document.getElementById('efeitos-lista');
+        const equipamentosLista = document.getElementById('equipamentos-lista');
+        const nomeItemEfeitoInput = document.getElementById('nome-item-efeito');
+        const tipoItemEfeitoSelect = document.getElementById('tipo-item-efeito');
+        const descricaoItemEfeitoInput = document.getElementById('descricao-item-efeito');
+        const btnAdicionarItemEfeito = document.getElementById('btn-adicionar-item-efeito');
+        
+        const modalInfo = document.getElementById('modal-info');
+        const btnCloseInfo = document.getElementById('close-info-modal');
+        const infoTitulo = document.getElementById('info-titulo');
+        const infoConteudo = document.getElementById('info-conteudo');
 
+        // Variável global para armazenar o ID do personagem que está sendo gerenciado
+        let personagemSendoGerenciadoId = null;
+
+        // Funções do Modal
+        function abrirModal(modal) {
+            modal.style.display = 'block';
+        }
+
+        function fecharModal(modal) {
+            modal.style.display = 'none';
+        }
+
+        btnCloseGerenciar.onclick = () => fecharModal(modalGerenciar);
+        btnCloseInfo.onclick = () => fecharModal(modalInfo);
+
+        window.onclick = (event) => {
+            if (event.target == modalGerenciar) fecharModal(modalGerenciar);
+            if (event.target == modalInfo) fecharModal(modalInfo);
+        };
+        
         // 3. Função para renderizar um personagem na tela
         function renderPersonagem(doc) {
             const personagem = doc.data();
             const id = doc.id;
             
+            // Remove o card antigo se existir
+            const oldCard = document.getElementById(`card-${id}`);
+            if (oldCard) {
+                oldCard.remove();
+            }
+
             // Cria o card do personagem
             const card = document.createElement('div');
             card.className = 'personagem-card';
             card.id = `card-${id}`;
             
+            let habilidadesHtml = '';
+            HABILIDADES.forEach(habilidade => {
+                const pontosDisponiveis = personagem.pontosHabilidade || 0;
+                let botoesAjuste = '';
+                if (pontosDisponiveis > 0) {
+                    botoesAjuste = `<button class="aumentar-habilidade" data-habilidade="${habilidade}" data-id="${id}">+</button>`;
+                }
+                
+                habilidadesHtml += `
+                    <li class="habilidade-ajustavel">
+                        <span>${habilidade.charAt(0).toUpperCase() + habilidade.slice(1)}:</span>
+                        <span>${personagem[habilidade]}</span>
+                        ${botoesAjuste}
+                    </li>
+                `;
+            });
+
             card.innerHTML = `
+                <div class="botoes-topo">
+                    <button class="remover-personagem" data-id="${id}">&times;</button>
+                </div>
                 <h3>${personagem.nome}</h3>
-                <ul>
-                    <li><span>Aura:</span> <span>${personagem.aura}</span></li>
-                    <li><span>Força:</span> <span>${personagem.forca}</span></li>
-                    <li><span>Carisma:</span> <span>${personagem.carisma}</span></li>
-                    <li><span>Velocidade:</span> <span>${personagem.velocidade}</span></li>
-                    <li><span>Lealdade:</span> <span>${personagem.lealdade}</span></li>
-                    <li><span>Mentalidade:</span> <span>${personagem.mentalidade}</span></li>
-                    <li><span>Sorte:</span> <span>${personagem.sorte}</span></li>
-                    <li><span>Destreza:</span> <span>${personagem.destreza}</span></li>
-                </ul>
+                <ul>${habilidadesHtml}</ul>
                 <div class="xp-container">
                     <span>XP: ${personagem.xp}</span>
+                    <span class="pontos-disponiveis ${personagem.pontosHabilidade > 0 ? '' : 'zerado'}">
+                        Pontos: ${personagem.pontosHabilidade || 0}
+                    </span>
                     <button class="xp-btn" data-id="${id}">+10 XP</button>
                 </div>
                 <div class="botoes-acao">
-                    <button class="inventario-btn" data-id="${id}">Inventário</button>
+                    <button class="gerenciar-btn" data-id="${id}">Gerenciar</button>
                     <button class="info-btn" data-id="${id}">Info</button>
                 </div>
             `;
@@ -232,40 +502,138 @@
             const xpButton = card.querySelector('.xp-btn');
             xpButton.addEventListener('click', () => {
                 const novoXp = personagem.xp + 10;
-                personagensRef.doc(id).update({ xp: novoXp })
-                    .then(() => {
-                        console.log(`XP de ${personagem.nome} atualizado para ${novoXp}!`);
-                    })
+                const novoNivel = Math.floor(novoXp / XP_PARA_UPAR);
+                const pontosAdicionais = novoNivel - (personagem.nivel || 0);
+
+                const updateData = { xp: novoXp };
+                if (pontosAdicionais > 0) {
+                    updateData.nivel = novoNivel;
+                    updateData.pontosHabilidade = (personagem.pontosHabilidade || 0) + pontosAdicionais;
+                    alert(`${personagem.nome} subiu de nível! Você ganhou ${pontosAdicionais} ponto(s) de habilidade!`);
+                }
+                
+                personagensRef.doc(id).update(updateData)
                     .catch(error => console.error("Erro ao atualizar XP:", error));
             });
             
-            // Evento de clique para o botão de Info (exemplo)
+            // Adiciona eventos para os botões de ajuste de habilidade
+            const botoesAumentar = card.querySelectorAll('.aumentar-habilidade');
+            botoesAumentar.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const habilidade = btn.dataset.habilidade;
+                    personagensRef.doc(id).update({
+                        [habilidade]: firebase.firestore.FieldValue.increment(1),
+                        pontosHabilidade: firebase.firestore.FieldValue.increment(-1)
+                    }).catch(error => console.error("Erro ao aumentar habilidade:", error));
+                });
+            });
+
+            // Evento para o botão Gerenciar
+            const gerenciarButton = card.querySelector('.gerenciar-btn');
+            gerenciarButton.addEventListener('click', () => {
+                personagemSendoGerenciadoId = id;
+                gerenciarTitulo.textContent = `Gerenciar ${personagem.nome}`;
+                renderModalGerenciar(personagem);
+                abrirModal(modalGerenciar);
+            });
+            
+            // Evento para o botão Info
             const infoButton = card.querySelector('.info-btn');
             infoButton.addEventListener('click', () => {
-                alert(`Informações de ${personagem.nome}:\nEquipamentos: Nenhum\nEfeitos: Nenhum`);
+                infoTitulo.textContent = `Informações de ${personagem.nome}`;
+                renderModalInfo(personagem);
+                abrirModal(modalInfo);
             });
 
-            // Evento de clique para o botão de Inventário (exemplo)
-            const inventarioButton = card.querySelector('.inventario-btn');
-            inventarioButton.addEventListener('click', () => {
-                alert(`Inventário de ${personagem.nome}:\nItens: Espada Longa, Poção de Cura`);
+            // Evento para o botão de remover personagem
+            const removerButton = card.querySelector('.remover-personagem');
+            removerButton.addEventListener('click', () => {
+                if (confirm(`Tem certeza que deseja remover ${personagem.nome}? Essa ação não pode ser desfeita.`)) {
+                    personagensRef.doc(id).delete()
+                        .then(() => {
+                            card.remove();
+                            alert(`${personagem.nome} foi removido com sucesso.`);
+                        })
+                        .catch(error => console.error("Erro ao remover personagem:", error));
+                }
             });
         }
+        
+        // Função para renderizar o modal de gerenciar
+        function renderModalGerenciar(personagem) {
+            inventarioLista.innerHTML = '';
+            efeitosLista.innerHTML = '';
+            equipamentosLista.innerHTML = '';
 
+            // Renderizar inventário
+            const inventario = personagem.inventario || [];
+            inventario.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${item.nome} (${item.tipo})</span>
+                    <div>
+                        ${item.tipo === 'equipamento' ? `<button class="item-btn equipar" data-nome="${item.nome}">Equipar</button>` : ''}
+                        <button class="item-btn remover" data-nome="${item.nome}">Remover</button>
+                    </div>
+                `;
+                inventarioLista.appendChild(li);
+            });
+            
+            // Renderizar efeitos
+            const efeitos = personagem.efeitos || [];
+            efeitos.forEach(efeito => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${efeito.nome}</span>
+                    <button class="efeito-btn remover" data-nome="${efeito.nome}">Remover</button>
+                `;
+                efeitosLista.appendChild(li);
+            });
+            
+            // Renderizar equipamentos
+            const equipamentos = personagem.equipamentos || {};
+            for (const slot in equipamentos) {
+                const div = document.createElement('div');
+                div.className = 'equipamento-slot';
+                div.innerHTML = `
+                    <span>Slot ${slot}:</span>
+                    <span class="nome-equipamento">${equipamentos[slot].nome}</span>
+                    <button class="item-btn remover" data-nome="${equipamentos[slot].nome}">Desequipar</button>
+                `;
+                equipamentosLista.appendChild(div);
+            }
+        }
+        
+        // Função para renderizar o modal de informações
+        function renderModalInfo(personagem) {
+            infoConteudo.innerHTML = `
+                <h4>Efeitos Ativos</h4>
+                <ul>
+                    ${(personagem.efeitos || []).map(efeito => `<li>${efeito.nome}</li>`).join('') || '<li>Nenhum efeito ativo.</li>'}
+                </ul>
+                <h4>Equipamentos</h4>
+                <ul>
+                    ${Object.keys(personagem.equipamentos || {}).map(slot => `<li><strong>${slot}:</strong> ${personagem.equipamentos[slot].nome}</li>`).join('') || '<li>Nenhum equipamento.</li>'}
+                </ul>
+            `;
+        }
+        
         // 4. Ouvinte de eventos em tempo real do Firestore
         personagensRef.onSnapshot(snapshot => {
             snapshot.docChanges().forEach(change => {
-                if (change.type === 'added') {
+                if (change.type === 'added' || change.type === 'modified') {
                     renderPersonagem(change.doc);
-                }
-                if (change.type === 'modified') {
-                    // Remove o card antigo e adiciona o novo com os dados atualizados
-                    const id = change.doc.id;
-                    const oldCard = document.getElementById(`card-${id}`);
-                    if (oldCard) {
-                        oldCard.remove();
+                    // Atualiza o modal se estiver aberto e for o personagem correto
+                    if (modalGerenciar.style.display === 'block' && personagemSendoGerenciadoId === change.doc.id) {
+                        renderModalGerenciar(change.doc.data());
                     }
-                    renderPersonagem(change.doc);
+                }
+                if (change.type === 'removed') {
+                    const id = change.doc.id;
+                    const card = document.getElementById(`card-${id}`);
+                    if (card) {
+                        card.remove();
+                    }
                 }
             });
         });
@@ -287,7 +655,12 @@
                 mentalidade: 10,
                 sorte: 10,
                 destreza: 10,
-                xp: 0
+                xp: 0,
+                nivel: 0,
+                pontosHabilidade: 0,
+                inventario: [],
+                efeitos: [],
+                equipamentos: {}
             };
             
             // Adiciona o personagem no Firestore
@@ -300,7 +673,75 @@
                 alert("Ocorreu um erro ao cadastrar o personagem.");
             }
         });
+        
+        // 6. Lidar com a adição de itens e efeitos no modal de gerenciar
+        btnAdicionarItemEfeito.addEventListener('click', async () => {
+            const nome = nomeItemEfeitoInput.value;
+            const tipo = tipoItemEfeitoSelect.value;
+            const descricao = descricaoItemEfeitoInput.value;
+            
+            if (!nome) {
+                alert("O nome do item/efeito é obrigatório.");
+                return;
+            }
+            
+            const docRef = personagensRef.doc(personagemSendoGerenciadoId);
+            const doc = await docRef.get();
+            const personagem = doc.data();
+            
+            if (tipo === 'item' || tipo === 'equipamento') {
+                const novoInventario = [...(personagem.inventario || []), { nome, tipo, descricao }];
+                await docRef.update({ inventario: novoInventario });
+            } else if (tipo === 'efeito') {
+                const novosEfeitos = [...(personagem.efeitos || []), { nome, descricao }];
+                await docRef.update({ efeitos: novosEfeitos });
+            }
+            
+            nomeItemEfeitoInput.value = '';
+            descricaoItemEfeitoInput.value = '';
+        });
+        
+        // 7. Lidar com os botões de ação do modal (remover, equipar, desequipar)
+        modalGerenciar.addEventListener('click', async (e) => {
+            const btn = e.target;
+            const docRef = personagensRef.doc(personagemSendoGerenciadoId);
+            const doc = await docRef.get();
+            const personagem = doc.data();
+
+            if (btn.classList.contains('remover') && btn.classList.contains('item-btn')) {
+                const nomeItem = btn.dataset.nome;
+                const novoInventario = (personagem.inventario || []).filter(item => item.nome !== nomeItem);
+                await docRef.update({ inventario: novoInventario });
+            }
+
+            if (btn.classList.contains('remover') && btn.classList.contains('efeito-btn')) {
+                const nomeEfeito = btn.dataset.nome;
+                const novosEfeitos = (personagem.efeitos || []).filter(efeito => efeito.nome !== nomeEfeito);
+                await docRef.update({ efeitos: novosEfeitos });
+            }
+
+            if (btn.classList.contains('equipar') && btn.classList.contains('item-btn')) {
+                const nomeItem = btn.dataset.nome;
+                const itemParaEquipar = (personagem.inventario || []).find(item => item.nome === nomeItem);
+                if (itemParaEquipar && itemParaEquipar.tipo === 'equipamento') {
+                    // Simplesmente equipamos no slot "arma" para este exemplo
+                    const novosEquipamentos = { ...personagem.equipamentos, arma: itemParaEquipar };
+                    const novoInventario = (personagem.inventario || []).filter(item => item.nome !== nomeItem);
+                    await docRef.update({ inventario: novoInventario, equipamentos: novosEquipamentos });
+                }
+            }
+            
+            if (btn.textContent === 'Desequipar') {
+                const nomeItem = btn.dataset.nome;
+                const novosEquipamentos = { ...personagem.equipamentos };
+                const itemDesequipado = novosEquipamentos.arma; // Exemplo para o slot "arma"
+                
+                delete novosEquipamentos.arma;
+                
+                const novoInventario = [...(personagem.inventario || []), itemDesequipado];
+                await docRef.update({ inventario: novoInventario, equipamentos: novosEquipamentos });
+            }
+        });
     </script>
 </body>
-  </html>
-  
+</html>
