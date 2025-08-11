@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Firebase</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: #34495e;
+            padding: 20px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #34495e;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background-color: #7f8c8d;
+            margin: 20px 0;
+        }
+
+        #cadastro-personagem {
+            text-align: center;
+        }
+
+        #form-cadastro input {
+            padding: 10px;
+            border: 1px solid #7f8c8d;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        #form-cadastro button {
+            padding: 10px 20px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #form-cadastro button:hover {
+            background-color: #2ecc71;
+        }
+
+        #personagens-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .personagem-card {
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 8px;
+            padding: 15px;
+            width: 250px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .personagem-card h3 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        .personagem-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .personagem-card li {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .botoes-acao {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .botoes-acao button, .xp-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .info-btn { background-color: #3498db; }
+        .info-btn:hover { background-color: #2980b9; }
+
+        .inventario-btn { background-color: #f1c40f; }
+        .inventario-btn:hover { background-color: #f39c12; }
+
+        .xp-btn { background-color: #e74c3c; }
+        .xp-btn:hover { background-color: #c0392b; }
+
+        .xp-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .xp-container span {
+            font-size: 1.2em;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #34495e;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RPG do Aventureiro</h1>
+    </header>
+
+    <main>
+        <section id="cadastro-personagem">
+            <h2>Cadastrar Novo Personagem</h2>
+            <form id="form-cadastro">
+                <label for="nome-personagem">Nome do Personagem:</label>
+                <input type="text" id="nome-personagem" required>
+                <button type="submit">Cadastrar</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <section id="lista-personagens">
+            <h2>Meus Personagens</h2>
+            <div id="personagens-container">
+                </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 RPG Firebase</p>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+
+    <script>
+        // 1. Configuração do Firebase
+        // SUBSTITUA PELAS SUAS PRÓPRIAS CHAVES DE PROJETO
+        const firebaseConfig = {
+    apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
+    authDomain: "turno-noturno.firebaseapp.com",
+    projectId: "turno-noturno",
+    storageBucket: "turno-noturno.firebasestorage.app",
+    messagingSenderId: "452104216659",
+    appId: "1:452104216659:web:982293f3f30b372e1b26a6",
+    measurementId: "G-YQVGM2LLHW"
+  };
+      
+        // Inicializa o Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const personagensRef = db.collection("personagens");
+
+        // 2. Elementos do DOM
+        const formCadastro = document.getElementById('form-cadastro');
+        const nomePersonagemInput = document.getElementById('nome-personagem');
+        const personagensContainer = document.getElementById('personagens-container');
+
+        // 3. Função para renderizar um personagem na tela
+        function renderPersonagem(doc) {
+            const personagem = doc.data();
+            const id = doc.id;
+            
+            // Cria o card do personagem
+            const card = document.createElement('div');
+            card.className = 'personagem-card';
+            card.id = `card-${id}`;
+            
+            card.innerHTML = `
+                <h3>${personagem.nome}</h3>
+                <ul>
+                    <li><span>Aura:</span> <span>${personagem.aura}</span></li>
+                    <li><span>Força:</span> <span>${personagem.forca}</span></li>
+                    <li><span>Carisma:</span> <span>${personagem.carisma}</span></li>
+                    <li><span>Velocidade:</span> <span>${personagem.velocidade}</span></li>
+                    <li><span>Lealdade:</span> <span>${personagem.lealdade}</span></li>
+                    <li><span>Mentalidade:</span> <span>${personagem.mentalidade}</span></li>
+                    <li><span>Sorte:</span> <span>${personagem.sorte}</span></li>
+                    <li><span>Destreza:</span> <span>${personagem.destreza}</span></li>
+                </ul>
+                <div class="xp-container">
+                    <span>XP: ${personagem.xp}</span>
+                    <button class="xp-btn" data-id="${id}">+10 XP</button>
+                </div>
+                <div class="botoes-acao">
+                    <button class="inventario-btn" data-id="${id}">Inventário</button>
+                    <button class="info-btn" data-id="${id}">Info</button>
+                </div>
+            `;
+            
+            // Adiciona o card ao container
+            personagensContainer.appendChild(card);
+            
+            // Adiciona evento de clique para o botão de XP
+            const xpButton = card.querySelector('.xp-btn');
+            xpButton.addEventListener('click', () => {
+                const novoXp = personagem.xp + 10;
+                personagensRef.doc(id).update({ xp: novoXp })
+                    .then(() => {
+                        console.log(`XP de ${personagem.nome} atualizado para ${novoXp}!`);
+                    })
+                    .catch(error => console.error("Erro ao atualizar XP:", error));
+            });
+            
+            // Evento de clique para o botão de Info (exemplo)
+            const infoButton = card.querySelector('.info-btn');
+            infoButton.addEventListener('click', () => {
+                alert(`Informações de ${personagem.nome}:\nEquipamentos: Nenhum\nEfeitos: Nenhum`);
+            });
+
+            // Evento de clique para o botão de Inventário (exemplo)
+            const inventarioButton = card.querySelector('.inventario-btn');
+            inventarioButton.addEventListener('click', () => {
+                alert(`Inventário de ${personagem.nome}:\nItens: Espada Longa, Poção de Cura`);
+            });
+        }
+
+        // 4. Ouvinte de eventos em tempo real do Firestore
+        personagensRef.onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    renderPersonagem(change.doc);
+                }
+                if (change.type === 'modified') {
+                    // Remove o card antigo e adiciona o novo com os dados atualizados
+                    const id = change.doc.id;
+                    const oldCard = document.getElementById(`card-${id}`);
+                    if (oldCard) {
+                        oldCard.remove();
+                    }
+                    renderPersonagem(change.doc);
+                }
+            });
+        });
+
+        // 5. Lidar com o formulário de cadastro
+        formCadastro.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nomePersonagem = nomePersonagemInput.value;
+            
+            // Objeto inicial do personagem
+            const novoPersonagem = {
+                nome: nomePersonagem,
+                aura: 10,
+                forca: 10,
+                carisma: 10,
+                velocidade: 10,
+                lealdade: 10,
+                mentalidade: 10,
+                sorte: 10,
+                destreza: 10,
+                xp: 0
+            };
+            
+            // Adiciona o personagem no Firestore
+            try {
+                await personagensRef.add(novoPersonagem);
+                nomePersonagemInput.value = ''; // Limpa o formulário
+                alert(`Personagem ${nomePersonagem} cadastrado com sucesso!`);
+            } catch (error) {
+                console.error("Erro ao adicionar o personagem: ", error);
+                alert("Ocorreu um erro ao cadastrar o personagem.");
+            }
+        });
+    </script>
+</body>
+  </html>
+  
