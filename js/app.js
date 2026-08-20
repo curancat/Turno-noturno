@@ -2,7 +2,7 @@
 // IMPORTAÇÕES DO FIREBASE (Via CDN nativo do navegador)
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, get, child, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { inicializarLoja } from './engine.js';
 import Vanguard from './vanguard.js';
 // ⚠️ ATENÇÃO: Substitua estas chaves pelas do seu projeto Firebase Realtime Database!
@@ -40,6 +40,8 @@ export const gameState = {
         ad: 10, ap: 0, def: 15, mdef: 10, ms: 300, cdr: 0
     }
 };
+// Exporta o Vanguard para que os Heróis possam validar os ataques
+export let vanguardSistema = null;
 
 // ==========================================
 // ELEMENTOS DO DOM
@@ -158,8 +160,17 @@ async function iniciarPartida() {
     
     // Atualiza UI base
    // Inicializa o Vanguard passando o estado global e o banco de dados
-    const vanguardSistema = new Vanguard(gameState, db);
+    vanguardSistema = new Vanguard(gameState, db);
     vanguardSistema.iniciar();
+  // 🛡️ SINCRONIZAÇÃO VANGUARD: Registra o jogador para a fila de turnos
+    const playerRef = ref(db, `rooms/${gameState.roomName}/players/${gameState.playerName}`);
+    await set(playerRef, {
+        heroId: gameState.heroId,
+        joinedAt: Date.now()
+    });
+  // 🛡️ SINCRONIZAÇÃO VANGUARD: Remove o jogador da fila se fechar a aba
+    onDisconnect(playerRef).remove();
+  
     atualizarUI();
     inicializarLoja();
     
