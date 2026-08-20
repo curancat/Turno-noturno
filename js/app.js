@@ -5,7 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getDatabase, ref, push, onChildAdded, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { inicializarLoja } from './engine.js';
 import Vanguard from './vanguard.js';
-let vanguardSistema = null;
+export let juizVanguard = null; // Exporte para as habilidades poderem consultar
 // ⚠️ ATENÇÃO: Substitua estas chaves pelas do seu projeto Firebase Realtime Database!
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -159,8 +159,8 @@ async function iniciarPartida() {
     
     // Atualiza UI base
    // Inicializa o Vanguard passando o estado global e o banco de dados
-   vanguardSistema = new Vanguard(gameState, db);
-   vanguardSistema.iniciar();
+    juizVanguard = new Vanguard(gameState, db);
+    juizVanguard.iniciar();
     atualizarUI();
     inicializarLoja();
     
