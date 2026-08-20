@@ -1,5 +1,6 @@
 // ==========================================
 // HERÓI: LITLEGOT (Miraculous da Cabra)
+// MECÂNICA: CAVALETE, TINTA (Escala c/ AP), 21 HABILIDADES E ALVOS
 // ==========================================
 import { ref, push } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { atualizarUI } from "../app.js";
@@ -9,152 +10,297 @@ export default class Litlegot {
         this.state = gameState;
         this.db = db;
         
-        // Estado exclusivo do herói
         this.paginaPronta = true;
-        this.corAtiva = 'red'; // Começa com vermelho (Fogo)
         this.desenhando = false;
+        this.corAtiva = 'red';
+        this.alvoSelecionado = 'Inimigo da Rota';
         
-        // Dicionário de Cores e Efeitos
+        // 7 Cores do Arco-íris / Paleta
         this.tintas = {
-            red: { nome: 'Fogo', hex: '#ff3333', fx: 'Explosão Escaldante' },
-            orange: { nome: 'Vampirismo', hex: '#ff8c00', fx: 'Drenagem Vital' },
-            green: { nome: 'Cura', hex: '#00ff00', fx: 'Sopro da Natureza' },
-            yellow: { nome: 'Luz/Visão', hex: '#ffff00', fx: 'Clarão Revelador' },
-            blue: { nome: 'Escudo', hex: '#00bfff', fx: 'Barreira de Tinta' },
-            purple: { nome: 'Controle', hex: '#8a2be2', fx: 'Prisão de Pigmentos' }
+            red: { nome: 'Fogo Carnificina', hex: '#ff3333', gasto: { X: 15, O: 30, Z: 60 } },
+            orange: { nome: 'Drenagem Vital', hex: '#ff8c00', gasto: { X: 10, O: 25, Z: 50 } },
+            yellow: { nome: 'Ouro e Clarão', hex: '#ffff00', gasto: { X: 5, O: 40, Z: 35 } },
+            green: { nome: 'Sopro da Natureza', hex: '#00ff00', gasto: { X: 20, O: 35, Z: 55 } },
+            blue: { nome: 'Barreiras de Água', hex: '#00bfff', gasto: { X: 15, O: 40, Z: 60 } },
+            purple: { nome: 'Sombras de Controle', hex: '#8a2be2', gasto: { X: 25, O: 45, Z: 70 } },
+            white: { nome: 'Luz Absoluta (Divino)', hex: '#ffffff', gasto: { X: 50, O: 80, Z: 150 } } // 7ª Cor
         };
     }
 
-    // Método chamado pelo app.js quando o herói é carregado
     iniciar() {
+        this.configurarTintaMecanica();
+        this.injetarCavaleteUI();
         this.vincularBotoesUI();
         this.injetarEstilosDeAnimacao();
-        console.log("Litlegot está pronto para pintar o campo de batalha!");
         
-        // Ajuste de atributos base do Litlegot
-        this.state.stats.maxMana = 200; // Tinta
-        this.state.stats.mana = 200;
+        // Loop que garante que a Tinta Máxima escale com o AP constantemente
+        setInterval(() => this.atualizarTintaEstatistica(), 1000);
+    }
+
+    // ==========================================
+    // ESCALONAMENTO DE TINTA COM AP
+    // ==========================================
+    configurarTintaMecanica() {
+        // Renomeia o texto de Mana para Tinta no painel dinamicamente
+        const manaLabel = document.querySelector('.stat-row:nth-child(2) span');
+        if (manaLabel) manaLabel.innerText = 'Tinta (Escala c/ AP):';
+        
+        this.atualizarTintaEstatistica();
+        this.state.stats.mana = this.state.stats.maxMana; // Enche a tinta inicial
+        atualizarUI();
+    }
+
+    atualizarTintaEstatistica() {
+        // A Tinta Máxima base é 100 + (AP * 2.5). Se o jogador focar em AP, terá muita tinta!
+        const tintaBase = 100;
+        const apAtual = this.state.stats.ap || 0;
+        this.state.stats.maxMana = Math.floor(tintaBase + (apAtual * 2.5));
+        
+        if (this.state.stats.mana > this.state.stats.maxMana) {
+            this.state.stats.mana = this.state.stats.maxMana;
+        }
         atualizarUI();
     }
 
     // ==========================================
-    // VÍNCULO DOS BOTÕES DO HTML
+    // UI: INJEÇÃO DO CAVALETE E ALVOS
     // ==========================================
+    injetarCavaleteUI() {
+        const controleHabilidades = document.querySelector('.skills-controls');
+        
+        // Injeta a 7ª cor caso não exista no HTML base
+        const coresContainer = document.querySelector('.color-palette');
+        if (coresContainer && !document.querySelector('[data-color="white"]')) {
+            const btnWhite = document.createElement('button');
+            btnWhite.className = 'color-btn';
+            btnWhite.dataset.color = 'white';
+            btnWhite.style.backgroundColor = '#ffffff';
+            btnWhite.style.border = '2px solid #ccc';
+            coresContainer.appendChild(btnWhite);
+        }
+
+        // Injeta o seletor de Alvos do Cavalete
+        const cavaleteHTML = document.createElement('div');
+        cavaleteHTML.style.marginTop = '15px';
+        cavaleteHTML.style.padding = '10px';
+        cavaleteHTML.style.border = '1px dashed var(--ouro-antigo)';
+        cavaleteHTML.innerHTML = `
+            <div style="font-size:0.8rem; color:var(--ouro-brilhante); margin-bottom:5px;">🎨 Foco do Cavalete (Alvo):</div>
+            <select id="alvo-cavalete" class="w-full" style="background:#1a1a2e; color:#fff; padding:5px; border:1px solid #333;">
+                <option value="Inimigo da Rota">Inimigo (Herói)</option>
+                <option value="Minion Inimigo">Minion Inimigo</option>
+                <option value="Torre Inimiga">Torre Inimiga</option>
+                <option value="Si Mesmo">Si Mesmo</option>
+                <option value="Aliado">Aliado</option>
+            </select>
+        `;
+        controleHabilidades.insertBefore(cavaleteHTML, document.getElementById('skill-redraw'));
+    }
+
     vincularBotoesUI() {
-        // Seletores de Cor
         const colorBtns = document.querySelectorAll('.color-btn');
         colorBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Remove a classe de ativo de todos e coloca no clicado
                 colorBtns.forEach(b => b.classList.remove('active-color'));
                 e.target.classList.add('active-color');
-                
-                // Muda a cor ativa
                 this.corAtiva = e.target.dataset.color;
-                this.animacaoVisual(this.tintas[this.corAtiva].hex, `Tinta ${this.tintas[this.corAtiva].nome} Equipada!`);
+                this.animacaoVisual(this.tintas[this.corAtiva].hex, `Tinta ${this.tintas[this.corAtiva].nome}`);
             });
         });
 
-        // Botões de Habilidade (X, O, Z)
         document.getElementById('skill-x').addEventListener('click', () => this.usarPagina('X'));
         document.getElementById('skill-o').addEventListener('click', () => this.usarPagina('O'));
         document.getElementById('skill-z').addEventListener('click', () => this.usarPagina('Z'));
-
-        // Botão de Redesenhar Página
         document.getElementById('skill-redraw').addEventListener('click', () => this.desenharNovaPagina());
+        
+        document.getElementById('alvo-cavalete').addEventListener('change', (e) => {
+            this.alvoSelecionado = e.target.value;
+        });
     }
 
     // ==========================================
-    // LÓGICA DE COMBATE (X, O, Z)
+    // SISTEMA DE PRECISÃO E CUSTO
     // ==========================================
     usarPagina(tecla) {
-        if (!this.paginaPronta) {
-            return this.animacaoTextoFlutuante("Página em Branco! Desenhe outra primeiro.", "#ff0000");
-        }
-        if (this.state.stats.mana < 10) {
-            return this.animacaoTextoFlutuante("Sem tinta (Mana) suficiente!", "#ff0000");
+        if (!this.paginaPronta) return this.animacaoTextoFlutuante("Cavalete Vazio! Desenhe algo.", "#ff0000");
+        
+        const cor = this.tintas[this.corAtiva];
+        const custoTinta = cor.gasto[tecla];
+
+        if (this.state.stats.mana < custoTinta) {
+            return this.animacaoTextoFlutuante(`Falta Tinta! Custo: ${custoTinta}`, "#ff0000");
         }
 
-        // Consome a página e a tinta (mana)
+        // Consome página e tinta
         this.paginaPronta = false;
-        this.state.stats.mana -= 10;
-        
-        // Desativa visualmente os botões
+        this.state.stats.mana -= custoTinta;
         this.atualizarBotoesHabilidade(false);
 
-        const cor = this.tintas[this.corAtiva];
-        let efeitoMecanico = "";
+        // Chance de Erro: Base 70% de acerto. Cada nível de Litlegot aumenta 1% de precisão.
+        // Tentar atingir alvos distantes (outras rotas) aumenta o erro, mas como estamos focados no alvo local:
+        let chanceDeAcerto = 70 + this.state.level; 
+        if (chanceDeAcerto > 98) chanceDeAcerto = 98; // Nunca é 100% garantido
 
-        // Lógica de Efeitos baseados na Cor
-        switch (this.corAtiva) {
-            case 'red': // Dano Fogo
-                efeitoMecanico = `causou dano mágico (${this.state.stats.ap + 30}) em área.`;
-                this.animacaoVisual(cor.hex);
-                break;
-            case 'orange': // Vampirismo
-                const curaDrenagem = Math.floor(15 + (this.state.stats.ap * 0.2));
-                this.curarLitlegot(curaDrenagem);
-                efeitoMecanico = `drenou ${curaDrenagem} de vida dos inimigos próximos.`;
-                this.animacaoVisual(cor.hex);
-                break;
-            case 'green': // Cura Pura
-                const curaPura = Math.floor(30 + (this.state.stats.ap * 0.4));
-                this.curarLitlegot(curaPura);
-                efeitoMecanico = `curou a si mesmo/aliados em ${curaPura} HP.`;
-                this.animacaoVisual(cor.hex);
-                break;
-            case 'yellow': // Visão
-                efeitoMecanico = `iluminou a escuridão! (Revelando unidades na Rota: ${this.state.lane}).`;
-                this.animacaoVisual(cor.hex);
-                document.getElementById('chat-log').style.boxShadow = "inset 0 0 50px rgba(255, 255, 0, 0.2)";
-                setTimeout(() => document.getElementById('chat-log').style.boxShadow = "none", 5000);
-                break;
-            case 'blue': // Escudo
-                this.state.stats.def += 15;
-                this.state.stats.mdef += 15;
-                efeitoMecanico = `criou uma barreira (Ganhando +15 DEF/MDEF Temporário).`;
-                this.animacaoVisual(cor.hex);
-                // Remove o buff após 5 segundos
-                setTimeout(() => {
-                    this.state.stats.def -= 15;
-                    this.state.stats.mdef -= 15;
-                    atualizarUI();
-                }, 5000);
-                break;
-            case 'purple': // Controle de Grupo (CC)
-                efeitoMecanico = `enraizou os inimigos próximos por 2 segundos.`;
-                this.animacaoVisual(cor.hex);
-                break;
+        const rolagemDeDado = Math.floor(Math.random() * 100) + 1;
+        
+        if (rolagemDeDado > chanceDeAcerto) {
+            this.animacaoVisual("#555", "O desenho borrou!");
+            this.enviarAtaqueParaChat(tecla, cor.nome, `tentou pintar, mas o desenho borrou e errou o alvo (${this.alvoSelecionado})!`, "#777");
+            atualizarUI();
+            return;
         }
 
-        atualizarUI();
-
-        // Dispara mensagem no Firebase para o Chat de Combate
-        this.enviarAtaqueParaChat(tecla, cor.nome, efeitoMecanico, cor.hex);
+        // Se acertou, roda as 21 mecânicas reais:
+        this.executarMecanicaReal(tecla, cor);
     }
 
     // ==========================================
-    // LÓGICA DE RECARGA (O Pulo do Gato do Nível 30)
+    // AS 21 MECÂNICAS (EFEITOS MATEMÁTICOS)
+    // ==========================================
+    executarMecanicaReal(tecla, cor) {
+        let efeitoTexto = "";
+        const ap = this.state.stats.ap;
+        const ad = this.state.stats.ad;
+        const alvo = this.alvoSelecionado;
+
+        // VERMELHO: Fogo & Dano
+        if (this.corAtiva === 'red') {
+            if (tecla === 'X') {
+                const dano = Math.floor((ap * 1.5) + (ad * 0.5));
+                efeitoTexto = `atirou uma fagulha, causando **${dano} de Dano** em [${alvo}].`;
+            } else if (tecla === 'O') {
+                const dano = Math.floor(ap * 2);
+                efeitoTexto = `pintou um mar de fogo, queimando [${alvo}] por **${dano} de Dano em Área**.`;
+            } else if (tecla === 'Z') {
+                const dano = Math.floor(ap * 4); // Execução maciça
+                efeitoTexto = `desenhou um METEORO, explodindo [${alvo}] com **${dano} de Dano Crítico**!`;
+            }
+        }
+        
+        // LARANJA: Drenagem Física/Mágica
+        else if (this.corAtiva === 'orange') {
+            if (tecla === 'X') {
+                const cura = Math.floor(ap * 0.8);
+                this.curar(cura);
+                efeitoTexto = `golpeou [${alvo}] e drenou a vida, curando Litlegot em **+${cura} HP**.`;
+            } else if (tecla === 'O') {
+                const reducao = Math.floor(10 + (ap * 0.1));
+                efeitoTexto = `corroeu a armadura de [${alvo}], reduzindo suas defesas em **-${reducao}** por 10s.`;
+            } else if (tecla === 'Z') {
+                this.state.stats.mana += 100; // Rouba tinta
+                efeitoTexto = `sugou a essência de [${alvo}], convertendo a dor do inimigo em **+100 de Tinta**!`;
+            }
+        }
+
+        // AMARELO: Visão e Riqueza (Economia)
+        else if (this.corAtiva === 'yellow') {
+            if (tecla === 'X') {
+                efeitoTexto = `desenhou um Sol em [${this.state.lane}], revelando [${alvo}] oculto nas sombras.`;
+            } else if (tecla === 'O') {
+                const ouroGerado = Math.floor(20 + (ap * 0.2));
+                this.state.gold += ouroGerado;
+                efeitoTexto = `transmutou tinta em ouro, ganhando **+${ouroGerado} 🪙** focando em [${alvo}].`;
+            } else if (tecla === 'Z') {
+                this.state.stats.ms += 50; 
+                setTimeout(() => this.state.stats.ms -= 50, 8000);
+                efeitoTexto = `pintou asas de luz, ganhando **+50 de Vel. Movimento** por 8 segundos.`;
+            }
+        }
+
+        // VERDE: Regeneração
+        else if (this.corAtiva === 'green') {
+            if (tecla === 'X') {
+                const cura = Math.floor(ap * 1.5);
+                this.curar(cura);
+                efeitoTexto = `envolveu [${alvo}] com vinhas curativas, restaurando **+${cura} HP**.`;
+            } else if (tecla === 'O') {
+                this.state.stats.maxHp += 50; // Buff permanente leve
+                this.curar(50);
+                efeitoTexto = `reforçou o corpo de [${alvo}], adicionando permanentemente **+50 Vida Máxima**!`;
+            } else if (tecla === 'Z') {
+                const enraizado = Math.floor(2 + (ap * 0.01));
+                efeitoTexto = `desenhou raízes titânicas, paralisando [${alvo}] completamente por **${enraizado} segundos**.`;
+            }
+        }
+
+        // AZUL: Barreiras e Mana
+        else if (this.corAtiva === 'blue') {
+            if (tecla === 'X') {
+                this.state.stats.def += 30; setTimeout(() => this.state.stats.def -= 30, 6000);
+                efeitoTexto = `criou um escudo d'água em [${alvo}], concedendo **+30 Defesa Física** temporária.`;
+            } else if (tecla === 'O') {
+                this.state.stats.mdef += 40; setTimeout(() => this.state.stats.mdef -= 40, 6000);
+                efeitoTexto = `pintou uma redoma de gelo em [${alvo}], concedendo **+40 Defesa Mágica** temporária.`;
+            } else if (tecla === 'Z') {
+                // Remove CDR temporariamente
+                const cdrBonus = 50;
+                this.state.stats.cdr += cdrBonus; setTimeout(() => this.state.stats.cdr -= cdrBonus, 5000);
+                efeitoTexto = `congelou o tempo para si mesmo, ganhando **+50% de Redução de Recarga** nos próximos 5s!`;
+            }
+        }
+
+        // ROXO: Debuff e Controle Absoluto
+        else if (this.corAtiva === 'purple') {
+            if (tecla === 'X') {
+                efeitoTexto = `silenciou [${alvo}], impedindo que ele use habilidades no próximo turno.`;
+            } else if (tecla === 'O') {
+                const danoVerdadeiro = Math.floor(ap * 1.2);
+                efeitoTexto = `injetou sombra diretamente na mente de [${alvo}], causando **${danoVerdadeiro} de Dano Verdadeiro**.`;
+            } else if (tecla === 'Z') {
+                efeitoTexto = `abriu um portal negro embaixo de [${alvo}], enviando-o forçadamente de volta para a Base!`;
+            }
+        }
+
+        // BRANCO: O Ápice do Miraculous (Divindade)
+        else if (this.corAtiva === 'white') {
+            if (tecla === 'X') {
+                // Purificação
+                efeitoTexto = `limpou todas as imperfeições, **Purificando [${alvo}]** de qualquer enraizamento, sangramento ou cegueira.`;
+            } else if (tecla === 'O') {
+                // Clona atributos brutos (Temporário)
+                const boost = Math.floor(ap * 0.5);
+                this.state.stats.ad += boost; setTimeout(() => this.state.stats.ad -= boost, 10000);
+                efeitoTexto = `desenhou uma cópia divina da sua arma, ganhando **+${boost} de AD** por 10 segundos.`;
+            } else if (tecla === 'Z') {
+                // Apocalipse da Tinta: Esvazia toda a tinta restante para um dano colossal
+                const tintaGasta = this.state.stats.mana;
+                const danoCatastrofico = Math.floor((ap * 3) + (tintaGasta * 2));
+                this.state.stats.mana = 0; // Zera a tinta
+                efeitoTexto = `gastou toda a tinta restante no Cavalete para criar a ARTE FINAL! [${alvo}] sofreu **${danoCatastrofico} de Dano Devastador**.`;
+            }
+        }
+
+        this.animacaoVisual(cor.hex);
+        atualizarUI();
+        this.enviarAtaqueParaChat(tecla, cor.nome, efeitoTexto, cor.hex);
+    }
+
+    curar(valor) {
+        this.state.stats.hp += valor;
+        if (this.state.stats.hp > this.state.stats.maxHp) {
+            this.state.stats.hp = this.state.stats.maxHp;
+        }
+    }
+
+    // ==========================================
+    // ESCALONAMENTO DE RECARGA (ZERO NO LVL 30)
     // ==========================================
     desenharNovaPagina() {
         if (this.paginaPronta || this.desenhando) return;
 
         this.desenhando = true;
         const btnRedraw = document.getElementById('skill-redraw');
-        btnRedraw.innerText = "Desenhando...";
+        btnRedraw.innerText = "Pintando Tela...";
         btnRedraw.style.opacity = "0.5";
 
-        // Matemática da Recarga: 
-        // Nível 1: ~4.5 segundos. Nível 30: 0 segundos.
-        // CD Máximo de 1% (CDR de itens) também afeta!
-        let tempoBase = 5000 - (this.state.level * 166); // Reduz ~166ms por nível
+        // Matemática: Nível 1 sofre com CD alto (10 segundos). 
+        // A cada nível, subtrai ~333ms. Nível 30 = 0s de recarga.
+        let tempoBase = 10000 - (this.state.level * 333); 
         if (tempoBase < 0) tempoBase = 0;
         
-        // Aplica o CDR (Redução de Tempo de Recarga dos itens)
-        let cdFinal = tempoBase * (1 - (this.state.stats.cdr / 100));
+        let cdFinal = tempoBase * (1 - ((this.state.stats.cdr || 0) / 100));
 
-        // Se o nível for 30 ou o CD ficar menor que 100ms, é instantâneo (metralhadora)
-        if (this.state.level >= 30 || cdFinal < 100) {
+        if (this.state.level >= 30 || cdFinal <= 100) {
             this.finalizarDesenho();
         } else {
             setTimeout(() => this.finalizarDesenho(), cdFinal);
@@ -168,60 +314,44 @@ export default class Litlegot {
         btnRedraw.innerText = "Desenhar Nova Página";
         btnRedraw.style.opacity = "1";
         this.atualizarBotoesHabilidade(true);
-        this.animacaoTextoFlutuante("Página Pronta!", "#ffffff");
+        this.animacaoTextoFlutuante("Tela Pronta!", "#ffffff");
     }
 
     atualizarBotoesHabilidade(estado) {
-        const botoes = [document.getElementById('skill-x'), document.getElementById('skill-o'), document.getElementById('skill-z')];
-        botoes.forEach(b => {
-            b.style.opacity = estado ? "1" : "0.3";
-            b.style.pointerEvents = estado ? "auto" : "none";
+        ['skill-x', 'skill-o', 'skill-z'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.style.opacity = estado ? "1" : "0.3";
+                btn.style.pointerEvents = estado ? "auto" : "none";
+            }
         });
     }
 
-    curarLitlegot(valor) {
-        this.state.stats.hp += valor;
-        if (this.state.stats.hp > this.state.stats.maxHp) {
-            this.state.stats.hp = this.state.stats.maxHp;
-        }
-    }
-
     // ==========================================
-    // INTEGRAÇÃO COM FIREBASE (CHAT)
+    // SISTEMA FIREBASE & VISUAL
     // ==========================================
     enviarAtaqueParaChat(tecla, nomeCor, efeito, hexCode) {
-        if (!this.state.roomName) return; // Só envia se estiver em uma sala
+        if (!this.state.roomName) return; 
         
         const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
-        
-        // Cria uma mensagem destacada (em HTML) para o chat do jogo
-        const msgFormatada = `<span style="color:${hexCode}; font-weight:bold;">[${nomeCor}]</span> Litlegot usou a técnica [${tecla}]: ${efeito}`;
+        const msgFormatada = `<span style="color:${hexCode}; font-weight:bold;">[${nomeCor}]</span> Litlegot traçou a Arte ${tecla}: ${efeito}`;
         
         push(chatRef, {
             sender: this.state.playerName,
             text: msgFormatada,
-            type: "combat", // Tipo combate para destacar no CSS se necessário
+            type: "combat",
             time: Date.now()
         });
     }
 
-    // ==========================================
-    // SISTEMA DE ANIMAÇÕES VISUAIS (EFEITOS TELA)
-    // ==========================================
     animacaoVisual(corHex, textoDica = null) {
-        // Efeito 1: Piscar a tela com a cor da magia
         const flash = document.createElement('div');
         flash.className = 'magia-flash';
         flash.style.backgroundColor = corHex;
         document.body.appendChild(flash);
-        
-        // Remove o flash da memória após a animação
         setTimeout(() => flash.remove(), 400);
 
-        // Efeito 2: Texto flutuante no meio da tela
-        if (textoDica) {
-            this.animacaoTextoFlutuante(textoDica, corHex);
-        }
+        if (textoDica) this.animacaoTextoFlutuante(textoDica, corHex);
     }
 
     animacaoTextoFlutuante(texto, cor) {
@@ -230,16 +360,14 @@ export default class Litlegot {
         textAnim.innerText = texto;
         textAnim.style.color = cor;
         
-        // Posiciona no meio do painel de jogo
-        const container = document.getElementById('game-screen');
-        container.appendChild(textAnim);
-        
+        document.getElementById('game-screen').appendChild(textAnim);
         setTimeout(() => textAnim.remove(), 1000);
     }
 
     injetarEstilosDeAnimacao() {
-        // Injeta CSS dinâmico apenas para os efeitos especiais das magias
+        if (document.getElementById('litlegot-styles')) return;
         const style = document.createElement('style');
+        style.id = 'litlegot-styles';
         style.innerHTML = `
             .magia-flash {
                 position: fixed;
@@ -261,10 +389,7 @@ export default class Litlegot {
                 z-index: 1000;
                 animation: floatUpAndFade 1s ease-out forwards;
             }
-            @keyframes fadeOutFlash {
-                0% { opacity: 0.3; }
-                100% { opacity: 0; }
-            }
+            @keyframes fadeOutFlash { 0% { opacity: 0.3; } 100% { opacity: 0; } }
             @keyframes floatUpAndFade {
                 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.8); }
                 50% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
