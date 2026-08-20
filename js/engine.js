@@ -7,7 +7,7 @@
 // BANCO DE DADOS DOS 50 ITENS (5 TIERs)
 // ==========================================
 import { gameState, atualizarUI } from './app.js';
-import { databaseItens } from './item.js';
+import { databaseItens } from './items.js';
 
 // ==========================================
 // RENDERIZAÇÃO DA LOJA NO DOM
