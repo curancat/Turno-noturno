@@ -239,7 +239,7 @@ export default class Litlegot {
             .lg-folha-card {
                 border: 2px solid; background: #0b0b18; border-radius: 12px;
                 padding: 16px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-                transition: transform 0.2s;
+                transition: transform 0.2s; cursor: pointer;
             }
             .lg-folha-card:active { transform: scale(0.95); }
 
@@ -281,6 +281,7 @@ export default class Litlegot {
                 position: absolute; font-size: 2.5rem; font-weight: 900; font-family: 'Arial Black', sans-serif;
                 -webkit-text-stroke: 2px black; pointer-events: none; text-shadow: 0px 5px 15px rgba(0,0,0,0.8);
                 animation: float-up 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                transform: translateX(-50%);
             }
             .lg-particle { position: absolute; border-radius: 50%; pointer-events: none; }
         `;
@@ -567,478 +568,340 @@ export default class Litlegot {
 
         this.state.stats.mana -= corData.custo;
         this.folhasGuardadas.push({
-            id: Date.now(),
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2),
             forma: forma,
-            corKey: this.corAtiva,
-            corHex: corData.hex,
-            nomeCor: corData.nome,
-            apSnapshot: this.state.stats.ap || 0
+            cor: this.corAtiva,
+            dadosCor: corData,
+            timestamp: Date.now()
         });
 
         this.limparCanvas();
-        this.animacaoTextoFlutuante(`Arte Materializada: ${forma}`, corData.hex);
-        document.getElementById('lg-modal-canvas').classList.remove('active');
+        this.animacaoTextoFlutuante("Materializado!", corData.hex);
         atualizarUI();
+        
+        // Atualiza a Mochila caso ela esteja aberta e fecha o Canvas
+        this.atualizarUIFolhas();
+        document.getElementById('lg-modal-canvas').classList.remove('active');
     }
 
+    // ==========================================
+    // SISTEMA DE COMBATE / MOCHILA DE MAGIAS
+    // ==========================================
     atualizarUIFolhas() {
         const container = document.getElementById('lg-folhas-container');
         if (!container) return;
         container.innerHTML = '';
 
         if (this.folhasGuardadas.length === 0) {
-            container.innerHTML = '<div style="grid-column:1/-1; color:#777; padding:20px; text-align:center; font-style:italic;">Nenhuma arte em posse.</div>';
+            container.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">Sua mochila arcana está vazia. Crie artes no Ateliê.</p>';
             return;
         }
 
         this.folhasGuardadas.forEach((folha, index) => {
             const card = document.createElement('div');
             card.className = 'lg-folha-card';
-            card.style.borderColor = folha.corHex;
-            card.style.boxShadow = `inset 0 0 15px ${folha.corHex}33`;
+            card.style.borderColor = folha.dadosCor.hex;
             card.innerHTML = `
-                <div style="font-size:2.5rem; font-weight:900; color:${folha.corHex}; text-shadow:0 0 10px ${folha.corHex};">${folha.forma}</div>
-                <div style="font-size:0.75rem; color:#fff; font-weight:bold; margin:8px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${folha.nomeCor}</div>
-                <button style="background:linear-gradient(135deg, ${folha.corHex}, #333); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:1.1rem; width:100%; padding:10px; cursor:pointer;">Lançar</button>
+                <div style="font-size:2.5rem; font-weight:bold; color:${folha.dadosCor.hex}">${folha.forma}</div>
+                <div style="font-size:0.8rem; margin-top:8px; color:#fff; font-weight:bold;">${folha.dadosCor.nome}</div>
             `;
-            card.querySelector('button').onclick = () => this.ativarFolha(index);
+            card.onclick = () => this.usarFolha(index);
             container.appendChild(card);
         });
     }
 
-    // ==========================================
-    // EFEITOS REAIS EM CAMPO COM SYNC DE DANO
-    // ==========================================
-    ativarFolha(index) {
-        const folha = this.folhasGuardadas[index];
-        if (!folha) return;
-        
+    usarFolha(index) {
         if (!this.alvoSelecionado) {
-            return this.animacaoTextoFlutuante("Selecione um alvo na mochila!", "#ff0000");
+            return this.animacaoTextoFlutuante("Selecione um alvo primeiro!", "#ffffff");
         }
 
+        const folha = this.folhasGuardadas[index];
+        
+        // Remove a folha do inventário
         this.folhasGuardadas.splice(index, 1);
         this.atualizarUIFolhas();
+
+        // Dispara a lógica de dano/cura
+        this.aplicarEfeito(this.alvoSelecionado, folha.forma, folha.cor, folha.dadosCor);
+        
+        // Fecha o modal após usar
         document.getElementById('lg-modal-mochila').classList.remove('active');
-
-        this.executarEfeitoRealEAnimar(folha.forma, folha.corKey, folha.apSnapshot, this.alvoSelecionado);
     }
 
-    executarEfeitoRealEAnimar(forma, corKey, apSnap, alvoId) {
-        const ap = apSnap || this.state.stats.ap || 0;
-        const tinta = this.tintas[corKey];
-        const hex = tinta.hex;
-        const tipoAnimacao = tinta.tipoAnimacao;
+    aplicarEfeito(alvoId, forma, corKey, corData) {
+        // Cálculo de Atributos 
+        let ap = this.state.stats.ap || 0;
+        let ad = this.state.stats.ad || 0;
+        let poderBase = corData.custo + (ap * 1.5);
         
-        let nomeEfeito = "";
-        let resumoAcao = "";
-        let danoOuCuraAplicado = 0;
+        let dano = 0;
+        let cura = 0;
 
-        // Mapeamento dos 21 Feitiços (Calculo matemático)
-        switch (corKey) {
-            case 'red':
-                danoOuCuraAplicado = Math.floor(ap * (forma === 'O' ? 2.2 : forma === 'X' ? 1.8 : 3.5));
-                nomeEfeito = forma === 'O' ? "Inferno Circular" : forma === 'X' ? "Corte Flamejante" : "Labareda Ziguezague";
-                this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                resumoAcao = `causou ${danoOuCuraAplicado} Dano em ${alvoId}`;
-                break;
-            case 'orange':
-                if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 1.5);
-                    nomeEfeito = "Vampirismo de Aura";
-                    this.curar(danoOuCuraAplicado);
-                    resumoAcao = `curou-se em +${danoOuCuraAplicado} HP`;
-                } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.0);
-                    nomeEfeito = "Drenagem Direta";
-                    this.curar(danoOuCuraAplicado);
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = `drenou ${danoOuCuraAplicado} HP de ${alvoId}`;
-                } else {
-                    nomeEfeito = "Pulso Hemático";
-                    resumoAcao = `ganhou Lifesteal (+25%)`;
-                }
-                break;
-            case 'yellow':
-                nomeEfeito = forma === 'O' ? "Clarão Dourado" : forma === 'X' ? "Chuva de Ouro" : "Relâmpago Áureo";
-                if (forma === 'O') {
-                    const ouro = Math.floor(40 + (ap * 0.4));
-                    this.state.gold = (this.state.gold || 0) + ouro;
-                    resumoAcao = `gerou +${ouro} Ouro`;
-                } else {
-                    resumoAcao = `concedeu bônus de agilidade`;
-                }
-                break;
-            case 'green':
-                if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.5);
-                    nomeEfeito = "Raiz Viva Protetora";
-                    this.curar(danoOuCuraAplicado);
-                    resumoAcao = `curou +${danoOuCuraAplicado} HP e ganhou armadura`;
-                } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 1.5);
-                    nomeEfeito = "Espinhos Selvagens";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = `causou ${danoOuCuraAplicado} Dano e enraizou ${alvoId}`;
-                } else {
-                    nomeEfeito = "Vinha Cortante";
-                    this.state.stats.maxHp += 50; this.curar(50);
-                    resumoAcao = `ganhou +50 HP Máx Permanente`;
-                }
-                break;
-            case 'blue':
-                if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(120 + (ap * 1.8));
-                    nomeEfeito = "Cúpula Aquática";
-                    this.state.stats.shield = (this.state.stats.shield || 0) + danoOuCuraAplicado;
-                    resumoAcao = `criou +${danoOuCuraAplicado} de Escudo`;
-                } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.0);
-                    nomeEfeito = "Lança Gélida";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = `causou ${danoOuCuraAplicado} Dano em ${alvoId}`;
-                } else {
-                    nomeEfeito = "Correnteza Veloz";
-                    resumoAcao = `reduziu Cooldowns em 20%`;
-                }
-                break;
-            case 'purple':
-                if (forma === 'O' || forma === 'Z') {
-                    nomeEfeito = forma === 'O' ? "Esfera Umbral" : "Fio de Sombra";
-                    resumoAcao = `aplicou CC pesado em ${alvoId}`;
-                } else {
-                    danoOuCuraAplicado = Math.floor(ap * 2.8);
-                    nomeEfeito = "Ruptura Sombria";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = `causou ${danoOuCuraAplicado} Dano Mágico em ${alvoId}`;
-                }
-                break;
-            case 'white':
-                if (forma === 'O') {
-                    nomeEfeito = "Halo Divino";
-                    this.curar(this.state.stats.maxHp);
-                    resumoAcao = `curou 100% da própria Vida`;
-                } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 4.5);
-                    nomeEfeito = "Julgamento Sagrado";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = `puniu ${alvoId} com ${danoOuCuraAplicado} Dano Verdadeiro`;
-                } else {
-                    nomeEfeito = "Feixe Pristino";
-                    resumoAcao = `ganhou um bônus massivo de AP`;
-                }
-                break;
+        // Dinâmica por formato e tinta
+        if (forma === 'O') {
+            // Círculo = Defesa/Cura
+            cura = Math.floor(poderBase * 1.2);
+        } else if (forma === 'X') {
+            // Cruz = Ataque Direto (mistura AP e AD)
+            dano = Math.floor(poderBase * 1.5 + (ad * 0.8));
+        } else if (forma === 'Z') {
+            // Zigue-zague = Dano com leve cura "Roubo de vida"
+            dano = Math.floor(poderBase * 1.2 + (ad * 0.4));
+            cura = Math.floor(poderBase * 0.3);
         }
 
-        atualizarUI();
-        
-        // Emite na rede para que todos vejam o efeito
-        this.emitirEventoDeRede(tipoAnimacao, hex, alvoId, danoOuCuraAplicado, `[${forma}] ${nomeEfeito}`);
-        
-        // Joga no chat também
-        this.enviarAcaoParaChat(forma, nomeEfeito, resumoAcao, hex);
-    }
+        // Bônus/Penalidades por Cores específicas
+        if (corKey === 'white') cura *= 2.0; 
+        if (corKey === 'red') dano *= 1.4;
 
-    aplicarDanoRede(alvoId, dano) {
-        if (!this.multiplayerAtivo || !this.state.roomName) return;
-        
-        if (alvoId === this.meuId) {
-            // Dano em si mesmo (raro, mas possível mecanicamente)
-            this.state.stats.hp = Math.max(0, (this.state.stats.hp || 0) - dano);
-            return;
-        }
+        dano = Math.floor(dano);
+        cura = Math.floor(cura);
 
-        // Lê o HP atual do alvo e debita no Firebase
-        const alvoRef = ref(this.db, `rooms/${this.state.roomName}/players/${alvoId}/stats`);
-        get(alvoRef).then(snapshot => {
-            const statsDoAlvo = snapshot.val();
-            if (statsDoAlvo) {
-                const hpAtual = statsDoAlvo.hp || 0;
-                const escudo = statsDoAlvo.shield || 0;
-                
-                let hpRestante = hpAtual;
-                let escudoRestante = escudo;
-                
-                if (escudo > 0) {
-                    if (dano >= escudo) {
-                        dano -= escudo;
-                        escudoRestante = 0;
-                        hpRestante = Math.max(0, hpAtual - dano);
-                    } else {
-                        escudoRestante -= dano;
-                    }
-                } else {
-                    hpRestante = Math.max(0, hpAtual - dano);
-                }
+        const ehMimMesmo = (alvoId === this.meuId);
 
-                update(alvoRef, { hp: hpRestante, shield: escudoRestante });
+        // Aplicação local do efeito (Se for em si mesmo)
+        if (ehMimMesmo) {
+            if (cura > 0) {
+                this.state.stats.hp = Math.min(this.state.stats.maxHp, this.state.stats.hp + cura);
             }
-        });
-    }
+            if (dano > 0) {
+                // Aplicar golpe em si mesmo reduz um pouco o dano, mas ainda machuca
+                this.state.stats.hp -= Math.floor(dano * 0.5); 
+            }
+        } else if (this.multiplayerAtivo) {
+            // Enviar os dados de alteração de HP para o Firebase para o alvo
+            const alvoRef = ref(this.db, `rooms/${this.state.roomName}/players/${alvoId}/stats`);
+            get(alvoRef).then((snapshot) => {
+                const stats = snapshot.val();
+                if (stats) {
+                    let novoHp = stats.hp;
+                    if (dano > 0) novoHp -= dano;
+                    if (cura > 0) novoHp = Math.min(stats.maxHp || 100, novoHp + cura);
+                    
+                    // Impede vida negativa
+                    if (novoHp < 0) novoHp = 0;
+                    update(alvoRef, { hp: novoHp });
+                }
+            });
+        }
 
-    curar(valor) {
-        this.state.stats.hp = Math.min(this.state.stats.maxHp, (this.state.stats.hp || 0) + valor);
+        // Exibir feedback na tela do lançador
+        if (cura > 0 && ehMimMesmo) this.animacaoTextoFlutuante(`+${cura}`, '#00ff00');
+        if (dano > 0 && ehMimMesmo) this.animacaoTextoFlutuante(`-${Math.floor(dano * 0.5)}`, '#ff0000');
+
+        // Emite o evento na sala para sincronizar as animações de skill globalmente
+        let valorTexto = dano > 0 ? `-${dano}` : `+${cura}`;
+        this.emitirEventoDeRede(corData.tipoAnimacao, corData.hex, alvoId, valorTexto, corData.nome);
+        
         atualizarUI();
     }
 
     // ==========================================
-    // SISTEMA VISUAL GLOBAL (ANIMAÇÕES VIVAS)
+    // ANIMAÇÕES E EFEITOS GLOBAIS
     // ==========================================
     renderizarEventoVisualGlobal(evento) {
-        // Se o alvo for o jogador atual, foca nele, senão anima em tela de forma genérica
-        const isTarget = evento.targetId === this.meuId;
-        const isSource = evento.sourceId === this.meuId;
+        const ehAlvo = (evento.targetId === this.meuId);
+        const ehOrigem = (evento.sourceId === this.meuId);
+
+        // Só renderiza animação na tela se você for o conjurador ou o alvo
+        if (!ehAlvo && !ehOrigem) return;
 
         const layer = document.getElementById('lg-effect-layer');
         if (!layer) return;
 
-        // Efeito de Tela (Screen Shake para dano recebido)
-        if (isTarget && evento.valor > 0) {
-            document.body.style.animation = 'none';
-            void document.body.offsetWidth; // trigger reflow
-            document.body.style.animation = 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both';
-        }
-
-        // Partículas Complexas baseadas no tipo
-        this.gerarSistemasDeParticulas(evento.tipoAnimacao, evento.hexColor, layer);
-
-        // Texto de Dano Flutuante
-        if (evento.valor > 0) {
-            this.criarTextoFlutuante(
-                (isTarget || isSource) ? `-${evento.valor}` : `-${evento.valor} (em ${evento.targetId})`, 
-                evento.hexColor, 
-                layer
-            );
-        }
-
-        // Feedback na HUD de quem lançou
-        if (isSource) {
-            this.animacaoTextoFlutuante(`Lançado: ${evento.nomeEfeito}`, evento.hexColor);
-        }
-    }
-
-    gerarSistemasDeParticulas(tipo, corHex, layer) {
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.top = '50%'; container.style.left = '50%';
-        container.style.transform = 'translate(-50%, -50%)';
+        const divAnim = document.createElement('div');
         
-        if (tipo === 'explosao') {
-            container.style.width = '100px'; container.style.height = '100px';
-            container.style.borderRadius = '50%';
-            container.style.border = `solid ${corHex}`;
-            container.style.animation = 'shockwave 0.6s ease-out forwards';
-        } else if (tipo === 'implosao') {
-            container.style.width = '300px'; container.style.height = '300px';
-            container.style.borderRadius = '50%';
-            container.style.background = `radial-gradient(circle, ${corHex}88, transparent)`;
-            container.style.animation = 'implode 0.8s ease-in forwards';
-        } else if (tipo === 'pilar') {
-            container.style.width = '100vw'; container.style.height = '0';
-            container.style.background = `linear-gradient(to top, transparent, ${corHex}88, transparent)`;
-            container.style.animation = 'pilar-luz 1s ease-in-out forwards';
-            container.style.top = 'auto'; container.style.bottom = '0';
-        } else {
-            // Default splash (bolinhas voando)
-            for (let i = 0; i < 15; i++) {
-                const part = document.createElement('div');
-                part.className = 'lg-particle';
-                part.style.background = corHex;
-                part.style.boxShadow = `0 0 10px ${corHex}`;
-                
-                const size = Math.random() * 15 + 5;
-                part.style.width = `${size}px`; part.style.height = `${size}px`;
-                
-                const angle = Math.random() * Math.PI * 2;
-                const distance = Math.random() * 150 + 50;
-                const tx = Math.cos(angle) * distance;
-                const ty = Math.sin(angle) * distance;
-                
-                part.style.transition = 'all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                part.style.transform = `translate(0px, 0px) scale(1)`;
-                part.style.opacity = '1';
-                
-                container.appendChild(part);
-                
-                setTimeout(() => {
-                    part.style.transform = `translate(${tx}px, ${ty}px) scale(0)`;
-                    part.style.opacity = '0';
-                }, 50);
+        // Renderiza Textos Flutuantes (Dano/Cura)
+        const textEl = document.createElement('div');
+        textEl.className = 'lg-damage-text';
+        textEl.style.color = evento.hexColor;
+        textEl.innerText = evento.valor;
+        // Posições fictícias baseadas em quem toma o hit
+        textEl.style.left = ehAlvo ? '50%' : '30%'; 
+        textEl.style.top = ehAlvo ? '50%' : '20%';
+        layer.appendChild(textEl);
+        
+        setTimeout(() => textEl.remove(), 1500);
+
+        // Se você for o alvo, sofre o efeito Full Screen
+        if (ehAlvo) {
+            divAnim.style.position = 'absolute';
+            divAnim.style.top = '50%';
+            divAnim.style.left = '50%';
+            divAnim.style.width = '100px';
+            divAnim.style.height = '100px';
+            divAnim.style.backgroundColor = 'transparent';
+            divAnim.style.border = `2px solid ${evento.hexColor}`;
+            divAnim.style.borderRadius = '50%';
+            divAnim.style.boxShadow = `0 0 40px ${evento.hexColor}`;
+
+            // Determina a animação baseada no evento
+            if (evento.tipoAnimacao === 'explosao') {
+                divAnim.style.animation = 'shockwave 0.8s ease-out forwards';
+            } else if (evento.tipoAnimacao === 'implosao') {
+                divAnim.style.animation = 'implode 1s ease-in forwards';
+            } else if (evento.tipoAnimacao === 'pilar') {
+                divAnim.style.width = '100%';
+                divAnim.style.left = '0';
+                divAnim.style.transform = 'none';
+                divAnim.style.border = 'none';
+                divAnim.style.backgroundColor = evento.hexColor;
+                divAnim.style.animation = 'pilar-luz 1.2s ease-out forwards';
+            } else {
+                divAnim.style.animation = 'shockwave 1s ease-out forwards'; // Padrão
             }
-            setTimeout(() => container.remove(), 1000);
+
+            layer.appendChild(divAnim);
+            
+            // Tremor de tela ao receber um ataque
+            if (evento.valor.startsWith('-')) {
+                document.body.style.animation = 'shake 0.4s ease-in-out';
+                setTimeout(() => { document.body.style.animation = ''; }, 400);
+            }
+
+            setTimeout(() => divAnim.remove(), 1500);
+        }
+    }
+
+    animacaoTextoFlutuante(texto, cor, pos = null) {
+        const layer = document.getElementById('lg-effect-layer');
+        if (!layer) return;
+
+        const floating = document.createElement('div');
+        floating.className = 'lg-damage-text';
+        floating.style.color = cor;
+        floating.innerText = texto;
+        
+        if (pos) {
+            floating.style.left = `${pos.x}px`;
+            floating.style.top = `${pos.y}px`;
+        } else {
+            floating.style.left = '50%';
+            floating.style.top = '30%';
         }
 
-        layer.appendChild(container);
-        if (tipo === 'explosao' || tipo === 'implosao' || tipo === 'pilar') {
-            setTimeout(() => container.remove(), 1000);
-        }
-    }
-
-    criarTextoFlutuante(texto, cor, layer) {
-        const span = document.createElement('div');
-        span.className = 'lg-damage-text';
-        span.style.color = cor;
-        span.innerText = texto;
-        
-        // Posição randomizada ao redor do centro
-        const xOffset = (Math.random() - 0.5) * 100;
-        const yOffset = (Math.random() - 0.5) * 50;
-        
-        span.style.left = `calc(50% + ${xOffset}px)`;
-        span.style.top = `calc(50% + ${yOffset}px)`;
-        
-        layer.appendChild(span);
-        setTimeout(() => span.remove(), 1500);
-    }
-
-    animacaoTextoFlutuante(texto, cor) {
-        const textAnim = document.createElement('div');
-        textAnim.style.position = 'fixed';
-        textAnim.style.top = '30%';
-        textAnim.style.left = '50%';
-        textAnim.style.transform = 'translate(-50%, -50%)';
-        textAnim.style.color = cor;
-        textAnim.style.fontSize = '1.5rem';
-        textAnim.style.fontWeight = '900';
-        textAnim.style.textShadow = `0 4px 15px rgba(0,0,0,0.9), 0 0 10px ${cor}`;
-        textAnim.style.zIndex = '10001';
-        textAnim.style.pointerEvents = 'none';
-        textAnim.style.textAlign = 'center';
-        textAnim.style.animation = 'float-up 1.3s ease-out forwards';
-        textAnim.innerText = texto;
-
-        document.body.appendChild(textAnim);
-        setTimeout(() => textAnim.remove(), 1300);
-    }
-
-    enviarAcaoParaChat(forma, nomeEfeito, resumo, hex) {
-        if (!this.state.roomName || !this.multiplayerAtivo) return;
-        const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
-        push(chatRef, {
-            sender: this.meuId,
-            text: `<strong style="color:${hex}; background:rgba(0,0,0,0.5); padding:2px 6px; border-radius:4px;">[${forma}] ${nomeEfeito}</strong> ${resumo}`,
-            type: "combat",
-            time: Date.now()
-        });
+        layer.appendChild(floating);
+        setTimeout(() => floating.remove(), 1500);
     }
 
     // ==========================================
-    // FORJA E FARM 
+    // SISTEMA DE MINIGAME (FARM DE OURO)
     // ==========================================
-    criarItemDaLoja(tipoItem) {
-        const custoHpSacrificio = Math.floor(this.state.stats.maxHp * 0.25);
-        
-        if (this.state.stats.hp <= custoHpSacrificio || this.state.stats.maxHp <= 300) {
-            return this.animacaoTextoFlutuante("Falha: Resiliência Vital Insuficiente!", "#ff0000");
-        }
-
-        this.state.stats.hp -= custoHpSacrificio;
-        
-        // Partícula de sangue para representar o sacrifício
-        this.emitirEventoDeRede('explosao', '#8b0000', this.meuId, custoHpSacrificio, 'Sacrifício de Sangue');
-
-        if (tipoItem === 'espada') {
-            this.state.stats.ad = (this.state.stats.ad || 0) + 35;
-            this.animacaoTextoFlutuante("Espada Longa Forjada! (+35 AD)", "#ffaa00");
-        } else if (tipoItem === 'tomo') {
-            this.state.stats.ap = (this.state.stats.ap || 0) + 50;
-            this.atualizarTintaEstatistica();
-            this.animacaoTextoFlutuante("Tomo Amplificador! (+50 AP)", "#8a2be2");
-        } else if (tipoItem === 'cristal') {
-            this.state.stats.maxHp += 300;
-            this.state.stats.hp += 300;
-            this.animacaoTextoFlutuante("Cristal de Rubi! (+300 HP)", "#ff3333");
-        }
-
-        document.getElementById('lg-modal-loja').classList.remove('active');
-        atualizarUI();
-    }
-
     iniciarMinigameFarm() {
+        if (this.minigameAtivo) return;
+        this.minigameAtivo = true;
+        this.minigameScore = 0;
+        
         const arena = document.getElementById('lg-farm-arena');
         const status = document.getElementById('lg-farm-status');
-        const btnStart = document.getElementById('lg-start-farm');
-        if (!arena) return;
+        const btn = document.getElementById('lg-start-farm');
+        
+        if(!arena || !status || !btn) return;
 
-        this.minigameScore = 0;
-        this.minigameAtivo = true;
-        status.innerText = "Pontos: 0";
-        btnStart.style.display = 'none';
+        btn.style.display = 'none';
+        status.innerText = 'Pontos: 0';
+        arena.innerHTML = '';
+        arena.appendChild(status);
 
-        let contador = 0;
-        const maxAlvos = 15;
+        let timeLeft = 10;
+        const timerDisplay = document.createElement('div');
+        timerDisplay.style.position = 'absolute';
+        timerDisplay.style.top = '12px';
+        timerDisplay.style.right = '12px';
+        timerDisplay.style.color = '#ffaa00';
+        timerDisplay.style.fontWeight = 'bold';
+        timerDisplay.style.fontSize = '1.2rem';
+        timerDisplay.innerText = `${timeLeft}s`;
+        arena.appendChild(timerDisplay);
 
-        const gerarAlvo = () => {
-            if (contador >= maxAlvos || !this.minigameAtivo) {
-                this.finalizarMinigameFarm();
-                return;
-            }
-
-            const alvoEl = document.createElement('div');
-            alvoEl.style.position = 'absolute';
-            alvoEl.style.width = '50px';
-            alvoEl.style.height = '50px';
-            alvoEl.style.borderRadius = '50%';
-            alvoEl.style.background = 'radial-gradient(circle at 30% 30%, #fff, var(--lg-gold))';
-            alvoEl.style.boxShadow = '0 0 15px var(--lg-gold)';
-            alvoEl.style.left = `${Math.random() * (arena.clientWidth - 60)}px`;
-            alvoEl.style.top = `${Math.random() * (arena.clientHeight - 60)}px`;
-            alvoEl.style.cursor = 'pointer';
-            alvoEl.style.transition = 'transform 0.1s';
-            alvoEl.style.animation = 'float-up 0.8s ease-in reverse forwards'; // Surge crescendo
+        const spawnRune = () => {
+            if (!this.minigameAtivo) return;
+            const rune = document.createElement('div');
             
-            // Fica progressivamente mais rápido
-            const tempoDecaimento = Math.max(400, 800 - (contador * 25));
-
-            const timeoutTarget = setTimeout(() => {
-                if (alvoEl.parentNode) {
-                    alvoEl.style.background = '#ff0000'; // Feedback visual de falha
-                    setTimeout(()=> alvoEl.remove(), 100);
-                    gerarAlvo();
-                }
-            }, tempoDecaimento); 
-
-            // Adaptação Touch/Click Mobile
-            const onHit = (e) => {
+            // Símbolos variados e tamanhos dinâmicos
+            rune.innerText = ['✦', '✧', '★', '☆', '💎'][Math.floor(Math.random() * 5)];
+            rune.style.position = 'absolute';
+            rune.style.left = `${Math.random() * 80 + 10}%`;
+            rune.style.top = `${Math.random() * 70 + 15}%`;
+            rune.style.fontSize = `${Math.random() * 1.5 + 1.5}rem`;
+            rune.style.color = '#fff';
+            rune.style.textShadow = '0 0 15px var(--lg-gold)';
+            rune.style.cursor = 'pointer';
+            rune.style.userSelect = 'none';
+            rune.style.transition = 'transform 0.1s';
+            
+            rune.onmousedown = rune.ontouchstart = (e) => {
+                e.stopPropagation();
                 e.preventDefault();
-                clearTimeout(timeoutTarget);
-                this.minigameScore += 1;
-                status.innerText = `Pontos: ${this.minigameScore} 🔥`;
+                this.minigameScore += 5;
+                status.innerText = `Pontos: ${this.minigameScore}`;
+                rune.style.transform = 'scale(1.5)';
+                rune.style.opacity = '0';
                 
-                // Explozão visualzinha no card
-                alvoEl.style.transform = 'scale(2)';
-                alvoEl.style.opacity = '0';
-                
-                setTimeout(() => {
-                    alvoEl.remove();
-                    gerarAlvo();
-                }, 150);
+                this.animacaoTextoFlutuante('+5', '#ffaa00', {x: e.clientX, y: e.clientY});
+                setTimeout(() => rune.remove(), 100);
             };
 
-            alvoEl.addEventListener('mousedown', onHit);
-            alvoEl.addEventListener('touchstart', onHit, { passive: false });
-
-            arena.appendChild(alvoEl);
-            contador++;
+            arena.appendChild(rune);
+            
+            // As runas somem muito rápido!
+            setTimeout(() => { if (rune.parentElement) rune.remove(); }, 800);
         };
 
-        gerarAlvo();
+        const interval = setInterval(spawnRune, 400);
+
+        this.minigameTimer = setInterval(() => {
+            timeLeft--;
+            timerDisplay.innerText = `${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                clearInterval(this.minigameTimer);
+                this.minigameAtivo = false;
+                btn.style.display = 'block';
+                arena.innerHTML = '';
+                arena.appendChild(status);
+                
+                // Converte pontos para Ouro
+                this.state.stats.gold = (this.state.stats.gold || 0) + this.minigameScore;
+                this.animacaoTextoFlutuante(`Colheita final: +${this.minigameScore} Ouro`, 'var(--lg-gold)');
+                atualizarUI();
+            }
+        }, 1000);
     }
 
-    finalizarMinigameFarm() {
-        this.minigameAtivo = false;
-        document.getElementById('lg-start-farm').style.display = 'block';
-        
-        const ouroGanhado = this.minigameScore * 65; // Aumentado um pouco a recompensa para a dificuldade
-        const xpGanhado = this.minigameScore * 40;
+    // ==========================================
+    // FORJA (LOJA FISICA)
+    // ==========================================
+    criarItemDaLoja(item) {
+        // Custo fixo da Forja: Sacrifício de 25% do HP Máximo
+        const custoHp = Math.floor(this.state.stats.maxHp * 0.25);
+        if (this.state.stats.maxHp <= 25) { // Precisa de um limite mínimo pra não morrer de vez
+            return this.animacaoTextoFlutuante("HP Máximo muito baixo para o pacto!", "#ff0000");
+        }
 
-        this.state.gold = (this.state.gold || 0) + ouroGanhado;
-        this.animacaoTextoFlutuante(`Farm: +${ouroGanhado} Ouro | +${xpGanhado} XP`, "#ffff00");
-        
-        setTimeout(() => {
-            document.getElementById('lg-modal-farm').classList.remove('active');
-        }, 1000);
-        
+        // Aplica o debuff definitivo no Max HP
+        this.state.stats.maxHp -= custoHp;
+        if (this.state.stats.hp > this.state.stats.maxHp) {
+            this.state.stats.hp = this.state.stats.maxHp;
+        }
+
+        // Entrega a recompensa
+        if (item === 'espada') {
+            this.state.stats.ad = (this.state.stats.ad || 0) + 35;
+            this.animacaoTextoFlutuante("+35 AD", "#ff3333");
+        } else if (item === 'tomo') {
+            this.state.stats.ap = (this.state.stats.ap || 0) + 50;
+            this.animacaoTextoFlutuante("+50 AP", "#00bfff");
+            this.atualizarTintaEstatistica(); // AP aumenta a Mana Máxima da Tinta
+        } else if (item === 'cristal') {
+            // Se escolher cristal, recupera o sacríficio e ganha muito mais
+            this.state.stats.maxHp += (custoHp + 300);
+            this.state.stats.hp += 300;
+            this.animacaoTextoFlutuante("+300 HP Máx", "#00ff00");
+        }
+
+        // Efeito visual dramático do sacrifício
+        this.emitirEventoDeRede('implosao', '#c5a059', this.meuId, `- HP MÁXIMO`, 'Sacrifício da Forja');
         atualizarUI();
     }
 }
