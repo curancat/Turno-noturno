@@ -83,7 +83,7 @@ export default class Vanguard {
     criarMiniMapaPopup() {
         const btnRadar = document.createElement('button');
         btnRadar.innerHTML = "🗺️ Radar";
-        btnRadar.style.cssText = "position:fixed; top:10px; right:10px; padding:8px 15px; background:#1a1a2e; color:#00ff00; border:2px solid #00ff00; border-radius:8px; font-weight:bold; z-index:9000; cursor:pointer;";
+        btnRadar.style.cssText = "position:fixed; top:15px; right:10px; padding:8px 15px; background:#1a1a2e; color:#00ff00; border:2px solid #00ff00; border-radius:8px; font-weight:bold; z-index:9000; cursor:pointer;";
         document.body.appendChild(btnRadar);
 
         const popup = document.createElement('div');
