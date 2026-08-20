@@ -2,15 +2,8 @@
 // IMPORTAÇÕES DO FIREBASE (Via CDN nativo do navegador)
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { 
-    getDatabase, 
-    ref, 
-    push, 
-    onChildAdded, 
-    set, 
-    get, 
-    child 
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { inicializarloja } from './engine.js';
 
 // ⚠️ ATENÇÃO: Substitua estas chaves pelas do seu projeto Firebase Realtime Database!
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -165,6 +158,7 @@ async function iniciarPartida() {
     
     // Atualiza UI base
     atualizarUI();
+    inicializarloja();
     
     // Carrega o personagem escolhido
     await carregarHeroi(gameState.heroId);
@@ -180,6 +174,7 @@ async function iniciarPartida() {
 // LÓGICA DE CHAT E SINCRONIZAÇÃO
 // ==========================================
 function iniciarChat() {
+    
     const chatRef = ref(db, `rooms/${gameState.roomName}/chat`);
     
     // Escuta novas mensagens em tempo real
