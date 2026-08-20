@@ -4,7 +4,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { inicializarLoja } from './engine.js';
-
+import Vanguard from './vanguard.js';
+let vanguardSistema = null;
 // ⚠️ ATENÇÃO: Substitua estas chaves pelas do seu projeto Firebase Realtime Database!
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -157,6 +158,9 @@ async function iniciarPartida() {
     DOM.gameScreen.classList.remove('hidden');
     
     // Atualiza UI base
+   // Inicializa o Vanguard passando o estado global e o banco de dados
+   vanguardSistema = new Vanguard(gameState, db);
+   vanguardSistema.iniciar();
     atualizarUI();
     inicializarLoja();
     
