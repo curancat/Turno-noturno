@@ -1,7 +1,7 @@
 // ==========================================
-// VANGUARD: SISTEMA DE SEGURANÇA E ARBITRAGEM
+// VANGUARD: JUIZ, ANTI-CHEAT E DIRETOR DA PARTIDA
 // ==========================================
-import { ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { ref, update, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { atualizarUI } from "./app.js";
 
 export default class Vanguard {
@@ -9,90 +9,84 @@ export default class Vanguard {
         this.state = gameState;
         this.db = db;
         
-        // Rastreamento Anti-AFK e Movimento
-        this.ultimaPosicaoX = 0;
-        this.ultimaPosicaoY = 0;
-        this.tempoInativo = 0;
-        this.limiteInatividadeAFK = 15; // Segundos máximos parado
+        // Controles de Tempo e Abuso
+        this.ultimoFarm = 0;
+        this.cooldownFarm = 2500; // 2.5 segundos de recarga no farm base
+        this.tempoAFK = 0;
+        this.historicoHabilidades = [];
+        this.cooldownPunicao = false;
         
-        // Cooldown anti-abuso de ações rápidas
-        this.bloqueadoPorAbuso = false;
-        this.contadorAbuso = 0;
-
-        // Mini-mapa dinâmico e posições
-        this.posicoesJogadores = {};
+        // Dificuldade e Estado
+        this.dificuldadeGlobal = 1;
+        this.arquivosInteiros = false;
     }
 
     iniciar() {
-        console.log("🛡️ VANGUARD ATIVADO: Protocolos de integridade e justiça iniciados.");
-        this.limparLayoutObsoleto();
-        this.iniciarMonitoramentoAFK();
-        this.iniciarRadarMiniMapa();
-        this.iniciarGeradorDeBuffsAleatorios();
-        this.escalonarDificuldadePorPlayers();
+        console.log("🛡️ VANGUARD ONLINE: Iniciando varredura de integridade...");
+        this.conversarComArquivos();
+        
+        if (this.arquivosInteiros) {
+            this.forcarOrganizacaoLayout();
+            this.iniciarRadarAvancado();
+            this.escalonarDificuldadeDinamicamente();
+            this.injetarNovosMetodosFarm();
+            this.monitorarAFKeMovimento();
+            this.iniciarIncentivosDeMovimento();
+        }
     }
 
     // ==========================================
-    // 1. LIMPEZA DE LAYOUT OBSOLETO
+    // 1. CONVERSA COM OS ARQUIVOS (HEALTH CHECK)
     // ==========================================
-    limparLayoutObsoleto() {
-        // Remove botões fantasmas ou versões antigas que poluem a tela
-        const elementosObsoletos = document.querySelectorAll('.old-version-btn, .legacy-control, [data-deprecated]');
-        elementosObsoletos.forEach(el => el.remove());
+    conversarComArquivos() {
+        // Verifica se os objetos essenciais existem antes de liberar o jogo
+        if (!this.state || !this.db) {
+            console.error("⛔ VANGUARD FALHA: GameState ou Banco de Dados ausentes.");
+            return;
+        }
+        if (typeof atualizarUI !== "function") {
+            console.error("⛔ VANGUARD FALHA: Função atualizarUI não encontrada no app.js.");
+            return;
+        }
+        
+        console.log("✅ VANGUARD: Todos os sistemas vitais respondendo. Partida autorizada.");
+        this.arquivosInteiros = true;
+    }
 
-        // Força organização limpa nos containers de habilidades
-        const controlPanels = document.querySelectorAll('.skills-controls, .game-controls');
-        controlPanels.forEach(panel => {
-            panel.style.display = 'flex';
-            panel.style.flexDirection = 'column';
-            panel.style.gap = '8px';
+    // ==========================================
+    // 2. ORGANIZAÇÃO DE LAYOUT (LIMPEZA DO LITLEGOT)
+    // ==========================================
+    forcarOrganizacaoLayout() {
+        // Remove botões antigos e bugs visuais, especialmente do Litlegot
+        const elementosCorrompidos = document.querySelectorAll('.old-version-btn, .bug-btn, #btn-litlegot-antigo, [data-deprecated]');
+        elementosCorrompidos.forEach(el => el.remove());
+
+        // Força os painéis a ficarem organizados
+        const paineis = document.querySelectorAll('.skills-controls, .action-panel');
+        paineis.forEach(panel => {
+            panel.style.display = 'grid';
+            panel.style.gridTemplateColumns = 'repeat(auto-fit, minmax(120px, 1fr))';
+            panel.style.gap = '10px';
+            panel.style.padding = '10px';
         });
     }
 
     // ==========================================
-    // 2. ANTI-AFK E MOVIMENTAÇÃO OBRIGATÓRIA
+    // 3. REGRAS DE COMBATE (VISÃO E ROTA)
     // ==========================================
-    iniciarMonitoramentoAFK() {
-        setInterval(() => {
-            // Se o jogador estiver na base ou morto, perdoa o AFK temporariamente
-            if (this.state.lane === "Base" || this.state.stats.hp <= 0) {
-                this.tempoInativo = 0;
-                return;
-            }
-
-            this.tempoInativo++;
-
-            // Se passar de 15 segundos sem interagir ou se mover gerando farm
-            if (this.tempoInativo >= this.limiteInatividadeAFK) {
-                this.aplicarPunicaoPesada("⚠️ PUNIÇÃO VANGUARD (AFK/Estagnação): Você ficou estagnado na rota! O sistema drenou 50 de Ouro e 10% da sua Vida atual por falta de movimentação.");
-                this.tempoInativo = 0;
-            }
-        }, 1000);
-
-        // Reseta o timer de inatividade quando o usuário clica ou usa skills
-        window.addEventListener('click', () => { this.tempoInativo = 0; });
-        window.addEventListener('keydown', () => { this.tempoInativo = 0; });
-    }
-
-    // ==========================================
-    // 3. BLOQUEIO DE ATAQUES FORA DE ROTA / BASE SNIPER
-    // ==========================================
-    validarPermissaoAtaque(alvoSelecionado, laneDoAlvo = null) {
-        // Regra 1: Proibido atacar da base
+    validarAtaque(alvo, rotaDoAlvo, temVisao) {
         if (this.state.lane === "Base") {
-            this.aplicarPunicaoPesada("🚨 BLOQUEIO VANGUARD: Tentativa de ataque a partir da Base negada. A lei do Rift proíbe ataques à distância segura da Base.");
+            this.punirJogador("Covardia detectada! Ataques a partir da Base são estritamente proibidos.");
             return false;
         }
 
-        // Regra 2: O alvo precisa estar na mesma rota (Lane)
-        if (laneDoAlvo && laneDoAlvo !== this.state.lane) {
-            this.aplicarPunicaoPesada("🚨 BLOQUEIO VANGUARD: Alvo fora da sua rota (Lane). Ataques trans-rotas sem visão direta são proibidos.");
+        if (this.state.lane !== rotaDoAlvo) {
+            this.punirJogador(`Fora de alcance! Você está na [${this.state.lane}] e o inimigo na [${rotaDoAlvo}].`);
             return false;
         }
 
-        // Regra 3: Checagem de Visão (Se tentarem atacar sem luz/visão)
-        if (alvoSelecionado && alvoSelecionado.includes("Oculto") && this.corAtivaAtual !== 'yellow' && this.corAtivaAtual !== 'white') {
-            this.aplicarPunicaoPesada("🚨 BLOQUEIO VANGUARD: Falha de Visão! O alvo está nas sombras e você não possui luz amarela ativa.");
+        if (!temVisao) {
+            this.punirJogador("Ataque no escuro bloqueado! Você não tem visão deste alvo.");
             return false;
         }
 
@@ -100,172 +94,234 @@ export default class Vanguard {
     }
 
     // ==========================================
-    // 4. PUNIÇÃO PESADA CONTRA ABUSO (EXPLOITS)
+    // 4. ANTI-ABUSO (PUNIÇÃO PESADA) E COOLDOWN
     // ==========================================
-    registrarTentativaAbuso(motivo) {
-        this.contadorAbuso++;
-        
-        // Punição escalável pesada
-        const multaOuro = this.contadorAbuso * 100;
-        this.state.gold = Math.max(0, this.state.gold - multaOuro);
-        
-        this.bloqueadoPorAbuso = true;
-        
-        this.aplicarPunicaoPesada(`🚨 PUNIÇÃO SEVERA VANGUARD [Exploit Detectado]: ${motivo}. Sistema travou suas ações por 10 segundos e aplicou multa de ${multaOuro} 🪙.`);
-        
-        setTimeout(() => {
-            this.bloqueadoPorAbuso = false;
-        }, 10000); // 10 segundos de banimento temporário de ações
-
-        atualizarUI();
-    }
-
-    aplicarPunicaoPesada(mensagem) {
-        // Dano real nos status do jogador
-        this.state.stats.hp = Math.max(1, this.state.stats.hp - Math.floor(this.state.stats.maxHp * 0.15));
-        
-        // Dispara aviso no chat da sala
-        if (this.state.roomName && this.db) {
-            const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
-            import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js").then(({ push }) => {
-                push(chatRef, {
-                    sender: "🛡️ VANGUARD (Sistema)",
-                    text: `<span style="color: #ff3333; font-weight: bold;">${mensagem}</span>`,
-                    type: "system",
-                    time: Date.now()
-                });
-            });
+    registrarUsoHabilidade(nomeSkill) {
+        if (this.cooldownPunicao) {
+            this.animacaoVanguard("Ação bloqueada! Cumpra sua punição.");
+            return false;
         }
 
-        // Alerta visual na tela do jogador
-        const alerta = document.createElement('div');
-        alerta.style.cssText = "position:fixed; top:20%; left:50%; transform:translate(-50%,-50%); background:rgba(255,0,0,0.85); color:#fff; padding:15px; border-radius:8px; font-weight:bold; z-index:9999; text-align:center;";
-        alerta.innerText = mensagem;
-        document.body.appendChild(alerta);
-        setTimeout(() => alerta.remove(), 4000);
+        const agora = Date.now();
+        this.historicoHabilidades.push(agora);
 
+        // Limpa o histórico mais velho que 3 segundos
+        this.historicoHabilidades = this.historicoHabilidades.filter(tempo => agora - tempo < 3000);
+
+        // Se usar mais de 5 habilidades em 3 segundos (Spam/Macro/Bug do Litlegot)
+        if (this.historicoHabilidades.length > 5) {
+            this.aplicarPunicaoPesada("Abuso de Mecânica (Spam) Detectado!");
+            this.historicoHabilidades = [];
+            return false;
+        }
+        return true;
+    }
+
+    aplicarPunicaoPesada(motivo) {
+        this.cooldownPunicao = true;
+        
+        // Punição: Drena 30% da Vida Máxima e zera o Ouro
+        const danoPunicao = Math.floor(this.state.stats.maxHp * 0.3);
+        this.state.stats.hp = Math.max(1, this.state.stats.hp - danoPunicao);
+        const ouroPerdido = this.state.gold;
+        this.state.gold = 0;
+
+        this.animacaoVanguard(`🚨 JULGAMENTO VANGUARD 🚨\n${motivo}\nPenalidade: -${danoPunicao} HP, -${ouroPerdido} Ouro e Bloqueio de 10s.`);
+
+        setTimeout(() => {
+            this.cooldownPunicao = false;
+            this.animacaoVanguard("Bloqueio Vanguard removido. Jogue limpo.");
+        }, 10000); // 10 segundos de silêncio absoluto
+        
         atualizarUI();
     }
 
     // ==========================================
-    // 5. ESCALONAMENTO DE DIFICULDADE POR MULTIPLAYER
+    // 5. SISTEMA DE FARM DINÂMICO E RECARGA
     // ==========================================
-    escalonarDificuldadePorPlayers() {
-        if (!this.state.roomName || !this.db) return;
-
-        const roomRef = ref(this.db, `rooms/${this.state.roomName}/players`);
-        onValue(roomRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const totalPlayers = Object.keys(snapshot.val()).length;
-                
-                // Se houver mais de 1 player na sala, o Vanguard aumenta a dificuldade global
-                if (totalPlayers > 1) {
-                    const multiplicadorDificuldade = 1 + (totalPlayers * 0.25);
-                    // Aplica peso na resistência dos monstros/torres simuladas
-                    this.state.dificuldadeMundo = multiplicadorDificuldade;
-                    console.log(`🛡️ Vanguard: Sala com ${totalPlayers} jogadores. Dificuldade escalonada em x${multiplicadorDificuldade.toFixed(2)}.`);
-                }
-            }
-        });
+    podeFarmar() {
+        const agora = Date.now();
+        if (agora - this.ultimoFarm < this.cooldownFarm) {
+            this.animacaoVanguard("Calma! Tempo de recarga do Farm ativo.", "#ffaa00");
+            return false;
+        }
+        this.ultimoFarm = agora;
+        this.tempoAFK = 0; // Reset do AFK
+        return true;
     }
 
-    // ==========================================
-    // 6. MINI-MAPA DE POSIÇÕES EM TEMPO REAL
-    // ==========================================
-    iniciarRadarMiniMapa() {
-        if (!this.state.roomName || !this.db) return;
+    injetarNovosMetodosFarm() {
+        const container = document.querySelector('.farm-controls') || document.getElementById('game-screen');
+        if (!container) return;
 
-        // Atualiza a posição do jogador atual no Firebase a cada 3 segundos
-        const playerPosRef = ref(this.db, `rooms/${this.state.roomName}/radar/${this.state.playerName}`);
+        const btnCaçada = document.createElement('button');
+        btnCaçada.className = 'btn-farm-extra';
+        btnCaçada.style.cssText = "background: #2a0845; color: #fff; padding: 10px; border: 1px solid #9932CC; margin-top: 10px; width: 100%; font-weight:bold;";
+        btnCaçada.innerText = "🗡️ Caçada de Risco (Alto Retorno, Risco de Dano)";
         
-        setInterval(() => {
-            if (this.state.lane && this.state.stats.hp > 0) {
-                import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js").then(({ set }) => {
-                    set(playerPosRef, {
-                        lane: this.state.lane,
-                        nivel: this.state.level,
-                        vivo: this.state.stats.hp > 0,
-                        timestamp: Date.now()
-                    });
-                });
-            }
-        }, 3000);
-
-        // Renderiza o mini-mapa no painel se ele existir
-        this.criarMiniMapaUI();
-    }
-
-    criarMiniMapaUI() {
-        const gameScreen = document.getElementById('game-screen');
-        if (!gameScreen || document.getElementById('vanguard-minimap')) return;
-
-        const mapDiv = document.createElement('div');
-        mapDiv.id = 'vanguard-minimap';
-        mapDiv.style.cssText = "position:absolute; top:10px; right:10px; width:160px; height:100px; background:rgba(0,0,0,0.8); border:1px solid var(--ouro-antigo); padding:5px; font-size:0.7rem; color:#fff; z-index:100; border-radius:4px;";
-        mapDiv.innerHTML = `<div style="color:var(--ouro-brilhante); font-weight:bold; margin-bottom:4px;">🗺️ Radar Vanguard</div><div id="radar-content">Sincronizando posições...</div>`;
-        gameScreen.appendChild(mapDiv);
-
-        // Ouve o radar de todos na sala
-        const radarRef = ref(this.db, `rooms/${this.state.roomName}/radar`);
-        onValue(radarRef, (snapshot) => {
-            const content = document.getElementById('radar-content');
-            if (!content) return;
-
-            if (snapshot.exists()) {
-                let html = "";
-                snapshot.forEach((child) => {
-                    const data = child.val();
-                    const nome = child.key;
-                    html += `<div>• <strong>${nome}</strong>: <span style="color:#00ff00;">${data.lane}</span> (Nv.${data.nivel})</div>`;
-                });
-                content.innerHTML = html;
-            }
-        });
-    }
-
-    // ==========================================
-    // 7. INCENTIVO À MOVIMENTAÇÃO (BUFFS ALEATÓRIOS)
-    // ==========================================
-    iniciarGeradorDeBuffsAleatorios() {
-        // A cada 45 segundos, o Vanguard lança um "Card de Oportunidade" aleatório no mapa
-        setInterval(() => {
-            if (this.state.stats.hp <= 0) return;
-
-            this.dispararEventoColetaBuff();
-        }, 45000);
-    }
-
-    dispararEventoColetaBuff() {
-        const notification = document.createElement('div');
-        notification.style.cssText = "position:fixed; bottom:20px; right:20px; background:linear-gradient(135deg, #b8860b, #ffd700); color:#000; padding:12px; border-radius:6px; font-weight:bold; z-index:9999; box-shadow:0 0 15px rgba(255,215,0,0.5); cursor:pointer; animation: bounceIn 0.5s;";
-        
-        notification.innerHTML = `
-            <div>🎁 SUPRIMENTO VANGUARD DISPONÍVEL!</div>
-            <div style="font-size:0.75rem; font-weight:normal; margin-top:2px;">Clique rápido para coletar o Bônus de Ouro/XP!</div>
-        `;
-
-        // Mini-game de reflexo para pegar o bônus
-        let coletado = false;
-        notification.addEventListener('click', () => {
-            if (coletado) return;
-            coletado = true;
-
-            const recompensaOuro = Math.floor(150 + (this.state.level * 25));
-            this.state.gold += recompensaOuro;
+        btnCaçada.addEventListener('click', () => {
+            if (!this.podeFarmar()) return;
             
-            notification.style.background = "#00ff00";
-            notification.innerHTML = `✅ Coletado com Sucesso! +${recompensaOuro} 🪙`;
-            setTimeout(() => notification.remove(), 2000);
+            const sucesso = Math.random() > 0.4; // 60% de chance de dar bom
+            if (sucesso) {
+                const recompensa = Math.floor((50 * this.dificuldadeGlobal) + (this.state.level * 10));
+                this.state.gold += recompensa;
+                this.animacaoVanguard(`Caçada bem sucedida: +${recompensa} Ouro!`, "#00ff00");
+            } else {
+                const dano = Math.floor(this.state.stats.maxHp * 0.1);
+                this.state.stats.hp -= dano;
+                this.animacaoVanguard(`A caça virou o caçador! -${dano} HP.`, "#ff0000");
+            }
             atualizarUI();
         });
 
-        document.body.appendChild(notification);
+        container.appendChild(btnCaçada);
+    }
 
-        // Se o player ignorar por 6 segundos, o item some
-        setTimeout(() => {
-            if (!coletado) {
-                notification.remove();
+    // ==========================================
+    // 6. ANTI-AFK IMPLACÁVEL
+    // ==========================================
+    monitorarAFKeMovimento() {
+        setInterval(() => {
+            if (this.state.lane === "Base" || this.state.stats.hp <= 0) return; // Base é segura
+            
+            this.tempoAFK++;
+            if (this.tempoAFK > 20) { // 20 segundos parado na Rota
+                this.punirJogador("Estagnação Detectada! Movimente-se ou volte para a base.");
+                this.tempoAFK = 0;
             }
-        }, 6000);
+        }, 1000);
+
+        // Ouve movimento real (troca de lane reseta o timer extra)
+        document.getElementById('lane-selector')?.addEventListener('change', () => {
+            this.tempoAFK = 0;
+        });
+    }
+
+    punirJogador(mensagem) {
+        this.state.stats.hp -= Math.floor(this.state.stats.maxHp * 0.05);
+        this.animacaoVanguard(`⚠️ ALERTA VANGUARD: ${mensagem}`);
+        atualizarUI();
+    }
+
+    // ==========================================
+    // 7. INCENTIVOS DE MOVIMENTO (MINIGAME)
+    // ==========================================
+    iniciarIncentivosDeMovimento() {
+        setInterval(() => {
+            if (this.state.lane === "Base" || this.state.stats.hp <= 0) return;
+            // 30% de chance de spawnar um buff a cada 30 segundos
+            if (Math.random() <= 0.3) this.spawnarMinigameDeBuff();
+        }, 30000);
+    }
+
+    spawnarMinigameDeBuff() {
+        const buffDiv = document.createElement('div');
+        buffDiv.style.cssText = `position:fixed; top:${Math.random() * 60 + 20}%; left:${Math.random() * 60 + 20}%; background:#ffd700; color:#000; padding:15px; border-radius:50%; font-weight:bold; cursor:pointer; box-shadow:0 0 20px #ffd700; z-index:10000; transition: transform 0.2s;`;
+        buffDiv.innerText = "⭐ PEGUE O BUFF!";
+        
+        let clicado = false;
+        buffDiv.addEventListener('click', () => {
+            if (clicado) return;
+            clicado = true;
+            buffDiv.innerText = "RESOLVA: 7 x 8 = ?";
+            buffDiv.style.borderRadius = "5px";
+            
+            const input = document.createElement('input');
+            input.type = "number";
+            input.style.width = "50px";
+            input.style.marginLeft = "10px";
+            buffDiv.appendChild(input);
+
+            input.focus();
+            input.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    if (input.value == "56") {
+                        this.state.stats.ad += 20;
+                        this.state.gold += 200;
+                        this.animacaoVanguard("Resposta Exata! +20 AD e +200 Ouro!", "#00ff00");
+                        atualizarUI();
+                    } else {
+                        this.animacaoVanguard("Errou o cálculo! O buff desvaneceu.", "#ff0000");
+                    }
+                    buffDiv.remove();
+                }
+            });
+        });
+
+        document.body.appendChild(buffDiv);
+        setTimeout(() => { if (!clicado) buffDiv.remove(); }, 5000); // Some em 5s se ignorado
+    }
+
+    // ==========================================
+    // 8. ESCALONAMENTO DE DIFICULDADE (MULTIPLAYER)
+    // ==========================================
+    escalonarDificuldadeDinamicamente() {
+        if (!this.state.roomName) return;
+        const roomRef = ref(this.db, `rooms/${this.state.roomName}/players`);
+        
+        onValue(roomRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const numPlayers = Object.keys(snapshot.val()).length;
+                // A cada player extra, o jogo fica 30% mais difícil
+                this.dificuldadeGlobal = 1 + (numPlayers * 0.3);
+                console.log(`[Vanguard] Dificuldade ajustada para: x${this.dificuldadeGlobal.toFixed(2)}`);
+            }
+        });
+    }
+
+    // ==========================================
+    // 9. MINI-MAPA DE JOGADORES (INIMIGOS E ALIADOS)
+    // ==========================================
+    iniciarRadarAvancado() {
+        if (!this.state.roomName) return;
+
+        const mapContainer = document.createElement('div');
+        mapContainer.id = "vanguard-map";
+        mapContainer.style.cssText = "position:fixed; top:10px; right:10px; width:200px; background:rgba(0,0,0,0.9); border:2px solid #555; border-radius:8px; padding:10px; color:#fff; font-size:0.8rem; z-index:9000;";
+        mapContainer.innerHTML = `<h4 style="margin:0 0 10px 0; color:#00ffcc; text-align:center;">📡 Radar Vanguard</h4><div id="map-players"></div>`;
+        document.body.appendChild(mapContainer);
+
+        const radarRef = ref(this.db, `rooms/${this.state.roomName}/radar`);
+        
+        // Atualiza a própria posição no Firebase
+        setInterval(() => {
+            set(ref(this.db, `rooms/${this.state.roomName}/radar/${this.state.playerName}`), {
+                lane: this.state.lane,
+                hp: this.state.stats.hp,
+                isAlly: true // Lógica simples; no futuro você pode separar times
+            });
+        }, 2000);
+
+        // Lê a posição de todos
+        onValue(radarRef, (snapshot) => {
+            const list = document.getElementById('map-players');
+            if (!list) return;
+            
+            if (snapshot.exists()) {
+                list.innerHTML = "";
+                snapshot.forEach(child => {
+                    const dados = child.val();
+                    const nome = child.key;
+                    const cor = dados.hp > 0 ? "#00ff00" : "#ff0000";
+                    list.innerHTML += `<div style="margin-bottom:5px; border-bottom:1px solid #333;">
+                        <span style="color:${cor};">●</span> <strong>${nome}</strong><br>
+                        <span style="color:#aaa; font-size:0.7rem;">📍 ${dados.lane}</span>
+                    </div>`;
+                });
+            }
+        });
+    }
+
+    // ==========================================
+    // UTILITÁRIO: ANIMAÇÃO DE TEXTO DO VANGUARD
+    // ==========================================
+    animacaoVanguard(texto, cor = "#ff3333") {
+        const alerta = document.createElement('div');
+        alerta.style.cssText = `position:fixed; top:15%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:${cor}; padding:15px 30px; border:2px solid ${cor}; border-radius:5px; font-weight:bold; font-size:1.2rem; text-align:center; z-index:99999; box-shadow:0 0 20px ${cor}; text-transform:uppercase;`;
+        alerta.innerText = texto;
+        document.body.appendChild(alerta);
+        
+        setTimeout(() => alerta.remove(), 4000);
     }
 }
