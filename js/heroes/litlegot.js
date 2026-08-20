@@ -150,7 +150,7 @@ export default class Litlegot {
     }
 
     retornarABase() {
-    const custoBase = 50; // Defina o valor em ouro aqui
+    const custoBase = 100; // Defina o valor em ouro aqui
     if ((this.state.gold || 0) < custoBase) {
         return this.animacaoTextoFlutuante("Ouro insuficiente para a Base!", "#ff0000");
     }
