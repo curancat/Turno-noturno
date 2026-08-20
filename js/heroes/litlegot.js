@@ -6,9 +6,6 @@ export default class Litlegot {
         this.state = gameState;
         this.db = db;
 
-        // Garante nível base caso não exista
-        if (!this.state.stats.level) this.state.stats.level = 1;
-
         this.corAtiva = 'red';
         this.alvoSelecionado = null; 
         this.jogadoresNaSala = {};
@@ -19,24 +16,25 @@ export default class Litlegot {
         this.desenhandoCanvas = false;
         this.pontosDesenho = [];
 
-        // Cooldown/Anti-Spam
-        this.podeUsarMagia = true; 
-
-        // Sistema de Tintas com Restrição de Nível e Novos Efeitos
+        // Sistema de Tintas com Restrição por Nível e Nível Máximo (Trava de Segurança Level 30)
         this.tintas = {
-            red: { nome: 'Fogo Carnificina', hex: '#ff3333', custo: 25, nivelMinimo: 1 },
-            orange: { nome: 'Drenagem Vital', hex: '#ff8c00', custo: 20, nivelMinimo: 5 },
-            yellow: { nome: 'Ouro e Clarão', hex: '#ffff00', custo: 15, nivelMinimo: 10 },
-            green: { nome: 'Sopro da Natureza', hex: '#00ff00', custo: 30, nivelMinimo: 15 },
-            blue: { nome: 'Barreiras de Água', hex: '#00bfff', custo: 25, nivelMinimo: 20 },
-            purple: { nome: 'Sombras de Controle', hex: '#8a2be2', custo: 35, nivelMinimo: 25 },
-            white: { nome: 'Luz Absoluta', hex: '#ffffff', custo: 60, nivelMinimo: 30 }
+            red: { nome: 'Fogo Carnificina', hex: '#ff3333', custo: 25, nivelMin: 1, tipoAnimacao: 'explosao' },
+            orange: { nome: 'Drenagem Vital', hex: '#ff8c00', custo: 20, nivelMin: 3, tipoAnimacao: 'drenagem' },
+            yellow: { nome: 'Ouro e Clarão', hex: '#ffff00', custo: 15, nivelMin: 5, tipoAnimacao: 'raio' },
+            green: { nome: 'Sopro da Natureza', hex: '#00ff00', custo: 30, nivelMin: 10, tipoAnimacao: 'espiral' },
+            blue: { nome: 'Barreiras de Água', hex: '#00bfff', custo: 25, nivelMin: 15, tipoAnimacao: 'escudo' },
+            purple: { nome: 'Sombras de Controle', hex: '#8a2be2', custo: 35, nivelMin: 22, tipoAnimacao: 'implosao' },
+            white: { nome: 'Luz Absoluta (Divino)', hex: '#ffffff', custo: 60, nivelMin: 30, tipoAnimacao: 'pilar' }
         };
 
         this.minigameAtivo = false;
         this.minigameScore = 0;
         
+        // Identificador único do jogador
         this.meuId = this.state.playerName || `Litlegot_${Math.floor(Math.random() * 1000)}`;
+        
+        // Garante level padrão se não houver
+        if (!this.state.stats.nivel) this.state.stats.nivel = 1;
     }
 
     iniciar() {
@@ -47,45 +45,16 @@ export default class Litlegot {
         this.vincularCanvasEventos();
         this.atualizarTintaEstatistica();
         
+        // Bloqueia regeneração automática por tempo
         this.state.stats.manaRegen = 0;
         this.state.stats.mana = this.state.stats.maxMana;
         
-        // Loop de verificação de vida
-        setInterval(() => this.verificarMorte(), 1000);
-        
+        this.verificarEstadoMorte();
         atualizarUI();
     }
 
     // ==========================================
-    // VERIFICAÇÃO DE MORTE
-    // ==========================================
-    verificarMorte() {
-        if (this.state.stats.hp <= 0) {
-            this.state.stats.hp = 0;
-            const deathScreen = document.getElementById('lg-death-screen');
-            if (deathScreen && !deathScreen.classList.contains('active')) {
-                deathScreen.classList.add('active');
-                // Emite evento global de morte
-                this.emitirEventoDeRede('caveira', '#ff0000', this.meuId, 0, 'Foi de arrasta pra cima');
-            }
-        }
-    }
-
-    renascer() {
-        const deathScreen = document.getElementById('lg-death-screen');
-        if (deathScreen) deathScreen.classList.remove('active');
-
-        // Penalidade de morte
-        this.state.gold = Math.max(0, Math.floor((this.state.gold || 0) * 0.8)); // Perde 20% do ouro
-        this.state.stats.hp = this.state.stats.maxHp;
-        this.state.stats.mana = 0; // Renasce sem mana
-
-        this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, 0, 'Renasceu');
-        atualizarUI();
-    }
-
-    // ==========================================
-    // MULTIPLAYER E EVENTOS
+    // MULTIPLAYER, MIRA REAL E REDE DE EVENTOS
     // ==========================================
     iniciarMonitoramentoMultiplayer() {
         if (!this.state.roomName) return;
@@ -95,9 +64,21 @@ export default class Litlegot {
             const data = snapshot.val();
             if (data) {
                 this.jogadoresNaSala = data;
-                this.multiplayerAtivo = Object.keys(data).length > 1;
-                if (this.multiplayerAtivo) this.state.modoSimulado = false;
+                const qtdJogadores = Object.keys(data).length;
+                this.multiplayerAtivo = qtdJogadores > 1;
+                
+                if (this.multiplayerAtivo) {
+                    this.state.modoSimulado = false;
+                }
                 this.atualizarListaDeAlvos();
+                
+                // Monitora meu próprio HP remotamente se necessário
+                if (data[this.meuId] && data[this.meuId].stats) {
+                    if (data[this.meuId].stats.hp !== undefined) {
+                        this.state.stats.hp = data[this.meuId].stats.hp;
+                        this.verificarEstadoMorte();
+                    }
+                }
             }
         });
     }
@@ -110,10 +91,6 @@ export default class Litlegot {
             const evento = snapshot.val();
             if (Date.now() - evento.timestamp > 10000) return;
             this.renderizarEventoVisualGlobal(evento);
-            // Se tomou dano, verifica morte imediatamente
-            if (evento.targetId === this.meuId && evento.valor > 0) {
-                setTimeout(() => this.verificarMorte(), 100);
-            }
         });
     }
 
@@ -172,105 +149,208 @@ export default class Litlegot {
     }
 
     retornarABase() {
-        if (this.state.stats.hp <= 0) return; // Morto não usa botão de base normal
-        
-        this.atualizarTintaEstatistica();
         this.state.stats.mana = this.state.stats.maxMana;
         this.state.stats.hp = this.state.stats.maxHp;
+        this.fecharTelaMorte();
         
         this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, `+${this.state.stats.maxHp}`, 'Retorno à Base');
+        this.animacaoTextoFlutuante("Restaurado na Base Arcano!", "#00ffcc");
         atualizarUI();
     }
 
     // ==========================================
-    // UI, DOCK FLUTUANTE E TELA DE MORTE
+    // TELA DE MORTE E GERENCIAMENTO DE VIDA
+    // ==========================================
+    verificarEstadoMorte() {
+        const hp = this.state.stats.hp !== undefined ? this.state.stats.hp : this.state.stats.maxHp;
+        const telaMorte = document.getElementById('lg-tela-morte');
+        if (!telaMorte) return;
+
+        if (hp <= 0) {
+            telaMorte.classList.add('active');
+        } else {
+            telaMorte.classList.remove('active');
+        }
+    }
+
+    fecharTelaMorte() {
+        const telaMorte = document.getElementById('lg-tela-morte');
+        if (telaMorte) telaMorte.classList.remove('active');
+    }
+
+    // ==========================================
+    // UI MOBILE AVANÇADA, DOCK E MAPA (D-PAD)
     // ==========================================
     injetarCSSMobileEPopups() {
         if (document.getElementById('litlegot-styles-v5')) return;
         const style = document.createElement('style');
         style.id = 'litlegot-styles-v5';
         style.innerHTML = `
-            :root { --lg-gold: #c5a059; --lg-panel: rgba(20, 20, 35, 0.95); }
+            :root {
+                --lg-gold: #c5a059;
+                --lg-dark: #0f0f1a;
+                --lg-panel: rgba(20, 20, 35, 0.95);
+            }
             
-            /* Dock Flutuante (Permite andar pelo mapa) */
             .lg-mobile-dock {
-                position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-                background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(10px);
-                display: flex; gap: 10px; padding: 10px 15px; border-radius: 40px;
-                z-index: 9990; border: 1px solid rgba(197, 160, 89, 0.4);
-                box-shadow: 0 10px 25px rgba(0,0,0,0.8); pointer-events: auto;
+                position: fixed; bottom: 0; left: 0; width: 100vw;
+                background: linear-gradient(to top, #05050a 60%, transparent);
+                backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+                display: flex; justify-content: space-evenly; align-items: flex-end;
+                padding: 10px 0 calc(10px + env(safe-area-inset-bottom)) 0;
+                z-index: 9999; border-top: 1px solid rgba(197, 160, 89, 0.2);
             }
             .lg-dock-btn {
-                background: linear-gradient(135deg, #2a2a4a, #16213e);
-                border: 2px solid var(--lg-gold); border-radius: 50%;
-                width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
-                color: #fff; font-size: 1.4rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-                transition: transform 0.2s; cursor: pointer;
+                background: linear-gradient(135deg, #1a1a2e, #16213e);
+                border: 2px solid var(--lg-gold); border-radius: 16px;
+                width: 52px; height: 52px; display: flex; flex-direction: column;
+                align-items: center; justify-content: center; color: #fff;
+                font-size: 1.3rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                touch-action: manipulation; -webkit-tap-highlight-color: transparent;
             }
-            .lg-dock-btn:active { transform: scale(0.85); }
+            .lg-dock-btn:active { transform: scale(0.85) translateY(5px); box-shadow: 0 0 20px var(--lg-gold); }
+            .lg-dock-label { font-size: 0.55rem; font-weight: bold; margin-top: 2px; color: var(--lg-gold); text-transform: uppercase; }
 
-            /* Tela de Morte */
+            /* D-Pad de Movimentação no Mapa */
+            .lg-map-dpad {
+                position: fixed; bottom: 85px; right: 20px; width: 130px; height: 130px;
+                z-index: 9997; display: grid; grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(3, 1fr); gap: 4px; pointer-events: auto;
+                background: rgba(10, 10, 20, 0.6); padding: 8px; border-radius: 50%;
+                border: 1px solid rgba(197, 160, 89, 0.3); backdrop-filter: blur(4px);
+            }
+            .lg-dpad-btn {
+                background: rgba(26, 26, 46, 0.9); border: 1px solid var(--lg-gold);
+                color: var(--lg-gold); border-radius: 50%; font-size: 0.9rem;
+                display: flex; align-items: center; justify-content: center; cursor: pointer;
+                transition: transform 0.1s; user-select: none; -webkit-tap-highlight-color: transparent;
+            }
+            .lg-dpad-btn:active { background: var(--lg-gold); color: #000; transform: scale(0.85); }
+            .lg-dpad-up { grid-column: 2; grid-row: 1; }
+            .lg-dpad-left { grid-column: 1; grid-row: 2; }
+            .lg-dpad-right { grid-column: 3; grid-row: 2; }
+            .lg-dpad-down { grid-column: 2; grid-row: 3; }
+            .lg-dpad-center { grid-column: 2; grid-row: 2; background: transparent; border: none; font-size: 0.6rem; color: #fff; font-weight: bold; pointer-events: none;}
+
+            /* Tela de Morte Imersiva */
             .lg-death-screen {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                background: rgba(20, 0, 0, 0.9); z-index: 10005;
-                display: none; flex-direction: column; align-items: center; justify-content: center;
-                opacity: 0; transition: opacity 1s ease-in; color: #ff3333; font-family: serif;
+                background: rgba(5, 2, 8, 0.92); z-index: 20000; display: none;
+                flex-direction: column; align-items: center; justify-content: center;
+                padding: 20px; text-align: center; backdrop-filter: blur(10px);
+                animation: fadeInDeath 0.5s ease-out forwards;
             }
-            .lg-death-screen.active { display: flex; opacity: 1; }
-            .lg-death-screen h1 { font-size: 4rem; text-shadow: 0 0 20px #ff0000; margin-bottom: 10px; letter-spacing: 5px; }
-            .lg-btn-respawn {
-                margin-top: 30px; background: transparent; border: 2px solid #ff3333; color: #ff3333;
-                padding: 15px 40px; font-size: 1.5rem; text-transform: uppercase; cursor: pointer;
-                transition: 0.3s; box-shadow: inset 0 0 10px #ff3333; border-radius: 5px;
-            }
-            .lg-btn-respawn:hover { background: #ff3333; color: #000; }
+            .lg-death-screen.active { display: flex; }
+            @keyframes fadeInDeath { from { opacity: 0; } to { opacity: 1; } }
 
             /* Bottom Sheet Modals */
             .lg-popup {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 9995;
+                background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 10000;
                 display: none; align-items: flex-end; justify-content: center;
+                opacity: 0; transition: opacity 0.3s ease;
             }
-            .lg-popup.active { display: flex; }
+            .lg-popup.active { display: flex; opacity: 1; }
             .lg-popup-card {
                 background: var(--lg-panel); border-top: 2px solid var(--lg-gold);
                 border-radius: 24px 24px 0 0; width: 100%; max-width: 600px;
-                padding: 20px; color: #fff; max-height: 85vh; overflow-y: auto;
-                animation: slideUp 0.3s ease-out; pointer-events: auto;
+                padding: 24px 20px calc(24px + env(safe-area-inset-bottom)) 20px;
+                color: #fff; box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+                display: flex; flex-direction: column; gap: 16px;
+                max-height: 85vh; overflow-y: auto; transform: translateY(100%);
+                transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
             }
-            @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+            .lg-popup.active .lg-popup-card { transform: translateY(0); }
+            
+            .lg-header-handle {
+                width: 40px; height: 5px; background: rgba(255,255,255,0.3);
+                border-radius: 3px; margin: -10px auto 15px auto;
+            }
 
-            /* Paleta e Bloqueios por Nível */
-            .lg-palette { display: flex; gap: 12px; overflow-x: auto; padding: 10px 5px; }
+            .lg-canvas-box {
+                width: 100%; height: 60vh; max-height: 320px; background: #070710; 
+                border: 2px dashed #444; border-radius: 16px; touch-action: none; 
+                position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            }
+            .lg-palette { display: flex; gap: 10px; overflow-x: auto; padding: 10px 5px; scrollbar-width: none; }
+            .lg-palette::-webkit-scrollbar { display: none; }
             .lg-color-dot {
                 width: 44px; height: 44px; border-radius: 50%; border: 3px solid #333;
                 flex-shrink: 0; cursor: pointer; transition: all 0.3s; position: relative;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             }
-            .lg-color-dot.active { border-color: #fff; transform: scale(1.15) translateY(-5px); box-shadow: 0 5px 15px var(--lg-gold); }
-            .lg-color-dot.locked { filter: grayscale(100%); opacity: 0.5; cursor: not-allowed; }
-            .lg-color-dot.locked::after {
-                content: '🔒'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem;
-            }
+            .lg-color-dot.locked { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+            .lg-color-dot.active { border-color: #fff; transform: scale(1.15) translateY(-5px); box-shadow: 0 10px 20px var(--lg-gold); }
             
-            /* UI Canvas e Resto */
-            .lg-canvas-box { width: 100%; height: 50vh; background: #070710; border: 2px dashed #444; border-radius: 16px; touch-action: none; position: relative; }
-            .lg-select-modern { background: #1a1a2e; color: #fff; padding: 15px; border: 1px solid var(--lg-gold); border-radius: 12px; width: 100%; outline: none; }
-            .lg-grid-folhas { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; }
-            .lg-folha-card { border: 2px solid; background: #0b0b18; border-radius: 12px; padding: 16px; text-align: center; }
+            .lg-select-modern {
+                background: #1a1a2e; color: #fff; padding: 16px; font-size: 1.1rem;
+                border: 1px solid var(--lg-gold); border-radius: 12px; font-weight: bold;
+                width: 100%; appearance: none; outline: none; text-align: center;
+            }
 
-            /* Efeitos Globais e Animações de Batalha (21 tipos suportados) */
-            .lg-effect-layer { position: fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:9998; }
+            .lg-grid-folhas { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; }
+            .lg-folha-card {
+                border: 2px solid; background: #0b0b18; border-radius: 12px;
+                padding: 16px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+                transition: transform 0.2s;
+            }
+            .lg-folha-card:active { transform: scale(0.95); }
+
+            /* Camada de Efeitos Visuais Dinâmicos */
+            .lg-effect-layer {
+                position: fixed; top:0; left:0; width:100vw; height:100vh;
+                pointer-events:none; z-index:9998; overflow: hidden;
+            }
             
-            @keyframes anim-slash { 0% { transform: scale(0) rotate(45deg); opacity: 1; } 100% { transform: scale(5) rotate(45deg) translateX(100px); opacity: 0; } }
-            @keyframes anim-shield { 0% { transform: scale(0); opacity: 0.8; border-width: 20px;} 100% { transform: scale(2.5); opacity: 0; border-width: 1px;} }
-            @keyframes anim-beam { 0% { width: 0; opacity: 1; } 100% { width: 200vw; opacity: 0; left: -50vw; } }
-            @keyframes anim-drain { 0% { box-shadow: inset 0 0 0px #ff0000; } 50% { box-shadow: inset 0 0 150px #ff0000; } 100% { box-shadow: inset 0 0 0px #ff0000; } }
-            @keyframes anim-heal { 0% { transform: translateY(50px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
-            @keyframes anim-bind { 0% { transform: scale(3) rotate(0deg); opacity:0;} 50% { transform: scale(1) rotate(180deg); opacity:1;} 100% { transform: scale(1) rotate(360deg); opacity:0;} }
-            @keyframes float-up { 0% { transform: translateY(0) scale(0.8); opacity: 0; } 20% { transform: translateY(-20px) scale(1.2); opacity: 1; } 80% { transform: translateY(-60px) scale(1); opacity: 1; } 100% { transform: translateY(-80px) scale(0.8); opacity: 0; } }
-            
-            .lg-damage-text { position: absolute; font-size: 2.5rem; font-weight: 900; font-family: 'Arial Black', sans-serif; -webkit-text-stroke: 2px black; text-shadow: 0px 5px 15px rgba(0,0,0,0.8); animation: float-up 1.5s forwards; }
-            .lg-particle { position: absolute; pointer-events: none; }
+            @keyframes shockwave {
+                0% { transform: scale(0) translate(-50%, -50%); opacity: 1; border-width: 12px; }
+                100% { transform: scale(5) translate(-10%, -10%); opacity: 0; border-width: 2px; }
+            }
+            @keyframes spiralSpin {
+                0% { transform: scale(0) rotate(0deg) translate(-50%, -50%); opacity: 1; }
+                100% { transform: scale(3.5) rotate(720deg) translate(-15%, -15%); opacity: 0; }
+            }
+            @keyframes lightningZap {
+                0% { opacity: 0; filter: brightness(3); }
+                50% { opacity: 1; background: #fff; }
+                100% { opacity: 0; }
+            }
+            @keyframes shieldDome {
+                0% { transform: scale(0.5); opacity: 0; border-radius: 50%; }
+                50% { transform: scale(1.5); opacity: 0.8; }
+                100% { transform: scale(2); opacity: 0; }
+            }
+            @keyframes implode {
+                0% { transform: scale(3) translate(-16.6%, -16.6%); opacity: 0; }
+                50% { opacity: 1; }
+                100% { transform: scale(0) translate(-50%, -50%); opacity: 0; filter: blur(8px); }
+            }
+            @keyframes shake {
+                0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                20% { transform: translate(-6px, 6px) rotate(-1.5deg); }
+                40% { transform: translate(6px, -6px) rotate(1.5deg); }
+                60% { transform: translate(-6px, -6px) rotate(-1.5deg); }
+                80% { transform: translate(6px, 6px) rotate(1.5deg); }
+            }
+            @keyframes pilar-luz {
+                0% { height: 0; opacity: 0; bottom: 50%; }
+                25% { height: 100vh; opacity: 1; bottom: 0; }
+                75% { height: 100vh; opacity: 1; bottom: 0; filter: brightness(2.5); }
+                100% { height: 100vh; opacity: 0; bottom: 0; width: 0; }
+            }
+            @keyframes float-up {
+                0% { transform: translateY(0) scale(0.8); opacity: 0; }
+                20% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+                80% { transform: translateY(-60px) scale(1); opacity: 1; }
+                100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+            }
+            .lg-damage-text {
+                position: absolute; font-size: 2.5rem; font-weight: 900; font-family: 'Arial Black', sans-serif;
+                -webkit-text-stroke: 2px black; pointer-events: none; text-shadow: 0px 5px 15px rgba(0,0,0,0.8);
+                animation: float-up 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+            .lg-particle { position: absolute; border-radius: 50%; pointer-events: none; }
         `;
         document.head.appendChild(style);
     }
@@ -284,73 +364,114 @@ export default class Litlegot {
         }
 
         // Tela de Morte
-        if (!document.getElementById('lg-death-screen')) {
-            const deathScreen = document.createElement('div');
-            deathScreen.id = 'lg-death-screen';
-            deathScreen.className = 'lg-death-screen';
-            deathScreen.innerHTML = `
-                <h1>VOCÊ MORREU</h1>
-                <p>Sua luz se apagou no campo de batalha.</p>
-                <button class="lg-btn-respawn" id="lg-btn-respawn">Renascer na Base</button>
+        if (!document.getElementById('lg-tela-morte')) {
+            const deathDiv = document.div = document.createElement('div');
+            deathDiv.id = 'lg-tela-morte';
+            deathDiv.className = 'lg-death-screen';
+            deathDiv.innerHTML = `
+                <div style="font-size: 4rem; margin-bottom: 10px;">💀</div>
+                <h1 style="color: #ff3333; font-size: 2rem; margin: 0 0 10px 0; text-shadow: 0 0 20px #ff0000;">VOCÊ FOI DERROTADO</h1>
+                <p style="color: #aaa; max-label: 400px; margin-bottom: 25px;">Sua energia vital esgotou-se no plano material. Suas tintas foram dissipadas.</p>
+                <div style="display: flex; gap: 15px; width: 100%; max-width: 320px; flex-direction: column;">
+                    <button id="lg-btn-ressuscitar" style="background: linear-gradient(135deg, #c5a059, #8a733c); color: #000; border: none; padding: 16px; border-radius: 12px; font-weight: 900; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 20px rgba(197,160,89,0.5);">Retornar à Base (Reviver)</button>
+                </div>
             `;
-            document.body.appendChild(deathScreen);
-            document.getElementById('lg-btn-respawn').onclick = () => this.renascer();
+            document.body.appendChild(deathDiv);
+            document.getElementById('lg-btn-ressuscitar').onclick = () => this.retornarABase();
         }
 
-        // Dock Flutuante
-        const dock = document.createElement('div');
-        dock.className = 'lg-mobile-dock';
-        dock.innerHTML = `
-            <div class="lg-dock-btn" id="lg-btn-ateliere" title="Arte">🎨</div>
-            <div class="lg-dock-btn" id="lg-btn-mochila" title="Mochila">📜</div>
-            <div class="lg-dock-btn" id="lg-btn-farm" title="Farm">🌾</div>
-            <div class="lg-dock-btn" id="lg-btn-loja" title="Forja">⚒️</div>
-            <div class="lg-dock-btn" id="lg-btn-base" title="Base">🏛️</div>
-        `;
-        document.body.appendChild(dock);
+        // D-Pad de Movimentação no Mapa
+        if (!document.getElementById('lg-map-dpad')) {
+            const dpad = document.createElement('div');
+            dpad.id = 'lg-map-dpad';
+            dpad.className = 'lg-map-dpad';
+            dpad.innerHTML = `
+                <div class="lg-dpad-btn lg-dpad-up" data-dir="up">▲</div>
+                <div class="lg-dpad-btn lg-dpad-left" data-dir="left">◀</div>
+                <div class="lg-dpad-center">MAPA</div>
+                <div class="lg-dpad-btn lg-dpad-right" data-dir="right">▶</div>
+                <div class="lg-dpad-btn lg-dpad-down" data-dir="down">▼</div>
+            `;
+            document.body.appendChild(dpad);
+
+            dpad.querySelectorAll('.lg-dpad-btn').forEach(btn => {
+                const dir = btn.dataset.dir;
+                const acionarMovimento = (e) => {
+                    e.preventDefault();
+                    this.animacaoTextoFlutuante(`Deslocando-se para [${dir.toUpperCase()}]...`, "#c5a059");
+                    // Dispara evento de movimento compatível com a engine externa se existente
+                    if (window.moverNoMapa) window.moverNoMapa(dir);
+                };
+                btn.addEventListener('click', acionarMovimento);
+                btn.addEventListener('touchstart', acionarMovimento, { passive: false });
+            });
+        }
+
+        // Dock de Navegação Inferior
+        if (!document.querySelector('.lg-mobile-dock')) {
+            const dock = document.createElement('div');
+            dock.className = 'lg-mobile-dock';
+            dock.innerHTML = `
+                <div class="lg-dock-btn" id="lg-btn-ateliere">🎨<span class="lg-dock-label">Arte</span></div>
+                <div class="lg-dock-btn" id="lg-btn-mochila">📜<span class="lg-dock-label">Mochila</span></div>
+                <div class="lg-dock-btn" id="lg-btn-farm">🌾<span class="lg-dock-label">Farm</span></div>
+                <div class="lg-dock-btn" id="lg-btn-loja">⚒️<span class="lg-dock-label">Forja</span></div>
+                <div class="lg-dock-btn" id="lg-btn-base">🏛️<span class="lg-dock-label">Base</span></div>
+            `;
+            document.body.appendChild(dock);
+        }
 
         const criarSheet = (id, icone, titulo, subtitulo, conteudo) => {
+            if (document.getElementById(id)) return;
             const popup = document.createElement('div');
             popup.id = id;
             popup.className = 'lg-popup';
             popup.innerHTML = `
                 <div class="lg-popup-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h3 style="margin:0; color:var(--lg-gold); display:flex; align-items:center; gap:8px;">${icone} ${titulo}</h3>
-                        <button class="lg-close-btn" style="background:transparent; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
+                    <div class="lg-header-handle"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; color:var(--lg-gold); font-size:1.3rem; display:flex; align-items:center; gap:8px;">${icone} ${titulo}</h3>
+                        <button class="lg-close-btn" style="background:rgba(255,255,255,0.1); border:none; color:#fff; width:36px; height:36px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
                     </div>
-                    <div style="font-size:0.9rem; color:#aaa; margin-bottom: 15px;">${subtitulo}</div>
+                    <div style="font-size:0.85rem; color:#aaa; margin-bottom: 4px;">${subtitulo}</div>
                     ${conteudo}
                 </div>
             `;
             document.body.appendChild(popup);
         };
 
-        // Modais
-        criarSheet('lg-modal-canvas', '🎨', 'Ateliê Tático', 'Traços mágicos. Nível 30 = Sem Cooldown.', `
+        criarSheet('lg-modal-canvas', '🎨', 'Ateliê Tático', 'Trace com precisão: <b>O</b>, <b>X</b> ou <b>Z</b>.', `
             <div class="lg-palette" id="lg-palette-select"></div>
             <div class="lg-canvas-box"><canvas id="lg-paint-canvas" style="width:100%; height:100%;"></canvas></div>
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button id="lg-btn-limpar" style="flex:1; background:#2a2a3e; color:#fff; border:none; padding:12px; border-radius:8px;">Limpar</button>
-                <button id="lg-btn-guardar" style="flex:2; background:var(--lg-gold); color:#000; font-weight:bold; border:none; border-radius:8px;">Materializar</button>
+            <div style="display:flex; gap:12px; margin-top:4px;">
+                <button id="lg-btn-limpar" style="flex:1; background:#2a2a3e; color:#fff; border:none; padding:14px; border-radius:12px; font-weight:bold; font-size:1rem;">Limpar</button>
+                <button id="lg-btn-guardar" style="flex:2; background:var(--lg-gold); color:#000; font-weight:900; border:none; padding:14px; border-radius:12px; font-size:1rem; box-shadow: 0 4px 15px rgba(197,160,89,0.4);">Materializar Tinta</button>
             </div>
         `);
 
-        criarSheet('lg-modal-mochila', '📜', 'Mochila Arcana', 'Escolha o alvo e libere a magia.', `
+        criarSheet('lg-modal-mochila', '📜', 'Mochila Arcana', 'Selecione a entidade conectada e aplique sua arte guardada:', `
             <select id="lg-alvo-select" class="lg-select-modern"></select>
-            <div class="lg-grid-folhas" id="lg-folhas-container" style="margin-top:15px;"></div>
+            <div class="lg-grid-folhas" id="lg-folhas-container" style="margin-top:10px;"></div>
         `);
 
-        criarSheet('lg-modal-farm', '🌾', 'Farm Rápido', 'Toque rápido nas esferas.', `
-            <div id="lg-farm-arena" style="position:relative; width:100%; height:300px; background:#04040a; border-radius:12px; overflow:hidden;"></div>
-            <button id="lg-start-farm" style="width:100%; padding:15px; background:#28a745; color:#fff; font-weight:bold; border:none; border-radius:8px; margin-top:10px;">Iniciar</button>
+        criarSheet('lg-modal-farm', '🌾', 'Rito de Farm', 'Toque rápido nas runas para acumular recursos.', `
+            <div style="position:relative; width:100%; height:280px; background:radial-gradient(circle, #1a1a2e, #04040a); border:2px solid #333; border-radius:16px; overflow:hidden;" id="lg-farm-arena">
+                <div id="lg-farm-status" style="position:absolute; top:12px; left:12px; color:#fff; font-size:1.1rem; font-weight:bold; z-index:2;">Pontos: 0</div>
+            </div>
+            <button id="lg-start-farm" style="background:linear-gradient(90deg, #28a745, #218838); color:#fff; border:none; padding:14px; border-radius:12px; font-weight:900; font-size:1.1rem; width:100%; box-shadow:0 4px 15px rgba(40,167,69,0.4);">Iniciar Rito</button>
         `);
 
-        criarSheet('lg-modal-loja', '⚒️', 'Forja de Atributos', 'Sacrifique 25% do HP máximo.', `
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button class="lg-craft-item" data-item="espada" style="padding:15px; background:#1a1a2e; border:1px solid var(--lg-gold); color:#fff; border-radius:8px;">⚔️ Espada (+35 AD)</button>
-                <button class="lg-craft-item" data-item="tomo" style="padding:15px; background:#1a1a2e; border:1px solid var(--lg-gold); color:#fff; border-radius:8px;">📘 Tomo (+50 AP)</button>
-                <button class="lg-craft-item" data-item="cristal" style="padding:15px; background:#1a1a2e; border:1px solid var(--lg-gold); color:#fff; border-radius:8px;">💎 Cristal (+300 HP)</button>
+        criarSheet('lg-modal-loja', '⚒️', 'Forja Física', '<span style="color:#ff4444;">Sacrifício Mítico: Transmuta 25% do HP Máximo em atributos permanentes.</span>', `
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px;">
+                <button class="lg-craft-item" data-item="espada" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">⚔️</span> <div><b>Espada Longa (+35 AD)</b><br><small style="color:#aaa;">Dano físico direto.</small></div>
+                </button>
+                <button class="lg-craft-item" data-item="tomo" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">📘</span> <div><b>Tomo Amplificador (+50 AP)</b><br><small style="color:#aaa;">Potencializa magias de tinta.</small></div>
+                </button>
+                <button class="lg-craft-item" data-item="cristal" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">💎</span> <div><b>Cristal de Rubi (+300 HP)</b><br><small style="color:#aaa;">Resiliência celular expandida.</small></div>
+                </button>
             </div>
         `);
 
@@ -363,60 +484,79 @@ export default class Litlegot {
         if (!container) return;
         container.innerHTML = '';
 
-        const levelJogador = this.state.stats.level || 1;
+        const nivelAtual = this.state.stats.nivel || 1;
 
         Object.keys(this.tintas).forEach(corKey => {
             const cor = this.tintas[corKey];
             const dot = document.createElement('div');
-            const hasLevel = levelJogador >= cor.nivelMinimo;
             
-            dot.className = `lg-color-dot ${corKey === this.corAtiva ? 'active' : ''} ${!hasLevel ? 'locked' : ''}`;
+            // Verificação da Trava de Segurança por Nível (Exigência até nível 30)
+            const bloqueado = nivelAtual < cor.nivelMin;
+
+            dot.className = `lg-color-dot ${corKey === this.corAtiva && !bloqueado ? 'active' : ''} ${bloqueado ? 'locked' : ''}`;
             dot.style.backgroundColor = cor.hex;
+            dot.title = `${cor.nome} (Req: Nv ${cor.nivelMin} | Custo: ${cor.custo})`;
             
-            if (hasLevel) {
-                dot.title = `${cor.nome} (Mana: ${cor.custo})`;
-                dot.onclick = () => {
-                    document.querySelectorAll('.lg-color-dot').forEach(d => d.classList.remove('active'));
-                    dot.classList.add('active');
-                    this.corAtiva = corKey;
-                };
-            } else {
-                dot.title = `Desbloqueia no Nv. ${cor.nivelMinimo}`;
-                dot.onclick = () => this.animacaoTextoFlutuante(`Requer Nível ${cor.nivelMinimo}`, "#ff0000");
+            if (bloqueado) {
+                const lockBadge = document.createElement('div');
+                lockBadge.style.cssText = "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:0.75rem; background:rgba(0,0,0,0.6); border-radius:50%; color:#fff; font-weight:bold;";
+                lockBadge.innerText = `L${cor.nivelMin}`;
+                dot.appendChild(lockBadge);
             }
+
+            dot.addEventListener('click', () => {
+                if (bloqueado) {
+                    return this.animacaoTextoFlutuante(`Requer Nível ${cor.nivelMin} para desbloquear esta tinta!`, "#ff4444");
+                }
+                document.querySelectorAll('.lg-color-dot').forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                this.corAtiva = corKey;
+            });
             container.appendChild(dot);
         });
-        
-        // Garante que se subiu de nível e a cor inicial tava bloqueada, ele seleciona a primeira possível
-        if ((this.state.stats.level || 1) < this.tintas[this.corAtiva].nivelMinimo) {
-            this.corAtiva = 'red';
-        }
     }
 
     vincularEventosModais() {
-        const toggle = (id, show) => {
+        const togglePopup = (id, show) => {
             const popup = document.getElementById(id);
-            if (show) popup.classList.add('active');
-            else popup.classList.remove('active');
+            if (popup) {
+                if (show) popup.classList.add('active');
+                else popup.classList.remove('active');
+            }
         };
 
-        document.getElementById('lg-btn-ateliere').onclick = () => { this.renderizarPaleta(); toggle('lg-modal-canvas', true); setTimeout(()=>this.redimensionarCanvas(), 300); };
-        document.getElementById('lg-btn-mochila').onclick = () => { this.atualizarListaDeAlvos(); this.atualizarUIFolhas(); toggle('lg-modal-mochila', true); };
-        document.getElementById('lg-btn-farm').onclick = () => toggle('lg-modal-farm', true);
-        document.getElementById('lg-btn-loja').onclick = () => toggle('lg-modal-loja', true);
+        document.getElementById('lg-btn-ateliere').onclick = () => { togglePopup('lg-modal-canvas', true); setTimeout(()=>this.redimensionarCanvas(), 300); };
+        document.getElementById('lg-btn-mochila').onclick = () => { this.atualizarListaDeAlvos(); this.atualizarUIFolhas(); togglePopup('lg-modal-mochila', true); };
+        document.getElementById('lg-btn-farm').onclick = () => { togglePopup('lg-modal-farm', true); };
+        document.getElementById('lg-btn-loja').onclick = () => { togglePopup('lg-modal-loja', true); };
         document.getElementById('lg-btn-base').onclick = () => this.retornarABase();
 
-        document.querySelectorAll('.lg-close-btn').forEach(btn => btn.onclick = (e) => e.target.closest('.lg-popup').classList.remove('active'));
-        document.querySelectorAll('.lg-popup').forEach(p => p.addEventListener('click', (e) => { if (e.target === p) p.classList.remove('active'); }));
+        document.querySelectorAll('.lg-close-btn').forEach(btn => {
+            btn.onclick = (e) => e.target.closest('.lg-popup').classList.remove('active');
+        });
+        
+        document.querySelectorAll('.lg-popup').forEach(popup => {
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) popup.classList.remove('active');
+            });
+        });
 
         document.getElementById('lg-btn-limpar').onclick = () => this.limparCanvas();
         document.getElementById('lg-btn-guardar').onclick = () => this.guardarDesenho();
         document.getElementById('lg-start-farm').onclick = () => this.iniciarMinigameFarm();
-        document.querySelectorAll('.lg-craft-item').forEach(b => b.onclick = (e) => this.criarItemDaLoja(e.currentTarget.dataset.item));
+
+        document.querySelectorAll('.lg-craft-item').forEach(btn => {
+            btn.onclick = (e) => this.criarItemDaLoja(e.currentTarget.dataset.item);
+        });
+
+        const selectAlvo = document.getElementById('lg-alvo-select');
+        if (selectAlvo) {
+            selectAlvo.onchange = (e) => { this.alvoSelecionado = e.target.value; };
+        }
     }
 
     // ==========================================
-    // CANVAS E RECONHECIMENTO DE FORMAS
+    // CANVAS FLUIDO E RECONHECIMENTO DE TRAÇOS
     // ==========================================
     vincularCanvasEventos() {
         const canvas = document.getElementById('lg-paint-canvas');
@@ -431,7 +571,7 @@ export default class Litlegot {
         };
 
         const startDraw = (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
             this.desenhandoCanvas = true;
             this.pontosDesenho = [];
             const pos = getPos(e);
@@ -440,10 +580,10 @@ export default class Litlegot {
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
             ctx.strokeStyle = this.tintas[this.corAtiva].hex;
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 15;
             ctx.shadowColor = this.tintas[this.corAtiva].hex;
         };
 
@@ -456,301 +596,355 @@ export default class Litlegot {
             if (this.pontosDesenho.length > 2) {
                 const p1 = this.pontosDesenho[this.pontosDesenho.length - 2];
                 const p2 = this.pontosDesenho[this.pontosDesenho.length - 1];
-                ctx.quadraticCurveTo(p1.x, p1.y, (p1.x + p2.x)/2, (p1.y + p2.y)/2);
+                const xc = (p1.x + p2.x) / 2;
+                const yc = (p1.y + p2.y) / 2;
+                ctx.quadraticCurveTo(p1.x, p1.y, xc, yc);
                 ctx.stroke();
             }
         };
 
-        const stopDraw = () => { this.desenhandoCanvas = false; };
+        const stopDraw = (e) => {
+            if (!this.desenhandoCanvas) return;
+            e.preventDefault();
+            this.desenhandoCanvas = false;
+        };
 
-        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw);
-        window.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false });
-        window.addEventListener('touchend', stopDraw);
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw, { passive: false });
+        canvas.addEventListener('touchcancel', stopDraw, { passive: false });
     }
 
     redimensionarCanvas() {
         const canvas = document.getElementById('lg-paint-canvas');
+        if (!canvas) return;
         const parent = canvas.parentElement;
-        canvas.width = parent.clientWidth; canvas.height = parent.clientHeight;
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
         this.limparCanvas();
     }
+
     limparCanvas() {
         const canvas = document.getElementById('lg-paint-canvas');
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.pontosDesenho = [];
     }
 
     reconhecerForma() {
         const pts = this.pontosDesenho;
-        if (pts.length < 10) return null; 
-        const start = pts[0], end = pts[pts.length - 1];
-        const dist = Math.hypot(end.x - start.x, end.y - start.y);
-        
+        if (pts.length < 15) return null;
+
+        const start = pts[0];
+        const end = pts[pts.length - 1];
+        const distStartEnd = Math.hypot(end.x - start.x, end.y - start.y);
+
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        pts.forEach(p => { if (p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x; if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y; });
-        
-        if (dist < 70 && (maxX-minX)>30 && (maxY-minY)>30) return 'O';
-        
-        let mudancas = 0;
+        pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        if (distStartEnd < 90 && width > 35 && height > 35) return 'O';
+
+        let mudancasX = 0;
         for (let i = 3; i < pts.length - 3; i+=3) {
-            const d1 = pts[i].x - pts[i-3].x;
-            const d2 = pts[i+3].x - pts[i].x;
-            if (d1 * d2 < 0) mudancas++; // Mudou direção horizontal
+            const dirPrevX = pts[i].x - pts[i - 3].x;
+            const dirNextX = pts[i + 3].x - pts[i].x;
+            if ((dirPrevX > 0 && dirNextX < 0) || (dirPrevX < 0 && dirNextX > 0)) mudancasX++;
         }
-        if (mudancas >= 1 && (maxX-minX) > 40) return 'Z';
+
+        if (mudancasX >= 2 && width > 25) return 'Z';
         return 'X';
     }
 
     guardarDesenho() {
-        if (this.folhasGuardadas.length >= this.maxFolhas) return this.animacaoTextoFlutuante("Mochila Cheia!", "#ff0000");
-        
+        if (this.folhasGuardadas.length >= this.maxFolhas) {
+            return this.animacaoTextoFlutuante("Mochila Cheia! Máx 3", "#ff0000");
+        }
+
         const forma = this.reconhecerForma();
-        if (!forma) return this.animacaoTextoFlutuante("Desenho não reconhecido!", "#ffaa00");
+        if (!forma) {
+            return this.animacaoTextoFlutuante("Traço Incompreensível! Tente novamente.", "#ff8c00");
+        }
 
         const corData = this.tintas[this.corAtiva];
-        if (this.state.stats.mana < corData.custo) return this.animacaoTextoFlutuante(`Sem Mana (${corData.custo})`, "#00bfff");
+        if (this.state.stats.mana < corData.custo) {
+            return this.animacaoTextoFlutuante(`Falta Mana: ${corData.custo} pts`, "#00bfff");
+        }
 
         this.state.stats.mana -= corData.custo;
-        this.folhasGuardadas.push({ id: Date.now(), forma, corKey: this.corAtiva, corHex: corData.hex, nomeCor: corData.nome, apSnapshot: this.state.stats.ap || 0 });
+        this.folhasGuardadas.push({
+            id: Date.now(),
+            forma: forma,
+            corKey: this.corAtiva,
+            corHex: corData.hex,
+            nomeCor: corData.nome,
+            apSnapshot: this.state.stats.ap || 0
+        });
 
         this.limparCanvas();
-        this.animacaoTextoFlutuante(`Preparado: ${forma}`, corData.hex);
+        this.animacaoTextoFlutuante(`Arte ${forma} Materializada com sucesso!`, corData.hex);
         document.getElementById('lg-modal-canvas').classList.remove('active');
         atualizarUI();
     }
 
     atualizarUIFolhas() {
         const container = document.getElementById('lg-folhas-container');
+        if (!container) return;
         container.innerHTML = '';
+
         if (this.folhasGuardadas.length === 0) {
-            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#777;">Vazio.</div>';
+            container.innerHTML = '<div style="grid-column:1/-1; color:#777; padding:20px; text-align:center; font-style:italic;">Nenhuma arte em posse. Visite o Ateliê.</div>';
             return;
         }
 
-        this.folhasGuardadas.forEach((f, i) => {
+        this.folhasGuardadas.forEach((folha, index) => {
             const card = document.createElement('div');
             card.className = 'lg-folha-card';
-            card.style.borderColor = f.corHex;
+            card.style.borderColor = folha.corHex;
+            card.style.boxShadow = `inset 0 0 15px ${folha.corHex}33`;
             card.innerHTML = `
-                <div style="font-size:2rem; font-weight:900; color:${f.corHex};">${f.forma}</div>
-                <div style="font-size:0.7rem; color:#fff; margin:5px 0;">${f.nomeCor}</div>
-                <button style="background:${f.corHex}; color:#000; font-weight:bold; width:100%; border:none; padding:8px; border-radius:5px; cursor:pointer;">Lançar</button>
+                <div style="font-size:2.2rem; font-weight:900; color:${folha.corHex}; text-shadow:0 0 10px ${folha.corHex};">${folha.forma}</div>
+                <div style="font-size:0.7rem; color:#fff; font-weight:bold; margin:6px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${folha.nomeCor}</div>
+                <button style="background:linear-gradient(135deg, ${folha.corHex}, #222); color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:1rem; width:100%; padding:8px; cursor:pointer;">Lançar</button>
             `;
-            card.querySelector('button').onclick = () => this.ativarFolha(i);
+            card.querySelector('button').onclick = () => this.ativarFolha(index);
             container.appendChild(card);
         });
     }
 
     // ==========================================
-    // SISTEMA DE 21 EFEITOS REAIS + COOLDOWN
+    // SISTEMA DE EFEITOS REAIS PARA OS 21 FEITIÇOS (7 CORES x 3 TRAÇOS)
     // ==========================================
     ativarFolha(index) {
-        if (!this.podeUsarMagia && (this.state.stats.level || 1) < 30) {
-            return this.animacaoTextoFlutuante("Aguarde recarga mágica!", "#aaaaaa");
-        }
-
         const folha = this.folhasGuardadas[index];
-        if (!this.alvoSelecionado) return this.animacaoTextoFlutuante("Selecione um alvo!", "#ff0000");
+        if (!folha) return;
+        
+        if (!this.alvoSelecionado) {
+            return this.animacaoTextoFlutuante("Selecione um alvo na mochila!", "#ff0000");
+        }
 
         this.folhasGuardadas.splice(index, 1);
         this.atualizarUIFolhas();
         document.getElementById('lg-modal-mochila').classList.remove('active');
 
-        // Ativa Cooldown se Nível < 30
-        if ((this.state.stats.level || 1) < 30) {
-            this.podeUsarMagia = false;
-            setTimeout(() => {
-                this.podeUsarMagia = true;
-                this.animacaoTextoFlutuante("Magia Recarregada!", "#ffffff");
-            }, 3000); // 3 segundos de CD
-        }
-
-        this.executarOs21EfeitosMecanicos(folha.forma, folha.corKey, folha.apSnapshot, this.alvoSelecionado);
+        this.executarEfeitoRealEAnimar(folha.forma, folha.corKey, folha.apSnapshot, this.alvoSelecionado);
     }
 
-    executarOs21EfeitosMecanicos(forma, corKey, apSnap, alvoId) {
+    executarEfeitoRealEAnimar(forma, corKey, apSnap, alvoId) {
         const ap = apSnap || this.state.stats.ap || 0;
-        const hpBase = this.state.stats.maxHp || 100;
-        const hex = this.tintas[corKey].hex;
+        const tinta = this.tintas[corKey];
+        const hex = tinta.hex;
         
+        // Mapeamento dinâmico de animação baseado no traço e cor
+        let tipoAnimacao = tinta.tipoAnimacao;
+        if (forma === 'O') tipoAnimacao = 'explosao';
+        else if (forma === 'X') tipoAnimacao = 'raio';
+        else if (forma === 'Z') tipoAnimacao = 'espiral';
+
         let nomeEfeito = "";
         let resumoAcao = "";
-        let dano = 0;
-        let tipoAnimacao = 'padrao'; 
+        let danoOuCuraAplicado = 0;
 
-        // AS 21 MECÂNICAS EXCLUSIVAS
+        // Matriz de Feitiços Completa (21 variações reais e funcionais)
         switch (corKey) {
-            case 'red': // FOGO (Foco: Dano Bruto)
+            case 'red': // Fogo Carnificina
                 if (forma === 'O') {
-                    nomeEfeito = "Explosão Solar"; tipoAnimacao = 'explosao';
-                    dano = Math.floor(ap * 3.5); resumoAcao = `causou ${dano} Dano em Área`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.5 + 40);
+                    nomeEfeito = "Inferno Circular Em Chamas";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` incinerou o alvo com ${danoOuCuraAplicado} de dano elemental.`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Corte Ígneo"; tipoAnimacao = 'slash';
-                    dano = Math.floor(ap * 2.0); resumoAcao = `causou ${dano} Dano e cortou`;
-                } else { // Z
-                    nomeEfeito = "Rastro de Fogo"; tipoAnimacao = 'beam';
-                    dano = Math.floor(ap * 1.5); this.state.stats.ad += 10; // Buff AD Temporário/Perma
-                    resumoAcao = `causou ${dano} Dano e ganhou +10 AD`;
-                }
-                break;
-                
-            case 'orange': // LARANJA (Foco: Roubo e Sacrifício)
-                if (forma === 'O') {
-                    nomeEfeito = "Aura Sanguessuga"; tipoAnimacao = 'heal';
-                    const cura = Math.floor(hpBase * 0.3); this.curar(cura);
-                    resumoAcao = `curou ${cura} HP`;
-                } else if (forma === 'X') {
-                    nomeEfeito = "Estaca de Sangue"; tipoAnimacao = 'drain';
-                    dano = Math.floor(ap * 2.5); this.curar(dano); // Drena 100% do dano
-                    resumoAcao = `drenou ${dano} HP de ${alvoId}`;
-                } else { // Z
-                    nomeEfeito = "Frenesi Sacrificial"; tipoAnimacao = 'explosao';
-                    this.state.stats.hp -= Math.floor(hpBase * 0.2); // Paga 20% HP
-                    this.state.stats.ap += 30; // Ganha mt AP
-                    resumoAcao = `sacrificou HP por +30 AP!`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.0 + 20);
+                    nomeEfeito = "Corte Flamejante Cruzado";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` fatiou com lâminas incandescentes infligindo ${danoOuCuraAplicado} de dano.`;
+                } else {
+                    danoOuCuraAplicado = Math.floor(ap * 3.2);
+                    nomeEfeito = "Labareda Ziguezague Instável";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` rasgou o campo com fogo em ziguezague causando ${danoOuCuraAplicado} de dano.`;
                 }
                 break;
 
-            case 'yellow': // AMARELO (Foco: Ouro e Velocidade)
+            case 'orange': // Drenagem Vital
                 if (forma === 'O') {
-                    nomeEfeito = "Esfera de Ouro"; tipoAnimacao = 'heal';
-                    const ouro = Math.floor(100 + (ap * 1.5)); this.state.gold += ouro;
-                    resumoAcao = `transmutou +${ouro} Ouro`;
+                    danoOuCuraAplicado = Math.floor(ap * 1.8);
+                    nomeEfeito = "Vampirismo de Aura Circular";
+                    this.curar(danoOuCuraAplicado);
+                    resumoAcao = ` absorveu energias vitais curando-se em +${danoOuCuraAplicado} HP.`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Raio Estocada"; tipoAnimacao = 'beam';
-                    dano = Math.floor(ap * 2.2); resumoAcao = `atingiu ${alvoId} com ${dano} Dano Rapido`;
-                } else { // Z
-                    nomeEfeito = "Esquiva Ilusória"; tipoAnimacao = 'shield';
-                    this.state.stats.shield = (this.state.stats.shield || 0) + Math.floor(ap * 2);
-                    resumoAcao = `gerou escudo de ${Math.floor(ap*2)}`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.2);
+                    nomeEfeito = "Drenagem Sanguínea Direta";
+                    this.curar(danoOuCuraAplicado);
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` drenou ${danoOuCuraAplicado} HP diretamente do alvo para si.`;
+                } else {
+                    nomeEfeito = "Pulso Hemático Reativo";
+                    this.state.stats.maxHp += 20;
+                    this.curar(20);
+                    resumoAcao = ` converteu sangue em max HP permanente (+20).`;
                 }
                 break;
 
-            case 'green': // VERDE (Foco: Natureza, HP Máximo e Controle)
+            case 'yellow': // Ouro e Clarão
                 if (forma === 'O') {
-                    nomeEfeito = "Casulo da Vida"; tipoAnimacao = 'shield';
-                    this.state.stats.maxHp += 25; this.curar(100);
-                    resumoAcao = `curou HP e ganhou +25 Max HP`;
+                    const ouroGerado = Math.floor(60 + (ap * 0.8));
+                    this.state.gold = (this.state.gold || 0) + ouroGerado;
+                    nomeEfeito = "Clarão Dourado Concentrado";
+                    resumoAcao = ` materializou runas áureas gerando +${ouroGerado} Ouro!`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Espinho Perfurante"; tipoAnimacao = 'slash';
-                    dano = Math.floor(ap * 1.8 + this.state.stats.ad * 0.5); // Escala hibrida
-                    resumoAcao = `perfurou ${alvoId} com ${dano} Dano Híbrido`;
-                } else { // Z
-                    nomeEfeito = "Raízes Prisão"; tipoAnimacao = 'bind';
-                    dano = Math.floor(ap * 1.2); 
-                    // No futuro: status effect "Root"
-                    resumoAcao = `enraizou ${alvoId} causando ${dano} Dano`;
+                    danoOuCuraAplicado = Math.floor(ap * 1.5);
+                    nomeEfeito = "Chuva de Ouro Penetrante";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` apedrejou o alvo com moedas energizadas (${danoOuCuraAplicado} dano).`;
+                } else {
+                    nomeEfeito = "Relâmpago do Sol Nascente";
+                    this.state.stats.ap = (this.state.stats.ap || 0) + 15;
+                    resumoAcao = ` amplificou permanentemente sua inteligência arcana (+15 AP).`;
                 }
                 break;
 
-            case 'blue': // AZUL (Foco: Água, Escudos e Defesa)
+            case 'green': // Sopro da Natureza
                 if (forma === 'O') {
-                    nomeEfeito = "Barreira Oceânica"; tipoAnimacao = 'shield';
-                    const shield = Math.floor(150 + ap * 2.5);
-                    this.state.stats.shield = (this.state.stats.shield || 0) + shield;
-                    resumoAcao = `ganhou +${shield} Escudo`;
+                    danoOuCuraAplicado = Math.floor(ap * 3.0 + 50);
+                    nomeEfeito = "Raiz Viva Protetora";
+                    this.curar(danoOuCuraAplicado);
+                    resumoAcao = ` evocou flora sagrada restaurando +${danoOuCuraAplicado} HP.`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Jato D'Água Purificador"; tipoAnimacao = 'beam';
-                    dano = Math.floor(ap * 2.0); this.curar(50); // Bate e limpa (simulado)
-                    resumoAcao = `causou ${dano} Dano e limpou feridas`;
-                } else { // Z
-                    nomeEfeito = "Corte Congelante"; tipoAnimacao = 'slash';
-                    dano = Math.floor(ap * 2.8); // Bate forte
-                    resumoAcao = `congelou ${alvoId} com ${dano} Dano`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.2);
+                    nomeEfeito = "Espinhos Selvagens Cruzados";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` perfurou o inimigo com vinhas espinhosas (${danoOuCuraAplicado} dano).`;
+                } else {
+                    nomeEfeito = "Crescimento Silvestre Eterno";
+                    this.state.stats.maxHp += 75;
+                    this.curar(75);
+                    resumoAcao = ` enraizou vigor celular expandindo o HP Máximo em +75.`;
                 }
                 break;
 
-            case 'purple': // ROXO (Foco: Vazio, Quebra Escudo e Execução)
+            case 'blue': // Barreiras de Água
                 if (forma === 'O') {
-                    nomeEfeito = "Buraco Negro"; tipoAnimacao = 'implosao';
-                    dano = Math.floor(hpBase * 0.15 + ap * 2); // Dano baseado no proprio max HP
-                    resumoAcao = `sugou a área causando ${dano} Dano`;
+                    danoOuCuraAplicado = Math.floor(150 + (ap * 2.5));
+                    nomeEfeito = "Cúpula Aquática Absoluta";
+                    this.state.stats.shield = (this.state.stats.shield || 0) + danoOuCuraAplicado;
+                    resumoAcao = ` gerou um escudo protetor de gelo e água (+${danoOuCuraAplicado} Escudo).`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Foice Umbral"; tipoAnimacao = 'slash';
-                    dano = Math.floor(ap * 3.5); // Dano alto de execução
-                    resumoAcao = `ceifou ${alvoId} com ${dano} Dano Crítico`;
-                } else { // Z
-                    nomeEfeito = "Maldição da Ruína"; tipoAnimacao = 'bind';
-                    dano = Math.floor(ap * 1.5); 
-                    // Efeito real em combate: Destrói escudos (implementado no aplicarDanoRede extra)
-                    resumoAcao = `amaldiçoou ${alvoId} (Dano Real ignorando Escudo)`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.4);
+                    nomeEfeito = "Lança Gélida Perfurante";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` disparou um dardo congelante causando ${danoOuCuraAplicado} de dano.`;
+                } else {
+                    nomeEfeito = "Correnteza Veloz Fluida";
+                    this.state.stats.ad = (this.state.stats.ad || 0) + 20;
+                    resumoAcao = ` canalizou a fluidez da água aumentando o AD em +20.`;
                 }
                 break;
 
-            case 'white': // BRANCO (Foco: Divino, Atributos Permanentes) [Desbloqueado NV 30]
+            case 'purple': // Sombras de Controle
                 if (forma === 'O') {
-                    nomeEfeito = "Milagre"; tipoAnimacao = 'pilar';
-                    this.state.stats.hp = this.state.stats.maxHp; 
-                    this.state.stats.mana = this.state.stats.maxMana;
-                    resumoAcao = `restaurou Saúde e Mana 100%`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.0);
+                    nomeEfeito = "Esfera Umbral Paralisante";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` aprisionou o alvo em gravidade sombria (${danoOuCuraAplicado} dano).`;
                 } else if (forma === 'X') {
-                    nomeEfeito = "Julgamento"; tipoAnimacao = 'pilar';
-                    dano = Math.floor(ap * 5.0); // Dano massivo absurdo
-                    resumoAcao = `julgou ${alvoId} com ${dano} Dano Divino`;
-                } else { // Z
-                    nomeEfeito = "Ascensão"; tipoAnimacao = 'heal';
-                    this.state.stats.ap += 15; this.state.stats.ad += 15; this.state.stats.maxHp += 50;
-                    resumoAcao = `ascendeu atributos (+15 AP/AD, +50 HP)`;
+                    danoOuCuraAplicado = Math.floor(ap * 2.8);
+                    nomeEfeito = "Fios de Sombra Cortantes";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` fatiou com agulhas do vazio causando ${danoOuCuraAplicado} de dano.`;
+                } else {
+                    danoOuCuraAplicado = Math.floor(ap * 3.5);
+                    nomeEfeito = "Implosão Dimensional Sombria";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` colapsou o espaço ao redor do alvo infligindo ${danoOuCuraAplicado} dano.`;
+                }
+                break;
+
+            case 'white': // Luz Absoluta (Divino - Nv 30)
+                if (forma === 'O') {
+                    nomeEfeito = "Halo Divino da Restauração";
+                    this.state.stats.hp = this.state.stats.maxHp;
+                    resumoAcao = ` purificou seu corpo restaurando 100% da Vida máxima instantaneamente!`;
+                } else if (forma === 'X') {
+                    danoOuCuraAplicado = Math.floor(ap * 5.0 + 100);
+                    nomeEfeito = "Julgamento Sagrado Verdadeiro";
+                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
+                    resumoAcao = ` puniu severamente o alvo com luz pura (${danoOuCuraAplicado} Dano Verdadeiro).`;
+                } else {
+                    nomeEfeito = "Feixe Pristino da Ascensão";
+                    this.state.stats.ap = (this.state.stats.ap || 0) + 50;
+                    this.state.stats.ad = (this.state.stats.ad || 0) + 30;
+                    resumoAcao = ` elevou seus atributos divinos permanentemente (+50 AP, +30 AD).`;
                 }
                 break;
         }
 
-        if (dano > 0) {
-            // Se for Z do roxo, ignora escudo (Dano Verdadeiro)
-            const trueDamage = (corKey === 'purple' && forma === 'Z');
-            this.aplicarDanoRede(alvoId, dano, trueDamage);
-        }
-        
         atualizarUI();
-        this.emitirEventoDeRede(tipoAnimacao, hex, alvoId, dano, `[${forma}] ${nomeEfeito}`);
-        if (this.state.roomName) {
-            push(ref(this.db, `rooms/${this.state.roomName}/chat`), {
-                sender: this.meuId,
-                text: `<strong style="color:${hex};">[${forma}] ${nomeEfeito}</strong>: ${resumoAcao}`,
-                type: "combat", time: Date.now()
-            });
-        }
+        
+        // Sincroniza o efeito visual em rede com todos os jogadores
+        this.emitirEventoDeRede(tipoAnimacao, hex, alvoId, danoOuCuraAplicado, `[${forma}] ${nomeEfeito}`);
+        
+        // Insere notificação no chat da sala
+        this.enviarAcaoParaChat(forma, nomeEfeito, resumoAcao, hex);
     }
 
-    aplicarDanoRede(alvoId, dano, ignoreShield = false) {
+    aplicarDanoRede(alvoId, dano) {
         if (!this.multiplayerAtivo || !this.state.roomName) return;
         
         if (alvoId === this.meuId) {
             this.state.stats.hp = Math.max(0, (this.state.stats.hp || 0) - dano);
-            this.verificarMorte();
+            this.verificarEstadoMorte();
             return;
         }
 
         const alvoRef = ref(this.db, `rooms/${this.state.roomName}/players/${alvoId}/stats`);
         get(alvoRef).then(snapshot => {
-            const stats = snapshot.val();
-            if (stats) {
-                let hp = stats.hp || 0;
-                let escudo = stats.shield || 0;
+            const statsDoAlvo = snapshot.val();
+            if (statsDoAlvo) {
+                const hpAtual = statsDoAlvo.hp || 0;
+                const escudo = statsDoAlvo.shield || 0;
                 
-                if (ignoreShield) {
-                    hp = Math.max(0, hp - dano);
+                let hpRestante = hpAtual;
+                let escudoRestante = escudo;
+                
+                if (escudo > 0) {
+                    if (dano >= escudo) {
+                        dano -= escudo;
+                        escudoRestante = 0;
+                        hpRestante = Math.max(0, hpAtual - dano);
+                    } else {
+                        escudoRestante -= dano;
+                    }
                 } else {
-                    if (escudo > 0) {
-                        if (dano >= escudo) { dano -= escudo; escudo = 0; hp = Math.max(0, hp - dano); } 
-                        else { escudo -= dano; }
-                    } else { hp = Math.max(0, hp - dano); }
+                    hpRestante = Math.max(0, hpAtual - dano);
                 }
 
-                update(alvoRef, { hp, shield: escudo });
+                update(alvoRef, { hp: hpRestante, shield: escudoRestante });
             }
         });
     }
 
     curar(valor) {
-        if (this.state.stats.hp <= 0) return; // Morto não cura
         this.state.stats.hp = Math.min(this.state.stats.maxHp, (this.state.stats.hp || 0) + valor);
+        this.verificarEstadoMorte();
         atualizarUI();
     }
 
     // ==========================================
-    // RENDERIZADOR DE ANIMAÇÕES E PARTÍCULAS
+    // SISTEMA VISUAL GLOBAL (ANIMAÇÕES VIVAS)
     // ==========================================
     renderizarEventoVisualGlobal(evento) {
         const isTarget = evento.targetId === this.meuId;
@@ -760,128 +954,249 @@ export default class Litlegot {
 
         if (isTarget && evento.valor > 0) {
             document.body.style.animation = 'none';
-            void document.body.offsetWidth; 
-            document.body.style.animation = 'shake 0.4s both';
+            void document.body.offsetWidth;
+            document.body.style.animation = 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both';
         }
 
-        this.gerarParticulas(evento.tipoAnimacao, evento.hexColor, layer);
+        this.gerarSistemasDeParticulas(evento.tipoAnimacao, evento.hexColor, layer);
 
         if (evento.valor > 0) {
-            const txt = document.createElement('div');
-            txt.className = 'lg-damage-text'; txt.style.color = evento.hexColor;
-            txt.innerText = isTarget || isSource ? `-${evento.valor}` : `-${evento.valor} (em ${evento.targetId})`;
-            txt.style.left = `calc(50% + ${(Math.random()-0.5)*100}px)`;
-            txt.style.top = `calc(50% + ${(Math.random()-0.5)*50}px)`;
-            layer.appendChild(txt);
-            setTimeout(() => txt.remove(), 1500);
+            this.criarTextoFlutuante(
+                (isTarget || isSource) ? `-${evento.valor}` : `-${evento.valor} (${evento.targetId})`, 
+                evento.hexColor, 
+                layer
+            );
         }
-        
-        if (isSource) this.animacaoTextoFlutuante(`${evento.nomeEfeito}`, evento.hexColor);
+
+        if (isSource) {
+            this.animacaoTextoFlutuante(`Executado: ${evento.nomeEfeito}`, evento.hexColor);
+        }
     }
 
-    gerarParticulas(tipo, cor, layer) {
-        const c = document.createElement('div');
-        c.style.position = 'absolute'; c.style.top = '50%'; c.style.left = '50%'; c.style.transform = 'translate(-50%, -50%)';
+    gerarSistemasDeParticulas(tipo, corHex, layer) {
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.top = '50%'; container.style.left = '50%';
+        container.style.transform = 'translate(-50%, -50%)';
         
-        // Mapeamento das Animações Específicas
         if (tipo === 'explosao') {
-            c.style.width = '100px'; c.style.height = '100px'; c.style.borderRadius = '50%';
-            c.style.background = `radial-gradient(circle, ${cor}aa, transparent)`;
-            c.style.animation = 'anim-shield 0.6s ease-out forwards';
-        } else if (tipo === 'slash') {
-            c.style.width = '5px'; c.style.height = '200px'; c.style.background = cor; c.style.boxShadow = `0 0 20px ${cor}`;
-            c.style.animation = 'anim-slash 0.5s ease-out forwards';
-        } else if (tipo === 'shield') {
-            c.style.width = '150px'; c.style.height = '150px'; c.style.borderRadius = '50%';
-            c.style.border = `5px solid ${cor}`; c.style.boxShadow = `inset 0 0 30px ${cor}`;
-            c.style.animation = 'anim-shield 1s ease-out forwards';
-        } else if (tipo === 'beam') {
-            c.style.height = '20px'; c.style.background = cor; c.style.boxShadow = `0 0 30px ${cor}`;
-            c.style.animation = 'anim-beam 0.6s ease-in-out forwards';
-        } else if (tipo === 'drain') {
-            c.style.width = '100vw'; c.style.height = '100vh'; 
-            c.style.animation = 'anim-drain 1s ease-in-out forwards';
-        } else if (tipo === 'heal') {
-            c.style.width = '80px'; c.style.height = '80px'; c.style.borderRadius = '50%';
-            c.style.background = `radial-gradient(circle, #fff, ${cor})`; c.style.boxShadow = `0 0 40px ${cor}`;
-            c.style.animation = 'anim-heal 1.5s ease-out forwards';
-        } else if (tipo === 'bind') {
-            c.style.width = '100px'; c.style.height = '100px'; c.style.border = `10px dashed ${cor}`; c.style.borderRadius = '50%';
-            c.style.animation = 'anim-bind 1s linear forwards';
+            container.style.width = '120px'; container.style.height = '120px';
+            container.style.borderRadius = '50%';
+            container.style.border = `solid ${corHex}`;
+            container.style.animation = 'shockwave 0.6s ease-out forwards';
         } else if (tipo === 'implosao') {
-            c.style.width = '300px'; c.style.height = '300px'; c.style.borderRadius = '50%';
-            c.style.background = `radial-gradient(circle, ${cor}88, transparent)`;
-            c.style.animation = 'anim-shield 0.8s reverse forwards';
+            container.style.width = '320px'; container.style.height = '320px';
+            container.style.borderRadius = '50%';
+            container.style.background = `radial-gradient(circle, ${corHex}88, transparent)`;
+            container.style.animation = 'implode 0.8s ease-in forwards';
         } else if (tipo === 'pilar') {
-            c.style.width = '100vw'; c.style.height = '100vh';
-            c.style.background = `linear-gradient(to top, transparent, ${cor}88, transparent)`;
-            c.style.animation = 'float-up 1s ease-in-out forwards';
+            container.style.width = '100vw'; container.style.height = '0';
+            container.style.background = `linear-gradient(to top, transparent, ${corHex}88, transparent)`;
+            container.style.animation = 'pilar-luz 1s ease-in-out forwards';
+            container.style.top = 'auto'; container.style.bottom = '0';
+        } else if (tipo === 'espiral') {
+            container.style.width = '150px'; container.style.height = '150px';
+            container.style.border = `4px dashed ${corHex}`;
+            container.style.borderRadius = '50%';
+            container.style.animation = 'spiralSpin 0.7s linear forwards';
+        } else {
+            for (let i = 0; i < 16; i++) {
+                const part = document.createElement('div');
+                part.className = 'lg-particle';
+                part.style.background = corHex;
+                part.style.boxShadow = `0 0 10px ${corHex}`;
+                
+                const size = Math.random() * 14 + 4;
+                part.style.width = `${size}px`; part.style.height = `${size}px`;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 160 + 40;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                part.style.transition = 'all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                part.style.transform = `translate(0px, 0px) scale(1)`;
+                part.style.opacity = '1';
+                
+                container.appendChild(part);
+                
+                setTimeout(() => {
+                    part.style.transform = `translate(${tx}px, ${ty}px) scale(0)`;
+                    part.style.opacity = '0';
+                }, 40);
+            }
+            setTimeout(() => container.remove(), 900);
         }
 
-        layer.appendChild(c);
-        setTimeout(() => c.remove(), 1500);
+        layer.appendChild(container);
+        if (tipo === 'explosao' || tipo === 'implosao' || tipo === 'pilar' || tipo === 'espiral') {
+            setTimeout(() => container.remove(), 1000);
+        }
+    }
+
+    criarTextoFlutuante(texto, cor, layer) {
+        const span = document.createElement('div');
+        span.className = 'lg-damage-text';
+        span.style.color = cor;
+        span.innerText = texto;
+        
+        const xOffset = (Math.random() - 0.5) * 110;
+        const yOffset = (Math.random() - 0.5) * 60;
+        
+        span.style.left = `calc(50% + ${xOffset}px)`;
+        span.style.top = `calc(50% + ${yOffset}px)`;
+        
+        layer.appendChild(span);
+        setTimeout(() => span.remove(), 1500);
     }
 
     animacaoTextoFlutuante(texto, cor) {
-        const t = document.createElement('div');
-        t.style.position = 'fixed'; t.style.top = '30%'; t.style.left = '50%'; t.style.transform = 'translate(-50%, -50%)';
-        t.style.color = cor; t.style.fontSize = '1.5rem'; t.style.fontWeight = '900'; t.style.textShadow = `0 4px 15px #000, 0 0 10px ${cor}`;
-        t.style.zIndex = '10001'; t.style.pointerEvents = 'none'; t.style.textAlign = 'center';
-        t.style.animation = 'float-up 1.3s ease-out forwards';
-        t.innerText = texto;
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 1300);
+        const textAnim = document.createElement('div');
+        textAnim.style.position = 'fixed';
+        textAnim.style.top = '28%';
+        textAnim.style.left = '50%';
+        textAnim.style.transform = 'translate(-50%, -50%)';
+        textAnim.style.color = cor;
+        textAnim.style.fontSize = '1.4rem';
+        textAnim.style.fontWeight = '900';
+        textAnim.style.textShadow = `0 4px 15px rgba(0,0,0,0.9), 0 0 10px ${cor}`;
+        textAnim.style.zIndex = '10001';
+        textAnim.style.pointerEvents = 'none';
+        textAnim.style.textAlign = 'center';
+        textAnim.style.animation = 'float-up 1.3s ease-out forwards';
+        textAnim.innerText = texto;
+
+        document.body.appendChild(textAnim);
+        setTimeout(() => textAnim.remove(), 1300);
+    }
+
+    enviarAcaoParaChat(forma, nomeEfeito, resumo, hex) {
+        if (!this.state.roomName || !this.multiplayerAtivo) return;
+        const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
+        push(chatRef, {
+            sender: this.meuId,
+            text: `<strong style="color:${hex}; background:rgba(0,0,0,0.6); padding:2px 6px; border-radius:4px;">[${forma}] ${nomeEfeito}</strong>${resumo}`,
+            type: "combat",
+            time: Date.now()
+        });
     }
 
     // ==========================================
-    // FORJA E MINIGAME FARM (MANTIDOS E AJUSTADOS)
+    // FORJA E FARM ARCANO
     // ==========================================
     criarItemDaLoja(tipoItem) {
-        const custo = Math.floor(this.state.stats.maxHp * 0.25);
-        if (this.state.stats.hp <= custo || this.state.stats.maxHp <= 300) return this.animacaoTextoFlutuante("HP Insuficiente!", "#ff0000");
+        const custoHpSacrificio = Math.floor(this.state.stats.maxHp * 0.25);
+        
+        if (this.state.stats.hp <= custoHpSacrificio || this.state.stats.maxHp <= 300) {
+            return this.animacaoTextoFlutuante("Falha: Resiliência Vital Insuficiente!", "#ff0000");
+        }
 
-        this.state.stats.hp -= custo;
-        this.emitirEventoDeRede('explosao', '#8b0000', this.meuId, custo, 'Sacrifício');
+        this.state.stats.hp -= custoHpSacrificio;
+        this.verificarEstadoMorte();
+        
+        this.emitirEventoDeRede('explosao', '#8b0000', this.meuId, custoHpSacrificio, 'Sacrifício de Sangue');
 
-        if (tipoItem === 'espada') { this.state.stats.ad += 35; this.animacaoTextoFlutuante("+35 AD", "#ffaa00"); } 
-        else if (tipoItem === 'tomo') { this.state.stats.ap += 50; this.atualizarTintaEstatistica(); this.animacaoTextoFlutuante("+50 AP", "#8a2be2"); } 
-        else if (tipoItem === 'cristal') { this.state.stats.maxHp += 300; this.state.stats.hp += 300; this.animacaoTextoFlutuante("+300 HP", "#ff3333"); }
-        document.getElementById('lg-modal-loja').classList.remove('active'); atualizarUI();
+        if (tipoItem === 'espada') {
+            this.state.stats.ad = (this.state.stats.ad || 0) + 35;
+            this.animacaoTextoFlutuante("Espada Longa Forjada! (+35 AD)", "#ffaa00");
+        } else if (tipoItem === 'tomo') {
+            this.state.stats.ap = (this.state.stats.ap || 0) + 50;
+            this.atualizarTintaEstatistica();
+            this.animacaoTextoFlutuante("Tomo Amplificador! (+50 AP)", "#8a2be2");
+        } else if (tipoItem === 'cristal') {
+            this.state.stats.maxHp += 300;
+            this.state.stats.hp += 300;
+            this.animacaoTextoFlutuante("Cristal de Rubi! (+300 HP)", "#ff3333");
+        }
+
+        document.getElementById('lg-modal-loja').classList.remove('active');
+        atualizarUI();
     }
 
     iniciarMinigameFarm() {
         const arena = document.getElementById('lg-farm-arena');
-        document.getElementById('lg-start-farm').style.display = 'none';
-        this.minigameScore = 0; this.minigameAtivo = true;
-        let c = 0;
+        const status = document.getElementById('lg-farm-status');
+        const btnStart = document.getElementById('lg-start-farm');
+        if (!arena) return;
 
-        const gerar = () => {
-            if (c >= 15 || !this.minigameAtivo) {
-                this.minigameAtivo = false;
-                document.getElementById('lg-start-farm').style.display = 'block';
-                const ouro = this.minigameScore * 75; this.state.gold += ouro;
-                this.animacaoTextoFlutuante(`Farm: +${ouro} Ouro`, "#ffff00");
-                setTimeout(() => document.getElementById('lg-modal-farm').classList.remove('active'), 1000);
-                atualizarUI(); return;
+        this.minigameScore = 0;
+        this.minigameAtivo = true;
+        status.innerText = "Pontos: 0";
+        btnStart.style.display = 'none';
+
+        let contador = 0;
+        const maxAlvos = 15;
+
+        const gerarAlvo = () => {
+            if (contador >= maxAlvos || !this.minigameAtivo) {
+                this.finalizarMinigameFarm();
+                return;
             }
 
-            const alvo = document.createElement('div');
-            alvo.style.position = 'absolute'; alvo.style.width = '50px'; alvo.style.height = '50px';
-            alvo.style.borderRadius = '50%'; alvo.style.background = 'radial-gradient(circle, #fff, var(--lg-gold))';
-            alvo.style.left = `${Math.random() * (arena.clientWidth - 50)}px`;
-            alvo.style.top = `${Math.random() * (arena.clientHeight - 50)}px`;
-            alvo.style.animation = 'float-up 0.8s ease-in reverse forwards';
+            const alvoEl = document.createElement('div');
+            alvoEl.style.position = 'absolute';
+            alvoEl.style.width = '48px';
+            alvoEl.style.height = '48px';
+            alvoEl.style.borderRadius = '50%';
+            alvoEl.style.background = 'radial-gradient(circle at 30% 30%, #fff, var(--lg-gold))';
+            alvoEl.style.boxShadow = '0 0 15px var(--lg-gold)';
+            alvoEl.style.left = `${Math.random() * (arena.clientWidth - 55)}px`;
+            alvoEl.style.top = `${Math.random() * (arena.clientHeight - 55)}px`;
+            alvoEl.style.cursor = 'pointer';
+            alvoEl.style.transition = 'transform 0.1s';
+            alvoEl.style.animation = 'float-up 0.8s ease-in reverse forwards';
+            
+            const tempoDecaimento = Math.max(350, 750 - (contador * 25));
 
-            const to = setTimeout(() => { if (alvo.parentNode) { alvo.remove(); gerar(); } }, Math.max(400, 800 - c * 25));
+            const timeoutTarget = setTimeout(() => {
+                if (alvoEl.parentNode) {
+                    alvoEl.style.background = '#ff0000';
+                    setTimeout(()=> alvoEl.remove(), 100);
+                    gerarAlvo();
+                }
+            }, tempoDecaimento); 
 
-            const hit = (e) => {
-                e.preventDefault(); clearTimeout(to); this.minigameScore++;
-                alvo.style.transform = 'scale(2)'; alvo.style.opacity = '0';
-                setTimeout(() => { alvo.remove(); gerar(); }, 150);
+            const onHit = (e) => {
+                e.preventDefault();
+                clearTimeout(timeoutTarget);
+                this.minigameScore += 1;
+                status.innerText = `Pontos: ${this.minigameScore} 🔥`;
+                
+                alvoEl.style.transform = 'scale(2)';
+                alvoEl.style.opacity = '0';
+                
+                setTimeout(() => {
+                    alvoEl.remove();
+                    gerarAlvo();
+                }, 120);
             };
-            alvo.addEventListener('mousedown', hit); alvo.addEventListener('touchstart', hit, { passive: false });
-            arena.appendChild(alvo); c++;
+
+            alvoEl.addEventListener('mousedown', onHit);
+            alvoEl.addEventListener('touchstart', onHit, { passive: false });
+
+            arena.appendChild(alvoEl);
+            contador++;
         };
-        gerar();
+
+        gerarAlvo();
+    }
+
+    finalizarMinigameFarm() {
+        this.minigameAtivo = false;
+        const btnStart = document.getElementById('lg-start-farm');
+        if (btnStart) btnStart.style.display = 'block';
+        
+        const ouroGanhado = this.minigameScore * 75;
+        const xpGanhado = this.minigameScore * 45;
+
+        this.state.gold = (this.state.gold || 0) + ouroGanhado;
+        this.animacaoTextoFlutuante(`Farm Rito: +${ouroGanhado} Ouro | +${xpGanhado} XP`, "#ffff00");
+        
+        setTimeout(() => {
+            const modalFarm = document.getElementById('lg-modal-farm');
+            if (modalFarm) modalFarm.classList.remove('active');
+        }, 1000);
+        
+        atualizarUI();
     }
 }
