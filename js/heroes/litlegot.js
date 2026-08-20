@@ -149,15 +149,20 @@ export default class Litlegot {
     }
 
     retornarABase() {
-        this.state.stats.mana = this.state.stats.maxMana;
-        this.state.stats.hp = this.state.stats.maxHp;
-        this.fecharTelaMorte();
-        
-        this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, `+${this.state.stats.maxHp}`, 'Retorno à Base');
-        this.animacaoTextoFlutuante("Restaurado na Base Arcano!", "#00ffcc");
-        atualizarUI();
+    const custoBase = 50; // Defina o valor em ouro aqui
+    if ((this.state.gold || 0) < custoBase) {
+        return this.animacaoTextoFlutuante("Ouro insuficiente para a Base!", "#ff0000");
     }
-
+    
+    this.state.gold -= custoBase;
+    this.state.stats.mana = this.state.stats.maxMana;
+    this.state.stats.hp = this.state.stats.maxHp;
+    this.fecharTelaMorte();
+    
+    this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, `+${this.state.stats.maxHp}`, 'Retorno à Base');
+    this.animacaoTextoFlutuante(`Base! (-${custoBase} Ouro)`, "#00ffcc");
+    atualizarUI();
+}
     // ==========================================
     // TELA DE MORTE E GERENCIAMENTO DE VIDA
     // ==========================================
@@ -415,7 +420,7 @@ export default class Litlegot {
                 <div class="lg-dock-btn" id="lg-btn-ateliere">🎨<span class="lg-dock-label">Arte</span></div>
                 <div class="lg-dock-btn" id="lg-btn-mochila">📜<span class="lg-dock-label">Mochila</span></div>
                 <div class="lg-dock-btn" id="lg-btn-farm">🌾<span class="lg-dock-label">Farm</span></div>
-                <div class="lg-dock-btn" id="lg-btn-loja">⚒️<span class="lg-dock-label">Forja</span></div>
+                <div class="lg-dock-btn" id="lg-btn-lanes">🗺️<span class="lg-dock-label">Lanes</span></div>
                 <div class="lg-dock-btn" id="lg-btn-base">🏛️<span class="lg-dock-label">Base</span></div>
             `;
             document.body.appendChild(dock);
@@ -461,20 +466,13 @@ export default class Litlegot {
             <button id="lg-start-farm" style="background:linear-gradient(90deg, #28a745, #218838); color:#fff; border:none; padding:14px; border-radius:12px; font-weight:900; font-size:1.1rem; width:100%; box-shadow:0 4px 15px rgba(40,167,69,0.4);">Iniciar Rito</button>
         `);
 
-        criarSheet('lg-modal-loja', '⚒️', 'Forja Física', '<span style="color:#ff4444;">Sacrifício Mítico: Transmuta 25% do HP Máximo em atributos permanentes.</span>', `
-            <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px;">
-                <button class="lg-craft-item" data-item="espada" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">⚔️</span> <div><b>Espada Longa (+35 AD)</b><br><small style="color:#aaa;">Dano físico direto.</small></div>
-                </button>
-                <button class="lg-craft-item" data-item="tomo" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">📘</span> <div><b>Tomo Amplificador (+50 AP)</b><br><small style="color:#aaa;">Potencializa magias de tinta.</small></div>
-                </button>
-                <button class="lg-craft-item" data-item="cristal" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; text-align:left; font-size:1rem; display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">💎</span> <div><b>Cristal de Rubi (+300 HP)</b><br><small style="color:#aaa;">Resiliência celular expandida.</small></div>
-                </button>
-            </div>
-        `);
-
+      criarSheet('lg-modal-lanes', '🗺️', 'Teleporte Arcano', 'Viaje entre as rotas (Custo: 100 Ouro | Recarga: 10s)', `
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px;">
+        <button class="lg-btn-lane" data-lane="TOP" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬆️ Rota Superior (TOP)</button>
+        <button class="lg-btn-lane" data-lane="MID" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⏺️ Rota Central (MID)</button>
+        <button class="lg-btn-lane" data-lane="BOT" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬇️ Rota Inferior (BOT)</button>
+    </div>
+`);
         this.vincularEventosModais();
         this.renderizarPaleta();
     }
@@ -528,7 +526,7 @@ export default class Litlegot {
         document.getElementById('lg-btn-ateliere').onclick = () => { togglePopup('lg-modal-canvas', true); setTimeout(()=>this.redimensionarCanvas(), 300); };
         document.getElementById('lg-btn-mochila').onclick = () => { this.atualizarListaDeAlvos(); this.atualizarUIFolhas(); togglePopup('lg-modal-mochila', true); };
         document.getElementById('lg-btn-farm').onclick = () => { togglePopup('lg-modal-farm', true); };
-        document.getElementById('lg-btn-loja').onclick = () => { togglePopup('lg-modal-loja', true); };
+        ocument.getElementById('lg-btn-lanes').onclick = () => { togglePopup('lg-modal-lanes', true); };
         document.getElementById('lg-btn-base').onclick = () => this.retornarABase();
 
         document.querySelectorAll('.lg-close-btn').forEach(btn => {
@@ -545,10 +543,9 @@ export default class Litlegot {
         document.getElementById('lg-btn-guardar').onclick = () => this.guardarDesenho();
         document.getElementById('lg-start-farm').onclick = () => this.iniciarMinigameFarm();
 
-        document.querySelectorAll('.lg-craft-item').forEach(btn => {
-            btn.onclick = (e) => this.criarItemDaLoja(e.currentTarget.dataset.item);
+        document.querySelectorAll('.lg-btn-lane').forEach(btn => {
+             btn.onclick = (e) => this.teleportarParaLane(e.currentTarget.dataset.lane);
         });
-
         const selectAlvo = document.getElementById('lg-alvo-select');
         if (selectAlvo) {
             selectAlvo.onchange = (e) => { this.alvoSelecionado = e.target.value; };
@@ -1199,4 +1196,29 @@ export default class Litlegot {
         
         atualizarUI();
     }
+    teleportarParaLane(lane) {
+    const custoTeleporte = 100;
+    const cooldownMs = 10000; // 10 segundos
+    const agora = Date.now();
+
+    if (agora - this.ultimoTeleporte < cooldownMs) {
+        const faltam = Math.ceil((cooldownMs - (agora - this.ultimoTeleporte)) / 1000);
+        return this.animacaoTextoFlutuante(`Em recarga! Aguarde ${faltam}s`, "#ffaa00");
+    }
+
+    if ((this.state.gold || 0) < custoTeleporte) {
+        return this.animacaoTextoFlutuante("Ouro insuficiente para teleporte!", "#ff0000");
+    }
+
+    this.state.gold -= custoTeleporte;
+    this.ultimoTeleporte = agora;
+
+    document.getElementById('lg-modal-lanes').classList.remove('active');
+    this.emitirEventoDeRede('espiral', '#c5a059', this.meuId, 0, `Teleporte: ${lane}`);
+    this.animacaoTextoFlutuante(`Movido para ${lane}! (-${custoTeleporte}G)`, "#c5a059");
+    atualizarUI();
+
+    // Arrumando a movimentação: Integração com a sua engine
+    if (window.moverNoMapa) window.moverNoMapa(lane.toLowerCase());
+}
 }
