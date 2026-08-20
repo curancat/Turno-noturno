@@ -15,6 +15,7 @@ export default class Litlegot {
         this.multiplayerAtivo = false;
         this.desenhandoCanvas = false;
         this.pontosDesenho = [];
+        this.ultimoTeleporte = 0;
 
         // Sistema de Tintas com Restrição por Nível e Nível Máximo (Trava de Segurança Level 30)
         this.tintas = {
