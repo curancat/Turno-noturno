@@ -1,556 +1,703 @@
-// ==========================================
-// HERÓI: LITLEGOT (Miraculous da Cabra)
-// MECÂNICA: CAVALETE (CANVAS REAL), TINTA ESTÁTICA, MINIGAME DE FARM, 21 HABILIDADES ATIVAS
-// ==========================================
-import { ref, push, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { ref, push, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { atualizarUI } from "../app.js";
 
 export default class Litlegot {
     constructor(gameState, db) {
         this.state = gameState;
         this.db = db;
-        
-        this.paginaPronta = true;
+
         this.corAtiva = 'red';
-        this.nivelHabilidadeAtivo = 'X'; // Prepara qual golpe será desenhado (X, O ou Z)
         this.alvoSelecionado = 'Inimigo da Rota';
-        
-        // Coordenadas do Canvas
-        this.isDrawing = false;
-        this.traços = 0; // Conta o quão longo foi o desenho
-        
-        // 7 Cores do Arco-íris / Paleta
+        this.folhasGuardadas = []; 
+        this.maxFolhas = 3;
+
+        this.multiplayerAtivo = false;
+        this.desenhandoCanvas = false;
+        this.pontosDesenho = [];
+        this.strokes = [];
+
+        // Sistema de Tintas (Não usa Mana; escala com AP; recarrega APENAS na Base)
         this.tintas = {
-            red: { nome: 'Fogo Carnificina', hex: '#ff3333', gasto: { X: 15, O: 30, Z: 60 } },
-            orange: { nome: 'Drenagem Vital', hex: '#ff8c00', gasto: { X: 10, O: 25, Z: 50 } },
-            yellow: { nome: 'Ouro e Clarão', hex: '#ffff00', gasto: { X: 5, O: 40, Z: 35 } },
-            green: { nome: 'Sopro da Natureza', hex: '#00ff00', gasto: { X: 20, O: 35, Z: 55 } },
-            blue: { nome: 'Barreiras de Água', hex: '#00bfff', gasto: { X: 15, O: 40, Z: 60 } },
-            purple: { nome: 'Sombras de Controle', hex: '#8a2be2', gasto: { X: 25, O: 45, Z: 70 } },
-            white: { nome: 'Artefato Divino', hex: '#ffffff', gasto: { X: 50, O: 80, Z: 150 } }
+            red: { nome: 'Fogo Carnificina', hex: '#ff3333', custo: 25 },
+            orange: { nome: 'Drenagem Vital', hex: '#ff8c00', custo: 20 },
+            yellow: { nome: 'Ouro e Clarão', hex: '#ffff00', custo: 15 },
+            green: { nome: 'Sopro da Natureza', hex: '#00ff00', custo: 30 },
+            blue: { nome: 'Barreiras de Água', hex: '#00bfff', custo: 25 },
+            purple: { nome: 'Sombras de Controle', hex: '#8a2be2', custo: 35 },
+            white: { nome: 'Luz Absoluta (Divino)', hex: '#ffffff', custo: 60 }
         };
+
+        // Estado do Minigame de Farm
+        this.minigameAtivo = false;
+        this.minigameAlvos = [];
+        this.minigameScore = 0;
+        this.minigameTimer = null;
     }
 
     iniciar() {
-        this.configurarTintaMecanica();
-        this.injetarEstilos();
-        this.injetarCavaleteUI();
-        this.injetarMinigameFarm();
-        this.vincularBotoesUI();
+        this.iniciarMonitoramentoMultiplayer();
+        this.injetarCSSMobileEPopups();
+        this.criarPopupsEModais();
+        this.vincularCanvasEventos();
+        this.atualizarTintaEstatistica();
         
-        // Loop que garante que a Tinta Máxima escale com o AP constantemente
-        // MAS NÃO REGENERA A TINTA!
-        setInterval(() => this.atualizarMaxTinta(), 2000);
-    }
-
-    // ==========================================
-    // ESCALONAMENTO DE TINTA E BASE
-    // ==========================================
-    configurarTintaMecanica() {
-        const manaLabel = document.querySelector('.stat-row:nth-child(2) span') || document.querySelector('.mana-label');
-        if (manaLabel) manaLabel.innerText = 'Tinta (Base p/ Recarregar):';
-        
-        this.atualizarMaxTinta();
-        this.state.stats.mana = this.state.stats.maxMana; // Inicia cheio
+        // Bloqueia regeneração automática de mana/tinta por tempo
+        this.state.stats.manaRegen = 0;
+        this.state.stats.mana = this.state.stats.maxMana;
         atualizarUI();
     }
 
-    atualizarMaxTinta() {
-        const tintaBase = 100;
+    // ==========================================
+    // MULTIPLAYER E BASE DE TINTA
+    // ==========================================
+    iniciarMonitoramentoMultiplayer() {
+        if (!this.state.roomName) return;
+        const playersRef = ref(this.db, `rooms/${this.state.roomName}/players`);
+        onValue(playersRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const qtdJogadores = Object.keys(data).length;
+                this.multiplayerAtivo = qtdJogadores > 1;
+                if (this.multiplayerAtivo) {
+                    this.state.modoSimulado = false;
+                }
+            }
+        });
+    }
+
+    atualizarTintaEstatistica() {
         const apAtual = this.state.stats.ap || 0;
-        const maxTintaCalculada = Math.floor(tintaBase + (apAtual * 3.0)); // Escala com AP
-        
-        this.state.stats.maxMana = maxTintaCalculada;
-        
-        // Garante que não ultrapasse o máximo, mas NUNCA regenera sozinho
+        this.state.stats.maxMana = Math.floor(100 + (apAtual * 3.0));
         if (this.state.stats.mana > this.state.stats.maxMana) {
             this.state.stats.mana = this.state.stats.maxMana;
         }
         atualizarUI();
     }
 
-    voltarParaBase() {
-        this.animacaoTextoFlutuante("Retornando à Base... Tinta Restaurada!", "#ffffff");
-        setTimeout(() => {
-            this.state.stats.mana = this.state.stats.maxMana;
-            this.state.stats.hp = this.state.stats.maxHp;
-            atualizarUI();
-        }, 3000); // 3 segundos de cast para voltar à base
+    retornarABase() {
+        this.atualizarTintaEstatistica();
+        this.state.stats.mana = this.state.stats.maxMana;
+        this.animacaoTextoFlutuante("Tinta Totalmente Recarregada na Base!", "#00ffcc");
+        atualizarUI();
     }
 
     // ==========================================
-    // UI: CAVALETE INTERATIVO (CANVAS)
+    // UI COMPACTA MOBILE & MODAIS EM POPUPS
     // ==========================================
-    injetarCavaleteUI() {
-        const controleHabilidades = document.querySelector('.skills-controls') || document.getElementById('game-screen');
-        if (!controleHabilidades || document.getElementById('cavalete-container')) return;
+    injetarCSSMobileEPopups() {
+        if (document.getElementById('litlegot-styles-v2')) return;
+        const style = document.createElement('style');
+        style.id = 'litlegot-styles-v2';
+        style.innerHTML = `
+            .lg-fab-container {
+                position: fixed; bottom: 15px; right: 15px; z-index: 9999;
+                display: flex; flex-direction: column; gap: 8px;
+            }
+            .lg-fab {
+                width: 52px; height: 52px; border-radius: 50%; border: 2px solid #c5a059;
+                background: #121225; color: #fff; font-size: 1.2rem; display: flex;
+                align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                touch-action: manipulation;
+            }
+            .lg-popup {
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 10000;
+                display: none; align-items: center; justify-content: center; padding: 10px;
+                box-sizing: border-box;
+            }
+            .lg-popup-card {
+                background: #1a1a2e; border: 2px solid #c5a059; border-radius: 12px;
+                width: 100%; max-width: 420px; padding: 15px; color: #fff;
+                box-shadow: 0 0 20px rgba(197, 160, 89, 0.3); display: flex;
+                flex-direction: column; gap: 10px; max-height: 90vh; overflow-y: auto;
+            }
+            .lg-canvas-box {
+                width: 100%; height: 260px; background: #0b0b14; border: 2px dashed #444;
+                border-radius: 8px; touch-action: none; position: relative;
+            }
+            .lg-palette {
+                display: flex; justify-content: space-between; gap: 4px; overflow-x: auto; padding: 4px 0;
+            }
+            .lg-color-dot {
+                width: 32px; height: 32px; border-radius: 50%; border: 2px solid #555; flex-shrink: 0;
+            }
+            .lg-color-dot.active { border-color: #fff; transform: scale(1.15); }
+            .lg-grid-folhas {
+                display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+            }
+            .lg-folha-card {
+                border: 1px solid #c5a059; background: #0f0f1d; border-radius: 6px;
+                padding: 8px; text-align: center; font-size: 0.8rem; cursor: pointer;
+            }
+            @keyframes shockwave {
+                0% { transform: scale(0.2); opacity: 1; }
+                100% { transform: scale(2.5); opacity: 0; }
+            }
+            .lg-effect-layer {
+                position: fixed; top:0; left:0; width:100vw; height:100vh;
+                pointer-events:none; z-index:9998;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
-        const container = document.createElement('div');
-        container.id = 'cavalete-container';
-        container.innerHTML = `
-            <div style="background:#111; padding:10px; border:2px solid var(--ouro-antigo, #c5a059); border-radius:8px; margin-top:15px;">
-                <h4 style="color:#fff; text-align:center; margin:0 0 10px 0;">🎨 Tela de Pintura</h4>
+    criarPopupsEModais() {
+        // Overlay de Efeitos Visuais
+        if (!document.getElementById('lg-effect-layer')) {
+            const layer = document.createElement('div');
+            layer.id = 'lg-effect-layer';
+            layer.className = 'lg-effect-layer';
+            document.body.appendChild(layer);
+        }
+
+        // Botoes Flutuantes (FAB) para Acesso Rapido Mobile
+        const fabContainer = document.createElement('div');
+        fabContainer.className = 'lg-fab-container';
+        fabContainer.innerHTML = `
+            <button class="lg-fab" id="lg-btn-ateliere" title="Ateliê de Pintura">🎨</button>
+            <button class="lg-fab" id="lg-btn-mochila" title="Mochila de Desenhos">📜</button>
+            <button class="lg-fab" id="lg-btn-farm" title="Minigame de Farm">🌾</button>
+            <button class="lg-fab" id="lg-btn-loja" title="Criar Item em Campo">⚒️</button>
+            <button class="lg-fab" id="lg-btn-base" title="Retornar à Base">🏛️</button>
+        `;
+        document.body.appendChild(fabContainer);
+
+        // Modal 1: Atelier / Canvas de Desenho
+        const popupCanvas = document.createElement('div');
+        popupCanvas.id = 'lg-modal-canvas';
+        popupCanvas.className = 'lg-popup';
+        popupCanvas.innerHTML = `
+            <div class="lg-popup-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#c5a059; font-size:1.1rem;">🎨 Ateliê do Cavalete</h3>
+                    <button class="lg-close-btn" style="background:none; border:none; color:#fff; font-size:1.2rem;">✕</button>
+                </div>
+                <div style="font-size:0.8rem; color:#aaa;">Desenhe as formas <b>O</b>, <b>X</b> ou <b>Z</b> na tela em um único traço fluido.</div>
                 
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <select id="alvo-cavalete" style="background:#222; color:#fff; padding:5px; border:1px solid #444; width:48%;">
-                        <option value="Inimigo da Rota">Inimigo</option>
-                        <option value="Minion Inimigo">Minion</option>
-                        <option value="Aliado">Aliado</option>
-                        <option value="Si Mesmo">Si Mesmo</option>
-                    </select>
-                    <select id="nivel-skill" style="background:#222; color:#fff; padding:5px; border:1px solid #444; width:48%;">
-                        <option value="X">Nível X (Leve)</option>
-                        <option value="O">Nível O (Médio)</option>
-                        <option value="Z">Nível Z (Supremo)</option>
-                    </select>
+                <div class="lg-palette" id="lg-palette-select"></div>
+
+                <div class="lg-canvas-box">
+                    <canvas id="lg-paint-canvas" style="width:100%; height:100%;"></canvas>
                 </div>
 
-                <div style="position:relative; width:100%; height:200px; background:#fffbea; border-radius:4px; overflow:hidden;" id="canvas-wrapper">
-                    <canvas id="cavalete-canvas" style="width:100%; height:100%; cursor:crosshair; touch-action:none;"></canvas>
-                    <div id="aviso-canvas" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#888; pointer-events:none; font-weight:bold; opacity:0.5;">Desenhe o Golpe Aqui</div>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <button id="btn-base" style="background:#4a90e2; color:white; padding:8px; border:none; border-radius:4px; width:48%;">🏰 Voltar à Base</button>
-                    <button id="skill-redraw" style="background:#e67e22; color:white; padding:8px; border:none; border-radius:4px; width:48%;">🔄 Limpar Tela</button>
+                <div style="display:flex; gap:8px;">
+                    <button id="lg-btn-limpar" style="flex:1; background:#333; color:#fff; border:none; padding:8px; border-radius:4px;">Limpar</button>
+                    <button id="lg-btn-guardar" style="flex:2; background:#c5a059; color:#000; font-weight:bold; border:none; padding:8px; border-radius:4px;">Guardar Folha</button>
                 </div>
             </div>
         `;
-        
-        controleHabilidades.appendChild(container);
-        this.configurarEventosCanvas();
+        document.body.appendChild(popupCanvas);
+
+        // Modal 2: Mochila de Desenhos Guardados
+        const popupMochila = document.createElement('div');
+        popupMochila.id = 'lg-modal-mochila';
+        popupMochila.className = 'lg-popup';
+        popupMochila.innerHTML = `
+            <div class="lg-popup-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#c5a059; font-size:1.1rem;">📜 Folhas Guardadas</h3>
+                    <button class="lg-close-btn" style="background:none; border:none; color:#fff; font-size:1.2rem;">✕</button>
+                </div>
+                <div style="font-size:0.8rem; color:#aaa;">Selecione o Alvo e toque no desenho para ativá-lo no campo:</div>
+                
+                <select id="lg-alvo-select" style="background:#0f0f1d; color:#fff; padding:8px; border:1px solid #c5a059; border-radius:4px;">
+                    <option value="Inimigo da Rota">Inimigo (Herói)</option>
+                    <option value="Minion Inimigo">Minion Inimigo</option>
+                    <option value="Torre Inimiga">Torre Inimiga</option>
+                    <option value="Si Mesmo">Si Mesmo</option>
+                    <option value="Aliado">Aliado</option>
+                </select>
+
+                <div class="lg-grid-folhas" id="lg-folhas-container"></div>
+            </div>
+        `;
+        document.body.appendChild(popupMochila);
+
+        // Modal 3: Rito de Farm (Minigame Rítmico)
+        const popupFarm = document.createElement('div');
+        popupFarm.id = 'lg-modal-farm';
+        popupFarm.className = 'lg-popup';
+        popupFarm.innerHTML = `
+            <div class="lg-popup-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#c5a059; font-size:1.1rem;">🌾 Rito de Farm Rítmico</h3>
+                    <button class="lg-close-btn" style="background:none; border:none; color:#fff; font-size:1.2rem;">✕</button>
+                </div>
+                <div style="font-size:0.8rem; color:#aaa;">Toque nas Runas na ordem exata antes do tempo esgotar para farmar Ouro e XP!</div>
+                
+                <div style="position:relative; width:100%; height:250px; background:#080811; border:1px solid #333; border-radius:6px; overflow:hidden;" id="lg-farm-arena">
+                    <div id="lg-farm-status" style="position:absolute; top:5px; left:5px; color:#fff; font-size:0.8rem;">Pontos: 0</div>
+                </div>
+
+                <button id="lg-start-farm" style="background:#28a745; color:#fff; border:none; padding:10px; border-radius:4px; font-weight:bold;">Iniciar Rito</button>
+            </div>
+        `;
+        document.body.appendChild(popupFarm);
+
+        // Modal 4: Criação de Itens Fora da Base
+        const popupLoja = document.createElement('div');
+        popupLoja.id = 'lg-modal-loja';
+        popupLoja.className = 'lg-popup';
+        popupLoja.innerHTML = `
+            <div class="lg-popup-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#c5a059; font-size:1.1rem;">⚒️ Forja Divina Fora da Base</h3>
+                    <button class="lg-close-btn" style="background:none; border:none; color:#fff; font-size:1.2rem;">✕</button>
+                </div>
+                <div style="font-size:0.8rem; color:#ff8c00;">Custo: **20% HP de Litlegot** + **15% HP do Aliado**. Falha se a vida estiver abaixo de 25%.</div>
+                
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="lg-craft-item" data-item="elixir" style="background:#222; color:#fff; border:1px solid #444; padding:8px; border-radius:4px; text-align:left;">
+                        🧪 **Elixir Efêmero**: +40 AP e +30 AD temporários por 30s.
+                    </button>
+                    <button class="lg-craft-item" data-item="escudo" style="background:#222; color:#fff; border:1px solid #444; padding:8px; border-radius:4px; text-align:left;">
+                        🛡️ **Aegis de Tinta**: Escudo de 250 HP imediato para o aliado.
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popupLoja);
+
+        this.vincularEventosModais();
+        this.renderizarPaleta();
     }
 
-    configurarEventosCanvas() {
-        const canvas = document.getElementById('cavalete-canvas');
+    renderizarPaleta() {
+        const container = document.getElementById('lg-palette-select');
+        if (!container) return;
+        container.innerHTML = '';
+
+        Object.keys(this.tintas).forEach(corKey => {
+            const cor = this.tintas[corKey];
+            const dot = document.createElement('div');
+            dot.className = `lg-color-dot ${corKey === this.corAtiva ? 'active' : ''}`;
+            dot.style.backgroundColor = cor.hex;
+            dot.dataset.color = corKey;
+            dot.addEventListener('click', () => {
+                document.querySelectorAll('.lg-color-dot').forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                this.corAtiva = corKey;
+            });
+            container.appendChild(dot);
+        });
+    }
+
+    vincularEventosModais() {
+        const togglePopup = (id, show) => {
+            const popup = document.getElementById(id);
+            if (popup) popup.style.display = show ? 'flex' : 'none';
+        };
+
+        document.getElementById('lg-btn-ateliere').onclick = () => { togglePopup('lg-modal-canvas', true); this.redimensionarCanvas(); };
+        document.getElementById('lg-btn-mochila').onclick = () => { this.atualizarUIFolhas(); togglePopup('lg-modal-mochila', true); };
+        document.getElementById('lg-btn-farm').onclick = () => togglePopup('lg-modal-farm', true);
+        document.getElementById('lg-btn-loja').onclick = () => togglePopup('lg-modal-loja', true);
+        document.getElementById('lg-btn-base').onclick = () => this.retornarABase();
+
+        document.querySelectorAll('.lg-close-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.target.closest('.lg-popup').style.display = 'none';
+            };
+        });
+
+        document.getElementById('lg-btn-limpar').onclick = () => this.limparCanvas();
+        document.getElementById('lg-btn-guardar').onclick = () => this.guardarDesenho();
+        document.getElementById('lg-start-farm').onclick = () => this.iniciarMinigameFarm();
+
+        document.querySelectorAll('.lg-craft-item').forEach(btn => {
+            btn.onclick = (e) => this.criarItemForaDaBase(e.currentTarget.dataset.item);
+        });
+
+        const selectAlvo = document.getElementById('lg-alvo-select');
+        if (selectAlvo) {
+            selectAlvo.onchange = (e) => { this.alvoSelecionado = e.target.value; };
+        }
+    }
+
+    // ==========================================
+    // RECONHECIMENTO DE DESENHO NO CANVAS (O, X, Z)
+    // ==========================================
+    vincularCanvasEventos() {
+        const canvas = document.getElementById('lg-paint-canvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const wrapper = document.getElementById('canvas-wrapper');
-        const aviso = document.getElementById('aviso-canvas');
-        
-        // Ajusta tamanho real do canvas
-        canvas.width = wrapper.clientWidth;
-        canvas.height = wrapper.clientHeight;
+
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        };
 
         const startDraw = (e) => {
-            if (!this.paginaPronta) return;
-            e.preventDefault();
-            this.isDrawing = true;
-            this.traços = 0;
-            aviso.style.display = 'none';
+            this.desenhandoCanvas = true;
+            this.pontosDesenho = [];
+            const pos = getPos(e);
+            this.pontosDesenho.push(pos);
             ctx.beginPath();
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            ctx.moveTo(x, y);
-            
+            ctx.moveTo(pos.x, pos.y);
             ctx.strokeStyle = this.tintas[this.corAtiva].hex;
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
         };
 
         const draw = (e) => {
-            if (!this.isDrawing || !this.paginaPronta) return;
-            e.preventDefault();
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            
-            ctx.lineTo(x, y);
+            if (!this.desenhandoCanvas) return;
+            const pos = getPos(e);
+            this.pontosDesenho.push(pos);
+            ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            this.traços++; // Mede a intensidade do desenho
         };
 
         const stopDraw = () => {
-            if (!this.isDrawing) return;
-            this.isDrawing = false;
-            ctx.closePath();
-
-            if (this.traços > 10) {
-                // Desenho validado, executar habilidade!
-                this.usarPagina();
-            } else {
-                // Desenho muito curto, ignorar
-                this.limparCanvas();
-                aviso.style.display = 'block';
-            }
+            if (!this.desenhandoCanvas) return;
+            this.desenhandoCanvas = false;
         };
 
-        // Eventos Mobile e PC
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('mouseout', stopDraw);
 
-        canvas.addEventListener('touchstart', startDraw, {passive: false});
-        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchstart', startDraw, { passive: true });
+        canvas.addEventListener('touchmove', draw, { passive: true });
         canvas.addEventListener('touchend', stopDraw);
     }
 
+    redimensionarCanvas() {
+        const canvas = document.getElementById('lg-paint-canvas');
+        if (!canvas) return;
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        this.limparCanvas();
+    }
+
     limparCanvas() {
-        const canvas = document.getElementById('cavalete-canvas');
+        const canvas = document.getElementById('lg-paint-canvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        document.getElementById('aviso-canvas').style.display = 'block';
+        this.pontosDesenho = [];
     }
 
-    vincularBotoesUI() {
-        // Cores
-        const colorBtns = document.querySelectorAll('.color-btn');
-        colorBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.corAtiva = e.target.dataset.color;
-                this.animacaoTextoFlutuante(`Tinta ${this.tintas[this.corAtiva].nome}`, this.tintas[this.corAtiva].hex);
-            });
+    reconhecerForma() {
+        const pts = this.pontosDesenho;
+        if (pts.length < 8) return null;
+
+        const start = pts[0];
+        const end = pts[pts.length - 1];
+        const distStartEnd = Math.hypot(end.x - start.x, end.y - start.y);
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
         });
 
-        // Configurações
-        document.getElementById('alvo-cavalete')?.addEventListener('change', (e) => this.alvoSelecionado = e.target.value);
-        document.getElementById('nivel-skill')?.addEventListener('change', (e) => this.nivelHabilidadeAtivo = e.target.value);
-        document.getElementById('skill-redraw')?.addEventListener('click', () => this.desenharNovaPagina());
-        document.getElementById('btn-base')?.addEventListener('click', () => this.voltarParaBase());
-        document.getElementById('btn-farm-minigame')?.addEventListener('click', () => this.iniciarMinigameFarm());
-    }
+        const width = maxX - minX;
+        const height = maxY - minY;
 
-    // ==========================================
-    // SISTEMA DE PRECISÃO E CUSTO DE HABILIDADE
-    // ==========================================
-    usarPagina() {
-        const tecla = this.nivelHabilidadeAtivo;
-        const cor = this.tintas[this.corAtiva];
-        const custoTinta = cor.gasto[tecla];
-
-        if (this.state.stats.mana < custoTinta) {
-            this.limparCanvas();
-            return this.animacaoTextoFlutuante(`Falta Tinta! (Custo: ${custoTinta})`, "#ff0000");
+        // Reconhece 'O' (Loop Fechado)
+        if (distStartEnd < 40 && width > 30 && height > 30) {
+            return 'O';
         }
 
-        this.paginaPronta = false;
-        this.state.stats.mana -= custoTinta;
-        document.getElementById('cavalete-canvas').style.pointerEvents = 'none';
-        document.getElementById('cavalete-canvas').style.opacity = '0.5';
+        // Analisa direções transversais para reconhecer 'Z' e 'X'
+        let MudancasDirecaoX = 0;
+        for (let i = 2; i < pts.length - 2; i++) {
+            const dirPrev = pts[i].x - pts[i - 2].x;
+            const dirNext = pts[i + 2].x - pts[i].x;
+            if ((dirPrev > 0 && dirNext < 0) || (dirPrev < 0 && dirNext > 0)) {
+                MudancasDirecaoX++;
+            }
+        }
 
-        // Rolagem de Dado Interno (Falha Crítica)
-        let chanceDeAcerto = 75 + Math.floor(this.state.level / 2); 
-        if (chanceDeAcerto > 95) chanceDeAcerto = 95;
+        if (MudancasDirecaoX >= 2) return 'Z';
+        if (height > width * 1.2 || width > height * 1.2) return 'X';
 
-        if ((Math.random() * 100) > chanceDeAcerto) {
-            this.animacaoEfeitoVisual("#555555", "borrão");
-            this.enviarAtaqueParaChat(tecla, cor.nome, `borrou a tela acidentalmente e perdeu a tinta!`, "#777");
-            atualizarUI();
+        return 'X'; // Fallback padrão
+    }
+
+    guardarDesenho() {
+        if (this.folhasGuardadas.length >= this.maxFolhas) {
+            return this.animacaoTextoFlutuante("Mochila Cheia! (Máx 3 folhas)", "#ff0000");
+        }
+
+        const forma = this.reconhecerForma();
+        if (!forma) {
+            return this.animacaoTextoFlutuante("Desenho Riscado/Incompleto!", "#ff8c00");
+        }
+
+        const corData = this.tintas[this.corAtiva];
+        if (this.state.stats.mana < corData.custo) {
+            return this.animacaoTextoFlutuante(`Sem tinta! Custo: ${corData.custo}`, "#ff0000");
+        }
+
+        this.state.stats.mana -= corData.custo;
+        this.folhasGuardadas.push({
+            id: Date.now(),
+            forma: forma,
+            corKey: this.corAtiva,
+            corHex: corData.hex,
+            nomeCor: corData.nome,
+            apSnapshot: this.state.stats.ap || 0
+        });
+
+        this.limparCanvas();
+        this.animacaoTextoFlutuante(`Folha [${forma}] Guardada!`, corData.hex);
+        document.getElementById('lg-modal-canvas').style.display = 'none';
+        atualizarUI();
+    }
+
+    atualizarUIFolhas() {
+        const container = document.getElementById('lg-folhas-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (this.folhasGuardadas.length === 0) {
+            container.innerHTML = '<div style="grid-column:1/span 3; color:#777; font-size:0.8rem;">Nenhum desenho guardado.</div>';
             return;
         }
 
-        this.executarMecanicaReal(tecla, cor);
+        this.folhasGuardadas.forEach((folha, index) => {
+            const card = document.createElement('div');
+            card.className = 'lg-folha-card';
+            card.style.borderColor = folha.corHex;
+            card.innerHTML = `
+                <div style="font-size:1.5rem; font-weight:bold; color:${folha.corHex}">${folha.forma}</div>
+                <div style="font-size:0.65rem; color:#aaa;">${folha.nomeCor}</div>
+                <button style="margin-top:5px; background:${folha.corHex}; color:#000; border:none; border-radius:3px; font-weight:bold; width:100%;">Usar</button>
+            `;
+            card.querySelector('button').onclick = () => this.ativarFolha(index);
+            container.appendChild(card);
+        });
     }
 
     // ==========================================
-    // AS 21 MECÂNICAS (AGORA COM EFEITOS REAIS DE STATUS)
+    // EXECUÇÃO REAL DE HABILIDADES NO CAMPO
     // ==========================================
-    executarMecanicaReal(tecla, cor) {
-        let efeitoTexto = "";
-        const ap = this.state.stats.ap || 0;
-        const ad = this.state.stats.ad || 0;
+    ativarFolha(index) {
+        const folha = this.folhasGuardadas[index];
+        if (!folha) return;
+
+        this.folhasGuardadas.splice(index, 1);
+        this.atualizarUIFolhas();
+        document.getElementById('lg-modal-mochila').style.display = 'none';
+
+        this.executarEfeitoEmCampo(folha.forma, folha.corKey, folha.apSnapshot);
+    }
+
+    executarEfeitoEmCampo(forma, corKey, apSnap) {
+        const ap = apSnap || this.state.stats.ap || 0;
         const alvo = this.alvoSelecionado;
-        const ehInimigo = alvo.includes("Inimigo");
+        const hex = this.tintas[corKey].hex;
+        let resumoEfeito = "";
 
-        // VERMELHO (DANO E QUEIMADURA)
-        if (this.corAtiva === 'red') {
-            if (tecla === 'X') {
-                const dano = Math.floor((ap * 1.5) + (ad * 0.5));
-                efeitoTexto = `atirou uma fagulha perfurante, causando **${dano} de Dano** em [${alvo}].`;
-                this.animacaoEfeitoVisual(cor.hex, 'explosao-pequena');
-            } else if (tecla === 'O') {
-                const dano = Math.floor(ap * 2);
-                efeitoTexto = `pintou um mar de fogo! [${alvo}] queimará recebendo **${dano} de Dano** ao longo do tempo.`;
-                this.animacaoEfeitoVisual(cor.hex, 'fogo-area');
-                // Simulação de DoT
-            } else if (tecla === 'Z') {
-                const dano = Math.floor(ap * 4.5);
-                efeitoTexto = `desenhou um METEORO GIGANTE, obliterando [${alvo}] com **${dano} de Dano Crítico**!`;
-                this.animacaoEfeitoVisual(cor.hex, 'explosao-meteoro');
-            }
+        // Aplicação Real no Estado de Jogo
+        if (corKey === 'red') {
+            const dano = forma === 'X' ? Math.floor(ap * 1.8) : (forma === 'O' ? Math.floor(ap * 2.5) : Math.floor(ap * 4.2));
+            if (alvo === 'Inimigo da Rota') this.state.enemyHp = Math.max(0, (this.state.enemyHp || 1000) - dano);
+            resumoEfeito = `desferiu arte incandescente [${forma}] causando **${dano} de Dano Real** em [${alvo}]!`;
+            this.criarEfeitoOnda(hex);
+        } 
+        else if (corKey === 'orange') {
+            const cura = Math.floor(ap * 1.2);
+            this.curar(cura);
+            if (forma === 'Z') this.state.stats.mana = Math.min(this.state.stats.maxMana, this.state.stats.mana + 40);
+            resumoEfeito = `drenou pigmentos vitais de [${alvo}], curando **+${cura} HP**!`;
+            this.criarEfeitoOnda(hex);
         }
-        // LARANJA (VAMPIRISMO E DEBUFFS)
-        else if (this.corAtiva === 'orange') {
-            if (tecla === 'X') {
-                const cura = Math.floor(ap * 1.2);
-                this.curar(cura);
-                efeitoTexto = `drenou a vida de [${alvo}], curando Litlegot em **+${cura} HP**.`;
-                this.animacaoEfeitoVisual(cor.hex, 'drenar');
-            } else if (tecla === 'O') {
-                efeitoTexto = `corroeu a armadura de [${alvo}], reduzindo drasticamente suas defesas por 10s.`;
-                // Debuff real inimigo via banco (simplificado no chat para leitura)
-            } else if (tecla === 'Z') {
-                const curaHP = Math.floor(ap * 2);
-                this.curar(curaHP);
-                this.state.stats.mana += 80; // Apenas essa skill recupera tinta fora da base
-                efeitoTexto = `sugou a alma de [${alvo}], restaurando **+${curaHP} HP** e forçando **+80 de Tinta**!`;
-            }
+        else if (corKey === 'yellow') {
+            const ouro = Math.floor(35 + (ap * 0.3));
+            this.state.gold = (this.state.gold || 0) + ouro;
+            this.state.stats.ms = (this.state.stats.ms || 300) + 40;
+            setTimeout(() => this.state.stats.ms -= 40, 5000);
+            resumoEfeito = `iluminou o campo com [${forma}], recebendo **+${ouro} 🪙** e velocidade!`;
+            this.criarEfeitoOnda(hex);
         }
-        // AMARELO (VISÃO E VELOCIDADE)
-        else if (this.corAtiva === 'yellow') {
-            if (tecla === 'X') {
-                efeitoTexto = `desenhou um Sol, concedendo Visão Verdadeira do mapa e revelando [${alvo}].`;
-            } else if (tecla === 'O') {
-                const ouroGerado = Math.floor(30 + (ap * 0.3));
-                this.state.gold += ouroGerado;
-                efeitoTexto = `transmutou poeira em ouro usando [${alvo}], garantindo **+${ouroGerado} 🪙**.`;
-            } else if (tecla === 'Z') {
-                this.state.stats.ms += 80; 
-                setTimeout(() => { this.state.stats.ms -= 80; atualizarUI(); }, 8000);
-                efeitoTexto = `pintou rodas de luz nos pés! Litlegot ganha **+80 Vel. Movimento** por 8s.`;
-                this.animacaoEfeitoVisual(cor.hex, 'buff-velocidade');
-            }
+        else if (corKey === 'green') {
+            const curaVida = Math.floor(ap * 2.0);
+            this.curar(curaVida);
+            this.state.stats.maxHp += 30;
+            resumoEfeito = `esculpiu a Natureza viva em [${alvo}], garantindo **+${curaVida} HP** e +30 Max HP permanentemente!`;
+            this.criarEfeitoOnda(hex);
         }
-        // VERDE (CURA E CONTROLE)
-        else if (this.corAtiva === 'green') {
-            if (tecla === 'X') {
-                const cura = Math.floor(ap * 1.5);
-                if (!ehInimigo) this.curar(cura); // Cura aliado ou si mesmo
-                efeitoTexto = `envolveu [${alvo}] com vinhas curativas, restaurando **+${cura} HP**.`;
-            } else if (tecla === 'O') {
-                const bonusVida = Math.floor(ap * 1.0);
-                this.state.stats.maxHp += bonusVida;
-                this.curar(bonusVida);
-                efeitoTexto = `reforçou a biologia de [${alvo}], adicionando **+${bonusVida} Vida Máxima** permanente!`;
-            } else if (tecla === 'Z') {
-                efeitoTexto = `desenhou raízes titânicas de Yggdrasil, enraizando [${alvo}] completamente por 4 segundos.`;
-                this.animacaoEfeitoVisual(cor.hex, 'raizes');
-            }
+        else if (corKey === 'blue') {
+            const escudo = Math.floor(100 + (ap * 1.5));
+            this.state.stats.shield = (this.state.stats.shield || 0) + escudo;
+            resumoEfeito = `pintou Barreira Fluida [${forma}] concedendo **+${escudo} de Escudo Proteção**!`;
+            this.criarEfeitoOnda(hex);
         }
-        // AZUL (DEFESA E TEMPO)
-        else if (this.corAtiva === 'blue') {
-            if (tecla === 'X') {
-                this.state.stats.def += 50; setTimeout(() => { this.state.stats.def -= 50; atualizarUI(); }, 8000);
-                efeitoTexto = `criou uma armadura de Safira em [${alvo}], ganhando **+50 Defesa Física** por 8s.`;
-            } else if (tecla === 'O') {
-                this.state.stats.mdef += 50; setTimeout(() => { this.state.stats.mdef -= 50; atualizarUI(); }, 8000);
-                efeitoTexto = `desenhou um prisma místico em [${alvo}], ganhando **+50 Defesa Mágica** por 8s.`;
-            } else if (tecla === 'Z') {
-                const cdrBonus = 60;
-                this.state.stats.cdr += cdrBonus; setTimeout(() => { this.state.stats.cdr -= cdrBonus; atualizarUI(); }, 6000);
-                efeitoTexto = `dobrou o tecido do tempo! Ganhou **+60% de Redução de Recarga** por 6s.`;
-                this.animacaoEfeitoVisual(cor.hex, 'relogio');
-            }
+        else if (corKey === 'purple') {
+            this.state.enemySilenced = true;
+            setTimeout(() => this.state.enemySilenced = false, 4000);
+            resumoEfeito = `traçou Sombras de Controle em [${alvo}], **Silenciando e Paralisando** por 4 segundos!`;
+            this.criarEfeitoOnda(hex);
         }
-        // ROXO (CONTROLE PROFUNDO)
-        else if (this.corAtiva === 'purple') {
-            if (tecla === 'X') {
-                efeitoTexto = `amordaçou [${alvo}] com tinta sombria, aplicando **Silêncio** por 3s.`;
-            } else if (tecla === 'O') {
-                const danoVerdadeiro = Math.floor(ap * 1.5);
-                efeitoTexto = `perfurou a sanidade de [${alvo}], causando **${danoVerdadeiro} de Dano Verdadeiro**.`;
-                this.animacaoEfeitoVisual(cor.hex, 'dano-verdadeiro');
-            } else if (tecla === 'Z') {
-                efeitoTexto = `abriu um BURACO NEGRO embaixo de [${alvo}], banindo-o instantaneamente para a Base!`;
-                this.animacaoEfeitoVisual(cor.hex, 'buraco-negro');
-            }
-        }
-        // BRANCO (CRIAÇÃO DE ITENS E ULTIMATE)
-        else if (this.corAtiva === 'white') {
-            if (tecla === 'X') {
-                efeitoTexto = `passou uma borracha divina, **Purificando [${alvo}]** de lentidões, sangramentos e atordoamentos.`;
-            } else if (tecla === 'O') {
-                const boost = Math.floor(ap * 0.8);
-                this.state.stats.ad += boost; setTimeout(() => { this.state.stats.ad -= boost; atualizarUI(); }, 12000);
-                efeitoTexto = `materializou uma arma perfeita para [${alvo}], concedendo **+${boost} de AD** por 12s.`;
-            } else if (tecla === 'Z') {
-                // MECÂNICA DE CRIAÇÃO DE ITEM TEMPORÁRIO (Sacrifício de Sangue)
-                const limiteSeguranca = this.state.stats.maxHp * 0.25;
-                const custoHpLitlegot = Math.floor(this.state.stats.maxHp * 0.30);
-                
-                if (this.state.stats.hp <= limiteSeguranca) {
-                    efeitoTexto = `tentou desenhar o Artefato Divino, mas o sistema bloqueou (HP abaixo de 25%) para evitar morte!`;
-                } else {
-                    this.state.stats.hp -= custoHpLitlegot; // Drena a vida do Litlegot
-                    const statusBoost = Math.floor(ap * 1.2);
-                    
-                    // Buff massivo temporário que simula um item de Tier 3
-                    this.state.stats.ad += statusBoost;
-                    this.state.stats.ap += statusBoost;
-                    setTimeout(() => {
-                        this.state.stats.ad -= statusBoost;
-                        this.state.stats.ap -= statusBoost;
-                        atualizarUI();
-                        this.enviarAtaqueParaChat('Info', 'Branco', `O Artefato Divino de [${alvo}] se desfez.`, '#ccc');
-                    }, 20000); // Dura 20 segundos
-
-                    efeitoTexto = `sacrificou **${custoHpLitlegot} de HP** para materializar um **ARTEFATO DIVINO** fora da base! [${alvo}] ganha +${statusBoost} AD e AP por 20s (Custa vida do alvo também)!`;
-                    this.animacaoEfeitoVisual('#ffffff', 'explosao-divina');
-                }
-            }
+        else if (corKey === 'white') {
+            const danoDivino = Math.floor(ap * 5.0);
+            if (alvo === 'Inimigo da Rota') this.state.enemyHp = Math.max(0, (this.state.enemyHp || 1000) - danoDivino);
+            resumoEfeito = `invocou a Luz Absoluta Divina, obliterando [${alvo}] com **${danoDivino} Dano Verdadeiro**!`;
+            this.criarEfeitoOnda(hex);
         }
 
         atualizarUI();
-        this.enviarAtaqueParaChat(tecla, cor.nome, efeitoTexto, cor.hex);
+        this.enviarAcaoParaChat(forma, this.tintas[corKey].nome, resumoEfeito, hex);
     }
 
     curar(valor) {
-        this.state.stats.hp += valor;
-        if (this.state.stats.hp > this.state.stats.maxHp) {
-            this.state.stats.hp = this.state.stats.maxHp;
+        this.state.stats.hp = Math.min(this.state.stats.maxHp, (this.state.stats.hp || 0) + valor);
+    }
+
+    // ==========================================
+    // RITUAL DE CRIAÇÃO DE ITEM FORA DA BASE
+    // ==========================================
+    criarItemForaDaBase(tipoItem) {
+        const minHpLitlegot = this.state.stats.maxHp * 0.25;
+        const hpAtualLitlegot = this.state.stats.hp || 0;
+
+        if (hpAtualLitlegot <= minHpLitlegot) {
+            return this.animacaoTextoFlutuante("Bloqueio de Segurança: Sua vida está abaixo de 25%!", "#ff0000");
         }
-        this.animacaoTextoFlutuante(`+${valor} HP`, "#00ff00");
+
+        const custoHpLitlegot = Math.floor(this.state.stats.maxHp * 0.20);
+        this.state.stats.hp -= custoHpLitlegot;
+
+        if (tipoItem === 'elixir') {
+            this.state.stats.ap = (this.state.stats.ap || 0) + 40;
+            this.state.stats.ad = (this.state.stats.ad || 0) + 30;
+            setTimeout(() => {
+                this.state.stats.ap -= 40;
+                this.state.stats.ad -= 30;
+                atualizarUI();
+            }, 30000);
+            this.animacaoTextoFlutuante("Elixir Efêmero Forjado! (-20% HP)", "#ff8c00");
+        } else if (tipoItem === 'escudo') {
+            this.state.stats.shield = (this.state.stats.shield || 0) + 250;
+            this.animacaoTextoFlutuante("Aegis de Tinta Concedido! (-20% HP)", "#00bfff");
+        }
+
+        document.getElementById('lg-modal-loja').style.display = 'none';
+        atualizarUI();
     }
 
     // ==========================================
-    // RECARGA DA TELA DE PINTURA (COOLDOWN)
+    // MINIGAME DE FARM RÍTMICO ULTRA DIFÍCIL
     // ==========================================
-    desenharNovaPagina() {
-        if (this.isDrawing) return; // Não recarrega no meio do desenho
-        
-        this.limparCanvas();
-        this.paginaPronta = false;
-        
-        const canvas = document.getElementById('cavalete-canvas');
-        canvas.style.pointerEvents = 'none';
-        canvas.style.opacity = '0.3';
-        document.getElementById('aviso-canvas').innerText = "Trocando Tela...";
-        document.getElementById('aviso-canvas').style.display = 'block';
-
-        let tempoBase = 8000 - (this.state.level * 200); 
-        if (tempoBase < 1000) tempoBase = 1000;
-        
-        let cdFinal = tempoBase * (1 - ((this.state.stats.cdr || 0) / 100));
-
-        setTimeout(() => {
-            this.paginaPronta = true;
-            canvas.style.pointerEvents = 'auto';
-            canvas.style.opacity = '1';
-            document.getElementById('aviso-canvas').innerText = "Desenhe o Golpe Aqui";
-            this.animacaoTextoFlutuante("Tela Nova Pronta!", "#ffffff");
-        }, cdFinal);
-    }
-
-    // ==========================================
-    // MINIGAME DE FARM HARDCORE
-    // ==========================================
-    injetarMinigameFarm() {
-        const areaAcoes = document.querySelector('.action-buttons') || document.getElementById('game-screen');
-        if (!areaAcoes || document.getElementById('btn-farm-minigame')) return;
-
-        const btnFarm = document.createElement('button');
-        btnFarm.id = 'btn-farm-minigame';
-        btnFarm.innerHTML = "🌾 Farmar (Minigame)";
-        btnFarm.style.cssText = "background: #27ae60; color: #fff; padding: 10px; border: none; border-radius: 5px; width: 100%; margin-top: 10px; font-weight: bold; font-size: 1.1em;";
-        areaAcoes.appendChild(btnFarm);
-
-        // Container do Minigame (Invisível até ativar)
-        const mgContainer = document.createElement('div');
-        mgContainer.id = 'minigame-container';
-        mgContainer.style.cssText = "display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:400px; background:#2c3e50; padding:20px; border-radius:10px; box-shadow:0 0 20px #000; z-index:9999; text-align:center;";
-        mgContainer.innerHTML = `
-            <h3 style="color:#f1c40f; margin-bottom:15px;">Ataque Sincronizado!</h3>
-            <div style="position:relative; width:100%; height:30px; background:#34495e; border-radius:15px; overflow:hidden; border:2px solid #000;">
-                <div id="mg-zona-sucesso" style="position:absolute; height:100%; width:15%; background:#2ecc71; left:42.5%;"></div>
-                <div id="mg-cursor" style="position:absolute; height:130%; width:4px; background:#e74c3c; top:-15%; left:0;"></div>
-            </div>
-            <button id="mg-btn-acao" style="margin-top:20px; padding:15px 30px; background:#e67e22; color:white; font-size:1.2em; border:none; border-radius:8px; width:100%;">GOLPEAR!</button>
-        `;
-        document.body.appendChild(mgContainer);
-    }
-
     iniciarMinigameFarm() {
-        if (this.mgAtivo) return;
-        this.mgAtivo = true;
+        const arena = document.getElementById('lg-farm-arena');
+        const status = document.getElementById('lg-farm-status');
+        if (!arena) return;
 
-        const container = document.getElementById('minigame-container');
-        const cursor = document.getElementById('mg-cursor');
-        const btnAcao = document.getElementById('mg-btn-acao');
-        container.style.display = 'block';
+        this.minigameScore = 0;
+        this.minigameAtivo = true;
+        status.innerText = "Pontos: 0 | Rito Iniciado!";
 
-        let pos = 0;
-        let direcao = 1;
-        // Velocidade baseada no AP (quanto mais forte, mais rápido/difícil fica)
-        const velocidade = 2 + (this.state.stats.ap * 0.02);
+        let contador = 0;
+        const maxAlvos = 8;
 
-        const loop = setInterval(() => {
-            pos += direcao * velocidade;
-            if (pos >= 98 || pos <= 0) direcao *= -1;
-            cursor.style.left = `${pos}%`;
-        }, 16);
-
-        // Ação de Clique única
-        btnAcao.onclick = () => {
-            clearInterval(loop);
-            this.mgAtivo = false;
-            container.style.display = 'none';
-            btnAcao.onclick = null;
-
-            // Avaliação do Hit (Zona verde entre 42.5% e 57.5%)
-            if (pos >= 42.5 && pos <= 57.5) {
-                const goldGanho = Math.floor(15 + (this.state.level * 2));
-                const xpGanho = Math.floor(20 + this.state.level);
-                this.state.gold += goldGanho;
-                this.state.exp += xpGanho;
-                this.animacaoTextoFlutuante(`Farm Perfeito! +${goldGanho} 🪙`, "#f1c40f");
-                this.enviarAtaqueParaChat('Farm', 'Verde', `Executou um minion com perfeição! (+${goldGanho} Ouro)`, '#2ecc71');
-            } else {
-                const danoRecebido = Math.floor(this.state.stats.maxHp * 0.05); // Perde 5% da vida se errar
-                this.state.stats.hp -= danoRecebido;
-                this.animacaoTextoFlutuante(`Falhou! -${danoRecebido} HP`, "#e74c3c");
+        const gerarAlvo = () => {
+            if (contador >= maxAlvos || !this.minigameAtivo) {
+                this.finalizarMinigameFarm();
+                return;
             }
-            atualizarUI();
+
+            const alvoEl = document.createElement('div');
+            alvoEl.style.position = 'absolute';
+            alvoEl.style.width = '36px';
+            alvoEl.style.height = '36px';
+            alvoEl.style.borderRadius = '50%';
+            alvoEl.style.background = '#ff3333';
+            alvoEl.style.border = '2px solid #fff';
+            alvoEl.style.left = `${Math.random() * (arena.clientWidth - 40)}px`;
+            alvoEl.style.top = `${Math.random() * (arena.clientHeight - 40)}px`;
+            alvoEl.style.cursor = 'pointer';
+            alvoEl.style.boxShadow = '0 0 10px #ff0000';
+
+            const timeoutTarget = setTimeout(() => {
+                if (alvoEl.parentNode) {
+                    alvoEl.remove();
+                    gerarAlvo();
+                }
+            }, 900); // Tempo super curto para clicar (Dificuldade Alta)
+
+            alvoEl.onclick = () => {
+                clearTimeout(timeoutTarget);
+                this.minigameScore += 1;
+                status.innerText = `Pontos: ${this.minigameScore}`;
+                alvoEl.remove();
+                gerarAlvo();
+            };
+
+            arena.appendChild(alvoEl);
+            contador++;
         };
+
+        gerarAlvo();
+    }
+
+    finalizarMinigameFarm() {
+        this.minigameAtivo = false;
+        const ouroGanhado = this.minigameScore * 45;
+        const xpGanhado = this.minigameScore * 30;
+
+        this.state.gold = (this.state.gold || 0) + ouroGanhado;
+        this.animacaoTextoFlutuante(`Farm Concluído: +${ouroGanhado} 🪙 | +${xpGanhado} XP`, "#ffff00");
+        document.getElementById('lg-modal-farm').style.display = 'none';
+        atualizarUI();
     }
 
     // ==========================================
-    // ANIMAÇÕES AVANÇADAS E FIREBASE
+    // REDE E ANIMAÇÕES
     // ==========================================
-    enviarAtaqueParaChat(tecla, nomeCor, efeito, hexCode) {
-        if (!this.state.roomName) return; 
+    enviarAcaoParaChat(forma, nomeCor, efeito, hex) {
+        if (!this.state.roomName) return;
         const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
         push(chatRef, {
             sender: this.state.playerName,
-            text: `<span style="color:${hexCode}; font-weight:bold; text-shadow:1px 1px 0px #000;">[🖌️ Arte ${tecla} - ${nomeCor}]</span> Litlegot ${efeito}`,
+            text: `<span style="color:${hex}; font-weight:bold;">[Arte ${forma} - ${nomeCor}]</span> Litlegot ${efeito}`,
             type: "combat",
             time: Date.now()
         });
     }
 
-    animacaoEfeitoVisual(corHex, tipo) {
-        // Flash na tela
-        const flash = document.createElement('div');
-        flash.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:${corHex}; opacity:0.4; pointer-events:none; z-index:9000; transition: opacity 0.5s;`;
-        document.body.appendChild(flash);
-        
-        // Partícula Centralizada
-        const particula = document.createElement('div');
-        particula.style.cssText = `position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:100px; height:100px; background:radial-gradient(circle, ${corHex} 0%, transparent 70%); pointer-events:none; z-index:9001; animation: explodir 0.6s ease-out forwards; border-radius:50%;`;
-        document.body.appendChild(particula);
+    criarEfeitoOnda(hex) {
+        const layer = document.getElementById('lg-effect-layer');
+        if (!layer) return;
 
-        setTimeout(() => {
-            flash.style.opacity = '0';
-            setTimeout(() => { flash.remove(); particula.remove(); }, 500);
-        }, 100);
+        const wave = document.createElement('div');
+        wave.style.position = 'absolute';
+        wave.style.top = '50%';
+        wave.style.left = '50%';
+        wave.style.width = '200px';
+        wave.style.height = '200px';
+        wave.style.marginLeft = '-100px';
+        wave.style.marginTop = '-100px';
+        wave.style.borderRadius = '50%';
+        wave.style.border = `4px solid ${hex}`;
+        wave.style.boxShadow = `0 0 20px ${hex}`;
+        wave.style.animation = 'shockwave 0.6s ease-out forwards';
+
+        layer.appendChild(wave);
+        setTimeout(() => wave.remove(), 600);
     }
 
     animacaoTextoFlutuante(texto, cor) {
         const textAnim = document.createElement('div');
+        textAnim.style.position = 'fixed';
+        textAnim.style.top = '40%';
+        textAnim.style.left = '50%';
+        textAnim.style.transform = 'translate(-50%, -50%)';
+        textAnim.style.color = cor;
+        textAnim.style.fontSize = '1.2rem';
+        textAnim.style.fontWeight = 'bold';
+        textAnim.style.textShadow = '0 0 8px #000';
+        textAnim.style.zIndex = '10001';
+        textAnim.style.pointerEvents = 'none';
         textAnim.innerText = texto;
-        textAnim.style.cssText = `position:fixed; top:40%; left:50%; transform:translate(-50%, -50%); color:${cor}; font-family:'Arial Black', sans-serif; font-size:1.8rem; text-shadow:2px 2px 4px #000, -1px -1px 0 #000; pointer-events:none; z-index:9999; animation: floatUpText 1.2s ease-out forwards; text-align:center; width:100%;`;
+
         document.body.appendChild(textAnim);
         setTimeout(() => textAnim.remove(), 1200);
-    }
-
-    injetarEstilos() {
-        if (document.getElementById('litlegot-styles')) return;
-        const style = document.createElement('style');
-        style.id = 'litlegot-styles';
-        style.innerHTML = `
-            @keyframes explodir {
-                0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
-                100% { transform: translate(-50%, -50%) scale(5); opacity: 0; }
-            }
-            @keyframes floatUpText {
-                0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); }
-                20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-                80% { opacity: 1; transform: translate(-50%, -80%) scale(1); }
-                100% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
-            }
-        `;
-        document.head.appendChild(style);
     }
 }
