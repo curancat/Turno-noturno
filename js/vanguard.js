@@ -1,7 +1,7 @@
 // ==========================================
-// VANGUARD: O ÁRBITRO E MESTRE DO RIFT RPG
+// VANGUARD: O ÁRBITRO E MESTRE DO RIFT RPG (ATUALIZADO)
 // ==========================================
-import { ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { ref, onValue, set, push, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { atualizarUI } from "./app.js";
 
 export default class Vanguard {
@@ -20,10 +20,14 @@ export default class Vanguard {
         
         // Rotas Possíveis
         this.rotasValidas = ["Top", "Mid", "Bot"];
+        
+        // Sistema de Turnos
+        this.turnoAtual = null;
+        this.listaJogadores = [];
     }
 
     iniciar() {
-        console.log("🛡️ VANGUARD: Inicializando protocolos absolutos.");
+        console.log("🛡️ VANGUARD: Inicializando protocolos absolutos de RPG Tático.");
         this.forcarPartidaRPG();
         this.limparLayoutObsoleto();
         this.escalonarDificuldade();
@@ -31,6 +35,7 @@ export default class Vanguard {
         this.monitorarMovimentacaoEAFK();
         this.iniciarSistemaJungle();
         this.iniciarIncentivosDeMovimento();
+        this.iniciarSincronizacaoDeTurnos();
         
         // Sincroniza presença no radar a cada 2 segundos
         setInterval(() => this.atualizarRadar(), 2000);
@@ -42,24 +47,21 @@ export default class Vanguard {
     forcarPartidaRPG() {
         if (!this.state.roomName) return;
         
-        // Garante que atributos base de RPG existam e estejam zerados/prontos
         this.state.dificuldadeMundo = 1;
         if (!this.state.stats) this.state.stats = { hp: 100, maxHp: 100, mana: 50, maxMana: 50, ad: 10, ap: 10, def: 5, mdef: 5, ms: 300 };
         
         const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
         push(chatRef, {
             sender: "🛡️ VANGUARD (Mestre)",
-            text: `<strong style="color:#ffd700;">A PARTIDA RPG COMEÇOU!</strong> Regras ativas: Movimentem-se, cacem monstros na Jungle e não ataquem da base. A dificuldade se ajustará ao número de guerreiros.`,
+            text: `<strong style="color:#ffd700;">A PARTIDA RPG COMEÇOU!</strong> Regras ativas: Movimento e Farm são livres. Ataques são baseados em TURNOS!`,
             type: "system",
             time: Date.now()
         });
     }
 
     limparLayoutObsoleto() {
-        // Remove botões fantasmas e versões antigas (ex: litlegot sem câmera/bugado)
         document.querySelectorAll('.old-version-btn, .deprecated, [id^="old-skill"]').forEach(el => el.remove());
 
-        // Otimização Estrutural: Força o site a usar apenas UMA tabela central para UI/Status
         const tabelas = document.querySelectorAll('table');
         if (tabelas.length > 1) {
             const tabelaPrincipal = tabelas[0];
@@ -68,17 +70,15 @@ export default class Vanguard {
             for (let i = 1; i < tabelas.length; i++) {
                 const linhas = tabelas[i].querySelectorAll('tr');
                 linhas.forEach(linha => tabelaPrincipal.appendChild(linha));
-                tabelas[i].remove(); // Destrói tabelas sobressalentes
+                tabelas[i].remove();
             }
-            console.log("🛡️ VANGUARD: Múltiplas tabelas detectadas. Estrutura fundida em uma única tabela para otimização visual.");
+            console.log("🛡️ VANGUARD: Múltiplas tabelas detectadas. Estrutura fundida.");
         }
-
-        // Garante responsividade básica
         document.body.style.overflowX = 'hidden';
     }
 
     // ==========================================
-    // 2. MINI-MAPA COMPACTADO (POP-UP)
+    // 2. MINI-MAPA E RADAR
     // ==========================================
     criarMiniMapaPopup() {
         const btnRadar = document.createElement('button');
@@ -95,7 +95,6 @@ export default class Vanguard {
             popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
         });
 
-        // Ouve dados do Firebase
         if (this.state.roomName) {
             const radarRef = ref(this.db, `rooms/${this.state.roomName}/radar`);
             onValue(radarRef, (snapshot) => {
@@ -108,6 +107,11 @@ export default class Vanguard {
                             <strong>${child.key}</strong>: ${player.lane} ${player.hp <= 0 ? '(Morto)' : ''}
                         </div>`;
                     });
+                    
+                    if (this.turnoAtual) {
+                        html += `<div style="margin-top:10px; padding:5px; background:#440000; text-align:center; border-radius:4px; font-weight:bold; color:#ffcc00;">Turno: ${this.turnoAtual}</div>`;
+                    }
+                    
                     popup.innerHTML = html;
                 }
             });
@@ -125,44 +129,97 @@ export default class Vanguard {
     }
 
     // ==========================================
-    // 3. DIFICULDADE DINÂMICA (MULTIPLAYER SCALING)
+    // 3. SISTEMA DE TURNOS (NOVO)
     // ==========================================
+    iniciarSincronizacaoDeTurnos() {
+        if (!this.state.roomName) return;
+        
+        // Monitora os jogadores na sala
+        const playersRef = ref(this.db, `rooms/${this.state.roomName}/players`);
+        onValue(playersRef, (snapshot) => {
+            if (snapshot.exists()) {
+                this.listaJogadores = Object.keys(snapshot.val());
+            }
+        });
+
+        // Monitora o turno atual
+        const turnoRef = ref(this.db, `rooms/${this.state.roomName}/turnoAtual`);
+        onValue(turnoRef, (snapshot) => {
+            if (snapshot.exists()) {
+                this.turnoAtual = snapshot.val();
+                
+                // Aviso visual se for o turno do jogador
+                if (this.turnoAtual === this.state.playerName) {
+                    this.animacaoTextoFlutuante("⚔️ SEU TURNO DE ATACAR!", "#ff0000");
+                }
+            } else if (this.listaJogadores.length > 0) {
+                // Se não houver turno definido, o primeiro jogador começa
+                set(turnoRef, this.listaJogadores[0]);
+            }
+        });
+    }
+
+    passarTurno() {
+        if (!this.state.roomName || !this.listaJogadores.length) return;
+        
+        const indexAtual = this.listaJogadores.indexOf(this.turnoAtual);
+        let proximoIndex = indexAtual + 1;
+        
+        if (proximoIndex >= this.listaJogadores.length) {
+            proximoIndex = 0; // Volta para o primeiro jogador
+        }
+        
+        const proximoJogador = this.listaJogadores[proximoIndex];
+        set(ref(this.db, `rooms/${this.state.roomName}/turnoAtual`), proximoJogador);
+        console.log(`🛡️ VANGUARD: Turno passado para ${proximoJogador}`);
+    }
+
     escalonarDificuldade() {
         if (!this.state.roomName) return;
         const playersRef = ref(this.db, `rooms/${this.state.roomName}/players`);
         onValue(playersRef, (snapshot) => {
             if (snapshot.exists()) {
                 const numPlayers = Object.keys(snapshot.val()).length;
-                // A cada jogador, a dificuldade do mundo (HP de monstros, dano de torres) sobe 40%
                 this.state.dificuldadeMundo = 1 + ((numPlayers - 1) * 0.4);
             }
         });
     }
 
     // ==========================================
-    // 4. BLOQUEIO DE ATAQUES E VISÃO
+    // 4. BLOQUEIO DE ATAQUES POR TURNO E VISÃO
     // ==========================================
     validarAtaque(alvo, laneAlvo, temVisao = false) {
+        // Regra 1: Turnos
+        if (this.turnoAtual && this.turnoAtual !== this.state.playerName) {
+            this.animacaoTextoFlutuante("Fora de Turno! Aguarde.", "#ffaa00");
+            return false;
+        }
+
+        // Regra 2: Base Segura
         if (this.state.lane === "Base") {
             this.aplicarPunicaoPesada("TENTATIVA DE ATAQUE DA BASE! Covardia não é tolerada.");
             return false;
         }
 
+        // Regra 3: Alcance
         if (laneAlvo && laneAlvo !== this.state.lane) {
-            this.aplicarPunicaoPesada(`TENTATIVA DE ATAQUE TRANS-ROTA! O alvo está no ${laneAlvo} e você no ${this.state.lane}.`);
+            this.aplicarPunicaoPesada(`TENTATIVA DE ATAQUE TRANS-ROTA! Você está muito longe.`);
             return false;
         }
 
+        // Regra 4: Visão
         if (alvo.includes("Oculto") && !temVisao) {
-            this.aplicarPunicaoPesada("TENTATIVA DE ATAQUE SEM VISÃO! Você atacou as sombras e perdeu o equilíbrio.");
+            this.aplicarPunicaoPesada("TENTATIVA DE ATAQUE SEM VISÃO! Você atacou as sombras.");
             return false;
         }
 
+        // Se o ataque for válido, passa o turno automaticamente após a ação
+        setTimeout(() => this.passarTurno(), 1500);
         return true;
     }
 
     // ==========================================
-    // 5. ANTI-SPAM, FARM COOLDOWN E PUNIÇÃO PESADA
+    // 5. ANTI-SPAM, FARM COOLDOWN E PUNIÇÃO MELHORADA
     // ==========================================
     registrarUsoMecanica(mecanicaId) {
         const agora = Date.now();
@@ -173,12 +230,11 @@ export default class Vanguard {
 
         const tempoDecorrido = agora - this.registroAcoes[mecanicaId].ultimoUso;
         
-        // Se usar a mesma habilidade ou criar item num intervalo menor que 800ms
         if (tempoDecorrido < 800) {
             this.registroAcoes[mecanicaId].contagem++;
             if (this.registroAcoes[mecanicaId].contagem >= 4) {
-                this.aplicarPunicaoPesada(`ABUSO DE MECÂNICA DETECTADO (${mecanicaId})! Sobrecarga de comandos.`);
-                this.registroAcoes[mecanicaId].contagem = 0; // reseta após punir
+                this.aplicarPunicaoPesada(`ABUSO DE MECÂNICA DETECTADO (${mecanicaId})!`);
+                this.registroAcoes[mecanicaId].contagem = 0;
                 return false;
             }
         } else {
@@ -195,70 +251,76 @@ export default class Vanguard {
             return;
         }
         
-        // Aplica o farm
         funcaoFarmOriginal();
         
-        // Trava o farm por 2 segundos
         this.cooldownFarm = true;
         setTimeout(() => { this.cooldownFarm = false; }, 2000);
     }
 
     aplicarPunicaoPesada(motivo) {
-        // Punição Severa: Zera Ouro, deixa com 1 HP e trava ações por 5s
+        // Punição Severa: Zera Ouro, reduz AD e trava ações por 5s
         this.state.gold = 0;
-        this.state.stats.hp = 1;
+        this.state.stats.hp = Math.floor(this.state.stats.maxHp * 0.1); // Cai para 10% do HP
+        const penalidadeAD = Math.floor(this.state.stats.ad * 0.5);
+        this.state.stats.ad -= penalidadeAD;
         
         const overlay = document.createElement('div');
-        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,0,0,0.8); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#fff; font-family:monospace;";
+        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle, rgba(139,0,0,0.8), rgba(0,0,0,0.9)); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#fff; font-family:monospace; backdrop-filter:blur(5px);";
         overlay.innerHTML = `
-            <h1 style="font-size:3rem; margin:0;">PUNIÇÃO VANGUARD</h1>
-            <p style="font-size:1.5rem;">${motivo}</p>
-            <p>Ouro drenado. Vida reduzida a 1. Sistema travado.</p>
+            <div style="font-size:5rem;">⛓️</div>
+            <h1 style="font-size:3rem; margin:0; color:#ff3333; text-shadow:0 0 20px #ff0000;">PRISÃO VANGUARD</h1>
+            <p style="font-size:1.5rem; text-align:center; max-width:80%;">${motivo}</p>
+            <p style="color:#ffaa00;">Ouro Perdido. HP Reduzido. AD Cortado pela metade.</p>
         `;
         document.body.appendChild(overlay);
 
-        // Bloqueia cliques
         const blockEvent = (e) => { e.stopPropagation(); e.preventDefault(); };
         window.addEventListener('click', blockEvent, true);
         
         setTimeout(() => {
             overlay.remove();
             window.removeEventListener('click', blockEvent, true);
+            this.state.stats.ad += penalidadeAD; // Devolve o AD após a prisão
+            atualizarUI();
         }, 5000);
 
         atualizarUI();
     }
 
     // ==========================================
-    // 6. SISTEMA JUNGLE: EVENTOS ALEATÓRIOS NAS ROTAS
+    // 6. SISTEMA JUNGLE: EVENTOS ÉPICOS
     // ==========================================
     iniciarSistemaJungle() {
         setInterval(() => {
-            // Chance de 30% a cada 40 segundos de spawnar um monstro JG
-            if (Math.random() < 0.3) {
+            if (Math.random() < 0.35) {
                 const laneAleatoria = this.rotasValidas[Math.floor(Math.random() * this.rotasValidas.length)];
-                const monstros = ["Arauto das Sombras", "Dragão de Gesso", "Guardião Neutro"];
+                const monstros = [
+                    { nome: "Arauto das Sombras", tipo: "Comum", recompensa: "Ouro" },
+                    { nome: "Dragão de Gesso", tipo: "Épico", recompensa: "AD" },
+                    { nome: "Guardião do Vazio", tipo: "Lendário", recompensa: "MaxHP" }
+                ];
                 const monstroEscolhido = monstros[Math.floor(Math.random() * monstros.length)];
                 
                 this.anunciarJungle(monstroEscolhido, laneAleatoria);
                 this.injetarMonstroJungle(monstroEscolhido, laneAleatoria);
             }
-        }, 40000);
+        }, 45000);
     }
 
     anunciarJungle(monstro, lane) {
         if (!this.state.roomName) return;
         const chatRef = ref(this.db, `rooms/${this.state.roomName}/chat`);
+        const cor = monstro.tipo === "Lendário" ? "#ff00ff" : (monstro.tipo === "Épico" ? "#00ffff" : "#32cd32");
+        
         push(chatRef, {
             sender: "🌲 JUNGLE",
-            text: `Um <strong>${monstro}</strong> invadiu a rota <strong>${lane}</strong>! Desloquem-se para enfrentá-lo!`,
+            text: `Um <strong>${monstro.nome}</strong> (${monstro.tipo}) invadiu o <strong>${lane}</strong>! Matem-no para receber <strong>${monstro.recompensa}</strong>!`,
             type: "system",
             time: Date.now()
         });
     }
 
     injetarMonstroJungle(monstro, lane) {
-        // Verifica continuamente se o jogador chegou na lane certa para mostrar o botão
         const jungleInterval = setInterval(() => {
             let container = document.getElementById('jungle-event-container');
             
@@ -266,25 +328,36 @@ export default class Vanguard {
                 if (!container) {
                     container = document.createElement('div');
                     container.id = 'jungle-event-container';
-                    container.style.cssText = "margin-top:15px; padding:15px; background:rgba(34, 139, 34, 0.2); border:2px dashed #32cd32; text-align:center; border-radius:8px;";
-                    container.innerHTML = `<h3 style="color:#32cd32; margin:0 0 10px 0;">🐺 Monstro Presente: ${monstro}</h3>`;
+                    const borderColor = monstro.tipo === "Lendário" ? "#ff00ff" : "#32cd32";
+                    container.style.cssText = `margin-top:15px; padding:15px; background:rgba(0,0,0,0.6); border:2px dashed ${borderColor}; text-align:center; border-radius:8px;`;
+                    container.innerHTML = `<h3 style="color:${borderColor}; margin:0 0 10px 0;">🐺 Chefe JG: ${monstro.nome}</h3>`;
                     
                     const btnBatalha = document.createElement('button');
-                    btnBatalha.innerText = "⚔️ Iniciar Batalha da Selva";
-                    btnBatalha.style.cssText = "background:#ff4500; color:#fff; padding:10px; border:none; border-radius:5px; cursor:pointer; width:100%; font-weight:bold;";
+                    btnBatalha.innerText = "⚔️ Abater Monstro";
+                    btnBatalha.style.cssText = `background:${borderColor}; color:#000; padding:10px; border:none; border-radius:5px; cursor:pointer; width:100%; font-weight:900; font-size:1.1rem;`;
                     
                     btnBatalha.onclick = () => {
                         btnBatalha.innerText = "Lutando...";
                         btnBatalha.disabled = true;
                         
                         setTimeout(() => {
-                            const recompensa = Math.floor((300 * this.state.dificuldadeMundo) + (this.state.level * 50));
-                            this.state.gold += recompensa;
-                            this.animacaoTextoFlutuante(`+${recompensa} Ouro da Jungle!`, "#ffd700");
+                            if (monstro.recompensa === "Ouro") {
+                                const recompensa = Math.floor(400 * this.state.dificuldadeMundo);
+                                this.state.gold += recompensa;
+                                this.animacaoTextoFlutuante(`+${recompensa} Ouro da Jungle!`, "#ffd700");
+                            } else if (monstro.recompensa === "AD") {
+                                this.state.stats.ad += 15;
+                                this.animacaoTextoFlutuante(`Buff Épico! +15 AD Permanente!`, "#00ffff");
+                            } else if (monstro.recompensa === "MaxHP") {
+                                this.state.stats.maxHp += 150;
+                                this.state.stats.hp += 150;
+                                this.animacaoTextoFlutuante(`Buff Lendário! +150 HP Máximo!`, "#ff00ff");
+                            }
+                            
                             container.remove();
                             clearInterval(jungleInterval);
                             atualizarUI();
-                        }, 3000); // 3 segundos de "batalha" simulada
+                        }, 3500); 
                     };
                     
                     container.appendChild(btnBatalha);
@@ -292,34 +365,32 @@ export default class Vanguard {
                     controles.appendChild(container);
                 }
             } else {
-                // Se mudou de lane, esconde/remove o container
                 if (container) container.remove();
             }
         }, 1000);
 
-        // O monstro foge após 60 segundos
         setTimeout(() => {
             clearInterval(jungleInterval);
             const container = document.getElementById('jungle-event-container');
             if (container) container.remove();
-        }, 60000);
+        }, 45000);
     }
 
     // ==========================================
-    // 7. INCENTIVO DE MOVIMENTAÇÃO (MINI-GAME) E ANTI-AFK
+    // 7. ANTI-AFK E MINI-GAMES DE RELÍQUIA
     // ==========================================
     monitorarMovimentacaoEAFK() {
         setInterval(() => {
             if (this.state.lane === "Base") {
-                this.tempoNaMesmaLane = 0; // Base é segura
+                this.tempoNaMesmaLane = 0; 
                 return;
             }
 
             if (this.state.lane === this.ultimaLane) {
                 this.tempoNaMesmaLane++;
                 if (this.tempoNaMesmaLane >= this.limiteAFK) {
-                    this.aplicarPunicaoPesada("ESTAGNAÇÃO DETECTADA! Você ficou parado farmando na mesma rota por muito tempo. Movimente-se pelo mapa!");
-                    this.tempoNaMesmaLane = 0; // Reseta após punir
+                    this.aplicarPunicaoPesada("ESTAGNAÇÃO DETECTADA! Mova-se pelo mapa e pare de acampar a rota!");
+                    this.tempoNaMesmaLane = 0; 
                 }
             } else {
                 this.ultimaLane = this.state.lane;
@@ -332,24 +403,20 @@ export default class Vanguard {
         setInterval(() => {
             if (Math.random() < 0.4) {
                 const laneAleatoria = this.rotasValidas[Math.floor(Math.random() * this.rotasValidas.length)];
-                
-                // Se o item spawnar fora da lane atual dele, ele tem que se mover para pegar
                 if (laneAleatoria !== this.state.lane) {
                     this.gerarBuffMiniGame(laneAleatoria);
                 }
             }
-        }, 35000);
+        }, 40000);
     }
 
     gerarBuffMiniGame(laneAlvo) {
-        // Alerta o jogador no topo da tela
         const aviso = document.createElement('div');
-        aviso.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,191,255,0.9); color:#fff; padding:10px 20px; border-radius:20px; z-index:8000; font-weight:bold;";
-        aviso.innerText = `✨ Uma Relíquia de Poder apareceu no ${laneAlvo}! Corra até lá!`;
+        aviso.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(255,215,0,0.9); color:#000; padding:10px 20px; border-radius:20px; z-index:8000; font-weight:900; box-shadow:0 4px 15px rgba(255,215,0,0.5);";
+        aviso.innerText = `✨ Relíquia de Movimento no ${laneAlvo}!`;
         document.body.appendChild(aviso);
         setTimeout(() => aviso.remove(), 6000);
 
-        // Monitora se o jogador chega na lane
         const buffInterval = setInterval(() => {
             if (this.state.lane === laneAlvo) {
                 clearInterval(buffInterval);
@@ -357,7 +424,6 @@ export default class Vanguard {
             }
         }, 1000);
 
-        // Desiste após 20 segundos
         setTimeout(() => clearInterval(buffInterval), 20000);
     }
 
@@ -366,7 +432,7 @@ export default class Vanguard {
         overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999;";
         
         const alvoDiv = document.createElement('div');
-        alvoDiv.style.cssText = "position:absolute; width:50px; height:50px; background:radial-gradient(circle, #00ffff, #00008b); border-radius:50%; cursor:crosshair; box-shadow:0 0 20px #00ffff;";
+        alvoDiv.style.cssText = "position:absolute; width:60px; height:60px; background:radial-gradient(circle, #fff, #ffd700); border-radius:50%; cursor:crosshair; box-shadow:0 0 25px #ffd700;";
         
         overlay.appendChild(alvoDiv);
         document.body.appendChild(overlay);
@@ -374,14 +440,14 @@ export default class Vanguard {
         let cliquesRestantes = 3;
         
         const moverAlvo = () => {
-            const x = Math.random() * (window.innerWidth - 60);
-            const y = Math.random() * (window.innerHeight - 60);
+            const x = Math.random() * (window.innerWidth - 80);
+            const y = Math.random() * (window.innerHeight - 80);
             alvoDiv.style.left = `${x}px`;
             alvoDiv.style.top = `${y}px`;
         };
 
         moverAlvo();
-        const loopMovimento = setInterval(moverAlvo, 800);
+        const loopMovimento = setInterval(moverAlvo, 700);
 
         alvoDiv.onclick = () => {
             cliquesRestantes--;
@@ -389,21 +455,20 @@ export default class Vanguard {
                 clearInterval(loopMovimento);
                 overlay.remove();
                 
-                // Recompensa: Buff de MS e AD temporário
-                this.animacaoTextoFlutuante("Relíquia Capturada! +50 AD por 15s!", "#00ffff");
-                this.state.stats.ad += 50;
+                this.animacaoTextoFlutuante("Relíquia Pega! +100 AD por 10s!", "#ffd700");
+                this.state.stats.ad += 100;
                 atualizarUI();
                 
                 setTimeout(() => {
-                    this.state.stats.ad -= 50;
+                    this.state.stats.ad -= 100;
                     atualizarUI();
-                }, 15000);
+                }, 10000);
             } else {
                 moverAlvo();
+                alvoDiv.style.transform = `scale(${1 - (0.2 * (3 - cliquesRestantes))})`;
             }
         };
 
-        // Falha no minigame se não clicar em 5 segundos
         setTimeout(() => {
             if (cliquesRestantes > 0) {
                 clearInterval(loopMovimento);
@@ -419,13 +484,14 @@ export default class Vanguard {
     animacaoTextoFlutuante(texto, cor) {
         const textAnim = document.createElement('div');
         textAnim.innerText = texto;
-        textAnim.style.cssText = `position:fixed; top:40%; left:50%; transform:translate(-50%, -50%); color:${cor}; font-size:1.5rem; font-weight:bold; z-index:10000; text-shadow:2px 2px 0 #000; pointer-events:none; transition:all 1s ease-out;`;
+        textAnim.style.cssText = `position:fixed; top:40%; left:50%; transform:translate(-50%, -50%); color:${cor}; font-size:1.8rem; font-weight:900; z-index:10000; text-shadow:3px 3px 0 #000, 0 0 15px ${cor}; pointer-events:none; transition:all 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);`;
         document.body.appendChild(textAnim);
         
         setTimeout(() => {
-            textAnim.style.top = '30%';
+            textAnim.style.top = '25%';
             textAnim.style.opacity = '0';
+            textAnim.style.transform = 'translate(-50%, -50%) scale(1.2)';
         }, 50);
-        setTimeout(() => textAnim.remove(), 1050);
+        setTimeout(() => textAnim.remove(), 1250);
     }
 }
