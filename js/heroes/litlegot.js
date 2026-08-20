@@ -527,7 +527,7 @@ export default class Litlegot {
         document.getElementById('lg-btn-ateliere').onclick = () => { togglePopup('lg-modal-canvas', true); setTimeout(()=>this.redimensionarCanvas(), 300); };
         document.getElementById('lg-btn-mochila').onclick = () => { this.atualizarListaDeAlvos(); this.atualizarUIFolhas(); togglePopup('lg-modal-mochila', true); };
         document.getElementById('lg-btn-farm').onclick = () => { togglePopup('lg-modal-farm', true); };
-        ocument.getElementById('lg-btn-lanes').onclick = () => { togglePopup('lg-modal-lanes', true); };
+        document.getElementById('lg-btn-lanes').onclick = () => { togglePopup('lg-modal-lanes', true); };
         document.getElementById('lg-btn-base').onclick = () => this.retornarABase();
 
         document.querySelectorAll('.lg-close-btn').forEach(btn => {
