@@ -73,6 +73,22 @@ const DOM = {
     closeMap: document.getElementById('close-map'),
     laneBtns: document.querySelectorAll('.lane-btn')
 };
+// ⚙️ REGISTRO DE HERÓIS: Para adicionar um herói, basta colocar o nome do arquivo aqui!
+const HEROIS_REGISTRADOS = [
+    { id: 'litlegot', nome: 'Litlegot (Miraculous da Cabra)' },
+    // { id: 'nome_do_arquivo', nome: 'Nome Visual' }
+];
+
+function carregarOpcoesDeHerois() {
+    DOM.selectHero.innerHTML = '';
+    HEROIS_REGISTRADOS.forEach(heroi => {
+        const option = document.createElement('option');
+        option.value = heroi.id;
+        option.innerText = heroi.nome;
+        DOM.selectHero.appendChild(option);
+    });
+}
+carregarOpcoesDeHerois(); // Chama a função imediatamente
 
 // ==========================================
 // SISTEMA DE MODULARIDADE DE HERÓIS
