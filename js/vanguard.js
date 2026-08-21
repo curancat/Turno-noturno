@@ -12,7 +12,7 @@ export default class Vanguard {
         // Controles de Tempo e Abuso
         this.ultimaLane = this.state.lane || "Base";
         this.tempoNaMesmaLane = 0;
-        this.limiteAFK = 30; // 30s na mesma lane sem se mover gera punição
+        this.limiteAFK = 50; // 30s na mesma lane sem se mover gera punição
         this.registroAcoes = {}; 
         
         // Cooldowns Globais
@@ -61,7 +61,7 @@ export default class Vanguard {
         // Botão flutuante minimalista no canto superior direito
         const btnRadar = document.createElement('button');
         btnRadar.innerHTML = "🗺️ Mapa";
-        btnRadar.style.cssText = "position:fixed; top:12px; right:15px; padding:6px 12px; background:rgba(15,15,25,0.85); color:#00ffcc; border:1px solid #00ffcc; border-radius:6px; font-weight:bold; font-size:0.85rem; z-index:9000; cursor:pointer; backdrop-filter:blur(4px); box-shadow:0 2px 10px rgba(0,0,0,0.5);";
+        btnRadar.style.cssText = "position:fixed; top:75px; right:15px; padding:6px 12px; background:rgba(15,15,25,0.85); color:#00ffcc; border:1px solid #00ffcc; border-radius:6px; font-weight:bold; font-size:0.85rem; z-index:9000; cursor:pointer; backdrop-filter:blur(4px); box-shadow:0 2px 10px rgba(0,0,0,0.5);";
         document.body.appendChild(btnRadar);
 
         const popup = document.createElement('div');
@@ -247,7 +247,7 @@ export default class Vanguard {
                 this.anunciarJungle(monstroEscolhido, laneAleatoria);
                 this.gerarBotaoCombateMonstro(monstroEscolhido, laneAleatoria);
             }
-        }, 50000);
+        }, 10000);
     }
 
     anunciarJungle(monstro, lane) {
@@ -299,7 +299,7 @@ export default class Vanguard {
             clearInterval(checker);
             const container = document.getElementById('jungle-combat-btn-container');
             if (container) container.remove();
-        }, 35000);
+        }, 400000);
     }
 
     iniciarTelaBatalhaMonstro(monstro) {
