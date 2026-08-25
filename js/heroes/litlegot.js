@@ -17,7 +17,7 @@ export default class Litlegot {
         this.pontosDesenho = [];
         this.ultimoTeleporte = 0;
 
-        // Sistema de Tintas com Restrição por Nível e Nível Máximo (Trava de Segurança Level 30)
+        // Sistema de Tintas com Restrição por Nível e Nível Máximo
         this.tintas = {
             red: { nome: 'Fogo Carnificina', hex: '#ff3333', custo: 25, nivelMin: 1, tipoAnimacao: 'explosao' },
             orange: { nome: 'Drenagem Vital', hex: '#ff8c00', custo: 20, nivelMin: 3, tipoAnimacao: 'drenagem' },
@@ -73,12 +73,10 @@ export default class Litlegot {
                 }
                 this.atualizarListaDeAlvos();
                 
-                // Monitora meu próprio HP remotamente se necessário
-                if (data[this.meuId] && data[this.meuId].stats) {
-                    if (data[this.meuId].stats.hp !== undefined) {
-                        this.state.stats.hp = data[this.meuId].stats.hp;
-                        this.verificarEstadoMorte();
-                    }
+                // Monitora meu próprio HP remotamente
+                if (data[this.meuId]?.stats?.hp !== undefined) {
+                    this.state.stats.hp = data[this.meuId].stats.hp;
+                    this.verificarEstadoMorte();
                 }
             }
         });
@@ -90,6 +88,7 @@ export default class Litlegot {
         
         onChildAdded(eventsRef, (snapshot) => {
             const evento = snapshot.val();
+            // Ignora eventos muito antigos (mais de 10 segundos)
             if (Date.now() - evento.timestamp > 10000) return;
             this.renderizarEventoVisualGlobal(evento);
         });
@@ -111,13 +110,13 @@ export default class Litlegot {
             if (playerId !== this.meuId) {
                 const option = document.createElement('option');
                 option.value = playerId;
-                const hpAlvo = this.jogadoresNaSala[playerId].stats?.hp || '???';
+                const hpAlvo = this.jogadoresNaSala[playerId].stats?.hp ?? '???';
                 option.innerText = `⚔️ Inimigo: ${playerId} (HP: ${hpAlvo})`;
                 selectAlvo.appendChild(option);
             }
         });
 
-        if (alvoAnterior && Object.keys(this.jogadoresNaSala).includes(alvoAnterior)) {
+        if (alvoAnterior && this.jogadoresNaSala[alvoAnterior]) {
             selectAlvo.value = alvoAnterior;
             this.alvoSelecionado = alvoAnterior;
         } else {
@@ -132,10 +131,10 @@ export default class Litlegot {
         push(eventsRef, {
             sourceId: this.meuId,
             targetId: alvoId,
-            tipoAnimacao: tipoAnimacao,
+            tipoAnimacao,
             hexColor: hex,
             valor: danoOuCura,
-            nomeEfeito: nomeEfeito,
+            nomeEfeito,
             timestamp: Date.now()
         });
     }
@@ -150,20 +149,21 @@ export default class Litlegot {
     }
 
     retornarABase() {
-    const custoBase = 100; // Defina o valor em ouro aqui
-    if ((this.state.gold || 0) < custoBase) {
-        return this.animacaoTextoFlutuante("Ouro insuficiente para a Base!", "#ff0000");
+        const custoBase = 100;
+        if ((this.state.gold || 0) < custoBase) {
+            return this.animacaoTextoFlutuante("Ouro insuficiente para a Base!", "#ff0000");
+        }
+        
+        this.state.gold -= custoBase;
+        this.state.stats.mana = this.state.stats.maxMana;
+        this.state.stats.hp = this.state.stats.maxHp;
+        this.fecharTelaMorte();
+        
+        this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, `+${this.state.stats.maxHp}`, 'Retorno à Base');
+        this.animacaoTextoFlutuante(`Base! (-${custoBase} Ouro)`, "#00ffcc");
+        atualizarUI();
     }
-    
-    this.state.gold -= custoBase;
-    this.state.stats.mana = this.state.stats.maxMana;
-    this.state.stats.hp = this.state.stats.maxHp;
-    this.fecharTelaMorte();
-    
-    this.emitirEventoDeRede('pilar', '#00ffcc', this.meuId, `+${this.state.stats.maxHp}`, 'Retorno à Base');
-    this.animacaoTextoFlutuante(`Base! (-${custoBase} Ouro)`, "#00ffcc");
-    atualizarUI();
-}
+
     // ==========================================
     // TELA DE MORTE E GERENCIAMENTO DE VIDA
     // ==========================================
@@ -369,15 +369,15 @@ export default class Litlegot {
             document.body.appendChild(layer);
         }
 
-        // Tela de Morte
+        // Tela de Morte (Sintaxe e CSS Corrigidos)
         if (!document.getElementById('lg-tela-morte')) {
-            const deathDiv = document.div = document.createElement('div');
+            const deathDiv = document.createElement('div');
             deathDiv.id = 'lg-tela-morte';
             deathDiv.className = 'lg-death-screen';
             deathDiv.innerHTML = `
                 <div style="font-size: 4rem; margin-bottom: 10px;">💀</div>
                 <h1 style="color: #ff3333; font-size: 2rem; margin: 0 0 10px 0; text-shadow: 0 0 20px #ff0000;">VOCÊ FOI DERROTADO</h1>
-                <p style="color: #aaa; max-label: 400px; margin-bottom: 25px;">Sua energia vital esgotou-se no plano material. Suas tintas foram dissipadas.</p>
+                <p style="color: #aaa; max-width: 400px; margin-bottom: 25px;">Sua energia vital esgotou-se no plano material. Suas tintas foram dissipadas.</p>
                 <div style="display: flex; gap: 15px; width: 100%; max-width: 320px; flex-direction: column;">
                     <button id="lg-btn-ressuscitar" style="background: linear-gradient(135deg, #c5a059, #8a733c); color: #000; border: none; padding: 16px; border-radius: 12px; font-weight: 900; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 20px rgba(197,160,89,0.5);">Retornar à Base (Reviver)</button>
                 </div>
@@ -405,7 +405,6 @@ export default class Litlegot {
                 const acionarMovimento = (e) => {
                     e.preventDefault();
                     this.animacaoTextoFlutuante(`Deslocando-se para [${dir.toUpperCase()}]...`, "#c5a059");
-                    // Dispara evento de movimento compatível com a engine externa se existente
                     if (window.moverNoMapa) window.moverNoMapa(dir);
                 };
                 btn.addEventListener('click', acionarMovimento);
@@ -467,13 +466,14 @@ export default class Litlegot {
             <button id="lg-start-farm" style="background:linear-gradient(90deg, #28a745, #218838); color:#fff; border:none; padding:14px; border-radius:12px; font-weight:900; font-size:1.1rem; width:100%; box-shadow:0 4px 15px rgba(40,167,69,0.4);">Iniciar Rito</button>
         `);
 
-      criarSheet('lg-modal-lanes', '🗺️', 'Teleporte Arcano', 'Viaje entre as rotas (Custo: 100 Ouro | Recarga: 10s)', `
-    <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px;">
-        <button class="lg-btn-lane" data-lane="TOP" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬆️ Rota Superior (TOP)</button>
-        <button class="lg-btn-lane" data-lane="MID" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⏺️ Rota Central (MID)</button>
-        <button class="lg-btn-lane" data-lane="BOT" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬇️ Rota Inferior (BOT)</button>
-    </div>
-`);
+        criarSheet('lg-modal-lanes', '🗺️', 'Teleporte Arcano', 'Viaje entre as rotas (Custo: 100 Ouro | Recarga: 10s)', `
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:4px;">
+                <button class="lg-btn-lane" data-lane="TOP" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬆️ Rota Superior (TOP)</button>
+                <button class="lg-btn-lane" data-lane="MID" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⏺️ Rota Central (MID)</button>
+                <button class="lg-btn-lane" data-lane="BOT" style="background:rgba(26,26,46,0.8); color:#fff; border:2px solid var(--lg-gold); padding:14px; border-radius:12px; font-weight:bold; font-size:1.1rem;">⬇️ Rota Inferior (BOT)</button>
+            </div>
+        `);
+
         this.vincularEventosModais();
         this.renderizarPaleta();
     }
@@ -488,8 +488,6 @@ export default class Litlegot {
         Object.keys(this.tintas).forEach(corKey => {
             const cor = this.tintas[corKey];
             const dot = document.createElement('div');
-            
-            // Verificação da Trava de Segurança por Nível (Exigência até nível 30)
             const bloqueado = nivelAtual < cor.nivelMin;
 
             dot.className = `lg-color-dot ${corKey === this.corAtiva && !bloqueado ? 'active' : ''} ${bloqueado ? 'locked' : ''}`;
@@ -547,6 +545,7 @@ export default class Litlegot {
         document.querySelectorAll('.lg-btn-lane').forEach(btn => {
              btn.onclick = (e) => this.teleportarParaLane(e.currentTarget.dataset.lane);
         });
+        
         const selectAlvo = document.getElementById('lg-alvo-select');
         if (selectAlvo) {
             selectAlvo.onchange = (e) => { this.alvoSelecionado = e.target.value; };
@@ -561,17 +560,21 @@ export default class Litlegot {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
 
+        // Lógica de touch corrigida para ser mais segura e legível
         const getPos = (e) => {
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            const pointer = e.touches ? e.touches[0] : e;
+            return { 
+                x: pointer.clientX - rect.left, 
+                y: pointer.clientY - rect.top 
+            };
         };
 
         const startDraw = (e) => {
             e.preventDefault();
             this.desenhandoCanvas = true;
             this.pontosDesenho = [];
+            
             const pos = getPos(e);
             this.pontosDesenho.push(pos);
             
@@ -588,6 +591,7 @@ export default class Litlegot {
         const draw = (e) => {
             if (!this.desenhandoCanvas) return;
             e.preventDefault();
+            
             const pos = getPos(e);
             this.pontosDesenho.push(pos);
             
@@ -685,7 +689,7 @@ export default class Litlegot {
         this.state.stats.mana -= corData.custo;
         this.folhasGuardadas.push({
             id: Date.now(),
-            forma: forma,
+            forma,
             corKey: this.corAtiva,
             corHex: corData.hex,
             nomeCor: corData.nome,
@@ -693,7 +697,7 @@ export default class Litlegot {
         });
 
         this.limparCanvas();
-        this.animacaoTextoFlutuante(`Arte ${forma} Materializada com sucesso!`, corData.hex);
+        this.animacaoTextoFlutuante(`Arte ${forma} Materializada!`, corData.hex);
         document.getElementById('lg-modal-canvas').classList.remove('active');
         atualizarUI();
     }
@@ -724,7 +728,7 @@ export default class Litlegot {
     }
 
     // ==========================================
-    // SISTEMA DE EFEITOS REAIS PARA OS 21 FEITIÇOS (7 CORES x 3 TRAÇOS)
+    // SISTEMA DE EFEITOS REAIS PARA OS FEITIÇOS
     // ==========================================
     ativarFolha(index) {
         const folha = this.folhasGuardadas[index];
@@ -736,7 +740,9 @@ export default class Litlegot {
 
         this.folhasGuardadas.splice(index, 1);
         this.atualizarUIFolhas();
-        document.getElementById('lg-modal-mochila').classList.remove('active');
+        
+        const modalMochila = document.getElementById('lg-modal-mochila');
+        if (modalMochila) modalMochila.classList.remove('active');
 
         this.executarEfeitoRealEAnimar(folha.forma, folha.corKey, folha.apSnapshot, this.alvoSelecionado);
     }
@@ -746,7 +752,6 @@ export default class Litlegot {
         const tinta = this.tintas[corKey];
         const hex = tinta.hex;
         
-        // Mapeamento dinâmico de animação baseado no traço e cor
         let tipoAnimacao = tinta.tipoAnimacao;
         if (forma === 'O') tipoAnimacao = 'explosao';
         else if (forma === 'X') tipoAnimacao = 'raio';
@@ -754,148 +759,140 @@ export default class Litlegot {
 
         let nomeEfeito = "";
         let resumoAcao = "";
-        let danoOuCuraAplicado = 0;
+        let valorEfeito = 0; // Usado para registrar dano ou cura
 
-        // Matriz de Feitiços Completa (21 variações reais e funcionais)
+        // Lógica dos feitiços reestruturada
         switch (corKey) {
-            case 'red': // Fogo Carnificina
+            case 'red':
                 if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.5 + 40);
+                    valorEfeito = Math.floor(ap * 2.5 + 40);
                     nomeEfeito = "Inferno Circular Em Chamas";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` incinerou o alvo com ${danoOuCuraAplicado} de dano elemental.`;
+                    resumoAcao = ` incinerou o alvo com ${valorEfeito} de dano elemental.`;
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.0 + 20);
+                    valorEfeito = Math.floor(ap * 2.0 + 20);
                     nomeEfeito = "Corte Flamejante Cruzado";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` fatiou com lâminas incandescentes infligindo ${danoOuCuraAplicado} de dano.`;
+                    resumoAcao = ` fatiou com lâminas incandescentes infligindo ${valorEfeito} de dano.`;
                 } else {
-                    danoOuCuraAplicado = Math.floor(ap * 3.2);
+                    valorEfeito = Math.floor(ap * 3.2);
                     nomeEfeito = "Labareda Ziguezague Instável";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` rasgou o campo com fogo em ziguezague causando ${danoOuCuraAplicado} de dano.`;
+                    resumoAcao = ` rasgou o campo com fogo causando ${valorEfeito} de dano.`;
                 }
+                this.aplicarDanoRede(alvoId, valorEfeito);
                 break;
 
-            case 'orange': // Drenagem Vital
+            case 'orange':
                 if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 1.8);
+                    valorEfeito = Math.floor(ap * 1.8);
                     nomeEfeito = "Vampirismo de Aura Circular";
-                    this.curar(danoOuCuraAplicado);
-                    resumoAcao = ` absorveu energias vitais curando-se em +${danoOuCuraAplicado} HP.`;
+                    resumoAcao = ` absorveu energias vitais curando-se em +${valorEfeito} HP.`;
+                    this.curar(valorEfeito);
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.2);
+                    valorEfeito = Math.floor(ap * 2.2);
                     nomeEfeito = "Drenagem Sanguínea Direta";
-                    this.curar(danoOuCuraAplicado);
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` drenou ${danoOuCuraAplicado} HP diretamente do alvo para si.`;
+                    resumoAcao = ` drenou ${valorEfeito} HP diretamente do alvo para si.`;
+                    this.curar(valorEfeito);
+                    this.aplicarDanoRede(alvoId, valorEfeito);
                 } else {
                     nomeEfeito = "Pulso Hemático Reativo";
+                    resumoAcao = ` converteu sangue em max HP permanente (+20).`;
                     this.state.stats.maxHp += 20;
                     this.curar(20);
-                    resumoAcao = ` converteu sangue em max HP permanente (+20).`;
                 }
                 break;
 
-            case 'yellow': // Ouro e Clarão
+            case 'yellow':
                 if (forma === 'O') {
-                    const ouroGerado = Math.floor(60 + (ap * 0.8));
-                    this.state.gold = (this.state.gold || 0) + ouroGerado;
+                    valorEfeito = Math.floor(60 + (ap * 0.8));
                     nomeEfeito = "Clarão Dourado Concentrado";
-                    resumoAcao = ` materializou runas áureas gerando +${ouroGerado} Ouro!`;
+                    resumoAcao = ` materializou runas áureas gerando +${valorEfeito} Ouro!`;
+                    this.state.gold = (this.state.gold || 0) + valorEfeito;
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 1.5);
+                    valorEfeito = Math.floor(ap * 1.5);
                     nomeEfeito = "Chuva de Ouro Penetrante";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` apedrejou o alvo com moedas energizadas (${danoOuCuraAplicado} dano).`;
+                    resumoAcao = ` apedrejou o alvo com moedas energizadas (${valorEfeito} dano).`;
+                    this.aplicarDanoRede(alvoId, valorEfeito);
                 } else {
                     nomeEfeito = "Relâmpago do Sol Nascente";
+                    resumoAcao = ` amplificou sua inteligência arcana (+15 AP).`;
                     this.state.stats.ap = (this.state.stats.ap || 0) + 15;
-                    resumoAcao = ` amplificou permanentemente sua inteligência arcana (+15 AP).`;
                 }
                 break;
 
-            case 'green': // Sopro da Natureza
+            case 'green':
                 if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 3.0 + 50);
+                    valorEfeito = Math.floor(ap * 3.0 + 50);
                     nomeEfeito = "Raiz Viva Protetora";
-                    this.curar(danoOuCuraAplicado);
-                    resumoAcao = ` evocou flora sagrada restaurando +${danoOuCuraAplicado} HP.`;
+                    resumoAcao = ` evocou flora sagrada restaurando +${valorEfeito} HP.`;
+                    this.curar(valorEfeito);
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.2);
+                    valorEfeito = Math.floor(ap * 2.2);
                     nomeEfeito = "Espinhos Selvagens Cruzados";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` perfurou o inimigo com vinhas espinhosas (${danoOuCuraAplicado} dano).`;
+                    resumoAcao = ` perfurou o inimigo com vinhas espinhosas (${valorEfeito} dano).`;
+                    this.aplicarDanoRede(alvoId, valorEfeito);
                 } else {
                     nomeEfeito = "Crescimento Silvestre Eterno";
+                    resumoAcao = ` enraizou vigor expandindo o HP Máximo em +75.`;
                     this.state.stats.maxHp += 75;
                     this.curar(75);
-                    resumoAcao = ` enraizou vigor celular expandindo o HP Máximo em +75.`;
                 }
                 break;
 
-            case 'blue': // Barreiras de Água
+            case 'blue':
                 if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(150 + (ap * 2.5));
+                    valorEfeito = Math.floor(150 + (ap * 2.5));
                     nomeEfeito = "Cúpula Aquática Absoluta";
-                    this.state.stats.shield = (this.state.stats.shield || 0) + danoOuCuraAplicado;
-                    resumoAcao = ` gerou um escudo protetor de gelo e água (+${danoOuCuraAplicado} Escudo).`;
+                    resumoAcao = ` gerou um escudo protetor (+${valorEfeito} Escudo).`;
+                    this.state.stats.shield = (this.state.stats.shield || 0) + valorEfeito;
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.4);
+                    valorEfeito = Math.floor(ap * 2.4);
                     nomeEfeito = "Lança Gélida Perfurante";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` disparou um dardo congelante causando ${danoOuCuraAplicado} de dano.`;
+                    resumoAcao = ` disparou um dardo congelante causando ${valorEfeito} de dano.`;
+                    this.aplicarDanoRede(alvoId, valorEfeito);
                 } else {
                     nomeEfeito = "Correnteza Veloz Fluida";
-                    this.state.stats.ad = (this.state.stats.ad || 0) + 20;
                     resumoAcao = ` canalizou a fluidez da água aumentando o AD em +20.`;
+                    this.state.stats.ad = (this.state.stats.ad || 0) + 20;
                 }
                 break;
 
-            case 'purple': // Sombras de Controle
+            case 'purple':
                 if (forma === 'O') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.0);
+                    valorEfeito = Math.floor(ap * 2.0);
                     nomeEfeito = "Esfera Umbral Paralisante";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` aprisionou o alvo em gravidade sombria (${danoOuCuraAplicado} dano).`;
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 2.8);
+                    valorEfeito = Math.floor(ap * 2.8);
                     nomeEfeito = "Fios de Sombra Cortantes";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` fatiou com agulhas do vazio causando ${danoOuCuraAplicado} de dano.`;
                 } else {
-                    danoOuCuraAplicado = Math.floor(ap * 3.5);
+                    valorEfeito = Math.floor(ap * 3.5);
                     nomeEfeito = "Implosão Dimensional Sombria";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` colapsou o espaço ao redor do alvo infligindo ${danoOuCuraAplicado} dano.`;
                 }
+                resumoAcao = ` manipulou o vázio infligindo ${valorEfeito} de dano mágico.`;
+                this.aplicarDanoRede(alvoId, valorEfeito);
                 break;
 
-            case 'white': // Luz Absoluta (Divino - Nv 30)
+            case 'white':
                 if (forma === 'O') {
                     nomeEfeito = "Halo Divino da Restauração";
-                    this.state.stats.hp = this.state.stats.maxHp;
                     resumoAcao = ` purificou seu corpo restaurando 100% da Vida máxima instantaneamente!`;
+                    this.state.stats.hp = this.state.stats.maxHp;
                 } else if (forma === 'X') {
-                    danoOuCuraAplicado = Math.floor(ap * 5.0 + 100);
+                    valorEfeito = Math.floor(ap * 5.0 + 100);
                     nomeEfeito = "Julgamento Sagrado Verdadeiro";
-                    this.aplicarDanoRede(alvoId, danoOuCuraAplicado);
-                    resumoAcao = ` puniu severamente o alvo com luz pura (${danoOuCuraAplicado} Dano Verdadeiro).`;
+                    resumoAcao = ` puniu o alvo com luz pura (${valorEfeito} Dano Verdadeiro).`;
+                    this.aplicarDanoRede(alvoId, valorEfeito);
                 } else {
                     nomeEfeito = "Feixe Pristino da Ascensão";
+                    resumoAcao = ` elevou seus atributos divinos (+50 AP, +30 AD).`;
                     this.state.stats.ap = (this.state.stats.ap || 0) + 50;
                     this.state.stats.ad = (this.state.stats.ad || 0) + 30;
-                    resumoAcao = ` elevou seus atributos divinos permanentemente (+50 AP, +30 AD).`;
                 }
                 break;
         }
 
         atualizarUI();
         
-        // Sincroniza o efeito visual em rede com todos os jogadores
-        this.emitirEventoDeRede(tipoAnimacao, hex, alvoId, danoOuCuraAplicado, `[${forma}] ${nomeEfeito}`);
-        
-        // Insere notificação no chat da sala
+        // Sincroniza o efeito visual
+        this.emitirEventoDeRede(tipoAnimacao, hex, alvoId, valorEfeito, `[${forma}] ${nomeEfeito}`);
         this.enviarAcaoParaChat(forma, nomeEfeito, resumoAcao, hex);
     }
 
@@ -1027,7 +1024,7 @@ export default class Litlegot {
         }
 
         layer.appendChild(container);
-        if (tipo === 'explosao' || tipo === 'implosao' || tipo === 'pilar' || tipo === 'espiral') {
+        if (['explosao', 'implosao', 'pilar', 'espiral'].includes(tipo)) {
             setTimeout(() => container.remove(), 1000);
         }
     }
@@ -1082,35 +1079,6 @@ export default class Litlegot {
     // ==========================================
     // FORJA E FARM ARCANO
     // ==========================================
-    criarItemDaLoja(tipoItem) {
-        const custoHpSacrificio = Math.floor(this.state.stats.maxHp * 0.25);
-        
-        if (this.state.stats.hp <= custoHpSacrificio || this.state.stats.maxHp <= 300) {
-            return this.animacaoTextoFlutuante("Falha: Resiliência Vital Insuficiente!", "#ff0000");
-        }
-
-        this.state.stats.hp -= custoHpSacrificio;
-        this.verificarEstadoMorte();
-        
-        this.emitirEventoDeRede('explosao', '#8b0000', this.meuId, custoHpSacrificio, 'Sacrifício de Sangue');
-
-        if (tipoItem === 'espada') {
-            this.state.stats.ad = (this.state.stats.ad || 0) + 35;
-            this.animacaoTextoFlutuante("Espada Longa Forjada! (+35 AD)", "#ffaa00");
-        } else if (tipoItem === 'tomo') {
-            this.state.stats.ap = (this.state.stats.ap || 0) + 50;
-            this.atualizarTintaEstatistica();
-            this.animacaoTextoFlutuante("Tomo Amplificador! (+50 AP)", "#8a2be2");
-        } else if (tipoItem === 'cristal') {
-            this.state.stats.maxHp += 300;
-            this.state.stats.hp += 300;
-            this.animacaoTextoFlutuante("Cristal de Rubi! (+300 HP)", "#ff3333");
-        }
-
-        document.getElementById('lg-modal-loja').classList.remove('active');
-        atualizarUI();
-    }
-
     iniciarMinigameFarm() {
         const arena = document.getElementById('lg-farm-arena');
         const status = document.getElementById('lg-farm-status');
@@ -1147,9 +1115,9 @@ export default class Litlegot {
             const tempoDecaimento = Math.max(350, 750 - (contador * 25));
 
             const timeoutTarget = setTimeout(() => {
-                if (alvoEl.parentNode) {
+                if (alvoEl && alvoEl.parentNode) {
                     alvoEl.style.background = '#ff0000';
-                    setTimeout(()=> alvoEl.remove(), 100);
+                    setTimeout(() => alvoEl.remove(), 100);
                     gerarAlvo();
                 }
             }, tempoDecaimento); 
@@ -1164,7 +1132,7 @@ export default class Litlegot {
                 alvoEl.style.opacity = '0';
                 
                 setTimeout(() => {
-                    alvoEl.remove();
+                    if (alvoEl && alvoEl.parentNode) alvoEl.remove();
                     gerarAlvo();
                 }, 120);
             };
@@ -1197,29 +1165,31 @@ export default class Litlegot {
         
         atualizarUI();
     }
+
     teleportarParaLane(lane) {
-    const custoTeleporte = 100;
-    const cooldownMs = 10000; // 10 segundos
-    const agora = Date.now();
+        const custoTeleporte = 100;
+        const cooldownMs = 10000;
+        const agora = Date.now();
 
-    if (agora - this.ultimoTeleporte < cooldownMs) {
-        const faltam = Math.ceil((cooldownMs - (agora - this.ultimoTeleporte)) / 1000);
-        return this.animacaoTextoFlutuante(`Em recarga! Aguarde ${faltam}s`, "#ffaa00");
+        if (agora - this.ultimoTeleporte < cooldownMs) {
+            const faltam = Math.ceil((cooldownMs - (agora - this.ultimoTeleporte)) / 1000);
+            return this.animacaoTextoFlutuante(`Em recarga! Aguarde ${faltam}s`, "#ffaa00");
+        }
+
+        if ((this.state.gold || 0) < custoTeleporte) {
+            return this.animacaoTextoFlutuante("Ouro insuficiente para teleporte!", "#ff0000");
+        }
+
+        this.state.gold -= custoTeleporte;
+        this.ultimoTeleporte = agora;
+
+        const modalLanes = document.getElementById('lg-modal-lanes');
+        if (modalLanes) modalLanes.classList.remove('active');
+
+        this.emitirEventoDeRede('espiral', '#c5a059', this.meuId, 0, `Teleporte: ${lane}`);
+        this.animacaoTextoFlutuante(`Movido para ${lane}! (-${custoTeleporte}G)`, "#c5a059");
+        atualizarUI();
+
+        if (window.moverNoMapa) window.moverNoMapa(lane.toLowerCase());
     }
-
-    if ((this.state.gold || 0) < custoTeleporte) {
-        return this.animacaoTextoFlutuante("Ouro insuficiente para teleporte!", "#ff0000");
-    }
-
-    this.state.gold -= custoTeleporte;
-    this.ultimoTeleporte = agora;
-
-    document.getElementById('lg-modal-lanes').classList.remove('active');
-    this.emitirEventoDeRede('espiral', '#c5a059', this.meuId, 0, `Teleporte: ${lane}`);
-    this.animacaoTextoFlutuante(`Movido para ${lane}! (-${custoTeleporte}G)`, "#c5a059");
-    atualizarUI();
-
-    // Arrumando a movimentação: Integração com a sua engine
-    if (window.moverNoMapa) window.moverNoMapa(lane.toLowerCase());
-}
 }
