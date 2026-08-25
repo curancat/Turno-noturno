@@ -4,7 +4,7 @@
 
 export const databaseItens = {
     // ------------------------------------------
-    // TIER 1: LIXO (10 Itens) - Itens iniciais bem básicos
+    // TIER 1: LIXO (10 Itens) - Itens iniciais básicos
     // ------------------------------------------
     lixo: [
         { id: 'l1', nome: 'Graveto Quebrado', preco: 50, desc: '+2 Dano Físico (AD)', stats: { ad: 2 } },
@@ -68,10 +68,10 @@ export const databaseItens = {
     ],
 
     // ------------------------------------------
-    // TIER 5: ULTRA (10 Itens) - Finais/Apelões (Status Absurdos)
+    // TIER 5: ULTRA (10 Itens) - Finais/Apelões
     // ------------------------------------------
     ultra: [
-        { id: 'u1', nome: 'Excalibur Ancestral (Apocalíptica)', preco: 4500, desc: '+150 AD, +25% Vamp. Físico, +30 Pen. Física', stats: { ad: 150, vampFis: 25, penFis: 30 } },
+        { id: 'u1', nome: 'Excalibur Ancestral', preco: 4500, desc: '+150 AD, +25% Vamp. Físico, +30 Pen. Física', stats: { ad: 150, vampFis: 25, penFis: 30 } },
         { id: 'u2', nome: 'Olho do Criador de Universos', preco: 4800, desc: '+200 AP, +25 Pen. Mágica, +20% Recarga', stats: { ap: 200, penMag: 25, cdr: 20 } },
         { id: 'u3', nome: 'Titã do Cataclismo', preco: 4300, desc: '+150 Def. Física, +150 Def. Mágica, +2000 Vida', stats: { def: 150, mdef: 150, maxHp: 2000 } },
         { id: 'u4', nome: 'Onipresença do Vento', preco: 4000, desc: '+120 Vel. Movimento, +50% Vel. Ataque, +20% Recarga', stats: { ms: 120, atkSpd: 50, cdr: 20 } },
@@ -80,6 +80,6 @@ export const databaseItens = {
         { id: 'u7', nome: 'Foice da Extinção', preco: 4700, desc: '+130 AD, +40% Vel. Ataque, +25 Pen. Física', stats: { ad: 130, atkSpd: 40, penFis: 25 } },
         { id: 'u8', nome: 'Orbe do Caos Absoluto', preco: 4800, desc: '+180 AP, +35 Pen. Mágica, +15% Vamp. Mágico', stats: { ap: 180, penMag: 35, vampMag: 15 } },
         { id: 'u9', nome: 'Manto do Juízo Final', preco: 4400, desc: '+120 Def. Física, +100 Def. Mágica, +1000 Vida', stats: { def: 120, mdef: 100, maxHp: 1000 } },
-        { id: 'u10', nome: 'Zero Absoluto (Cajado Temporal)', preco: 5000, desc: '+40% Recarga, +150 AP, +100 AD, +100 Vel. Mov', stats: { cdr: 40, ap: 150, ad: 100, ms: 100 } }
+        { id: 'u10', nome: 'Zero Absoluto (Cajado)', preco: 5000, desc: '+40% Recarga, +150 AP, +100 AD, +100 Vel. Mov', stats: { cdr: 40, ap: 150, ad: 100, ms: 100 } }
     ]
 };
