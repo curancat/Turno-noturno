@@ -1,349 +1,324 @@
-/* --- VARIÁVEIS E PALETA DE CORES --- */
+/* ==========================================
+   VARIÁVEIS DE TEMA (Estilo Dark/Gold)
+   ========================================== */
 :root {
-    --bg-color: #05070a;
-    --panel-color: #121821;
-    --gold-primary: #c8aa6d;
-    --gold-glow: rgba(200, 170, 109, 0.4);
-    --text-light: #e0e0e0;
-    --text-dimmed: #8a8d91;
-    --danger: #8a0303;
-    --danger-glow: rgba(138, 3, 3, 0.4);
+    --bg-dark: #05070a;
+    --bg-panel: #121821;
+    --color-accent: #c8aa6d;
+    --color-accent-light: #f0e6d2;
+    --text-main: #f0e6d2;
+    --text-muted: #a09b8c;
+    --border-dark: #333333;
+    
+    /* Cores de Sistema */
+    --success: #25d366;
+    --danger: #ff4444;
+    --warning: #ffbb33;
 }
 
-/* --- RESET BÁSICO --- */
+/* ==========================================
+   RESETS E BASE
+   ========================================== */
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
-    font-family: 'Cinzel', serif;
-    user-select: none; /* Evita que o usuário selecione texto no client */
 }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-light);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-    /* Fundo com leve gradiente radial para focar no centro */
-    background-image: radial-gradient(circle at center, #0a0e14 0%, var(--bg-color) 100%);
-}
-
-/* --- CLASSES UTILITÁRIAS --- */
-.hidden {
-    display: none !important;
-}
-
-/* --- ESTRUTURA DO CLIENT --- */
-.client-container {
-    width: 100vw;
-    height: 100vh;
-    max-width: 1920px;
-    position: relative;
-    display: flex;
-}
-
-.screen {
-    width: 100%;
-    height: 100%;
+    /* Títulos usam Cinzel, textos gerais usam Roboto para melhor leitura */
+    font-family: 'Roboto', sans-serif; 
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    background-image: radial-gradient(circle at center, #111824 0%, #05070a 100%);
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    padding: 20px;
 }
 
-/* --- PAINÉIS E COMPONENTES --- */
-.panel {
-    background-color: var(--panel-color);
-    border: 1px solid var(--gold-primary);
-    padding: 50px;
+h1, h2, h3, .nav-btn {
+    font-family: 'Cinzel', serif;
+}
+
+/* Utilitários */
+.hidden { display: none !important; }
+.w-full { width: 100%; }
+.mt-15 { margin-top: 15px; }
+.mt-10 { margin-top: 10px; }
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); font-size: 0.9em; margin-bottom: 10px; }
+
+/* ==========================================
+   CONTAINERS E ANIMAÇÕES
+   ========================================== */
+.screen {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* O antigo 'alive-container', renomeado para manter padrão técnico */
+.panel-animated {
+    background-color: rgba(18, 24, 33, 0.85);
+    border: 1px solid var(--color-accent);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(200, 170, 109, 0.1), inset 0 0 20px rgba(0,0,0,0.8);
+    animation: panel-breathe 4s infinite alternate;
+}
+
+@keyframes panel-breathe {
+    from { box-shadow: 0 0 10px rgba(200, 170, 109, 0.1), inset 0 0 15px rgba(0,0,0,0.8); }
+    to { box-shadow: 0 0 20px rgba(200, 170, 109, 0.3), inset 0 0 25px rgba(0,0,0,0.9); }
+}
+
+/* ==========================================
+   FORMULÁRIOS E INPUTS
+   ========================================== */
+.input-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-accent);
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.input-standard {
+    width: 100%;
+    padding: 12px;
+    background: #090c10;
+    border: 1px solid var(--border-dark);
+    color: var(--text-main);
     border-radius: 4px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 0, 0, 0.6);
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.input-standard:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 10px rgba(200, 170, 109, 0.3);
+}
+
+/* ==========================================
+   BOTÕES
+   ========================================== */
+.btn-primary, .btn-secondary {
+    padding: 12px 20px;
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    text-align: center;
+    border: 1px solid;
+}
+
+.btn-primary {
+    background: linear-gradient(180deg, #2a2315, #111111);
+    border-color: var(--color-accent);
+    color: var(--color-accent-light);
+    text-shadow: 0 1px 2px #000;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(180deg, #3d331f, #1a1a1a);
+    box-shadow: 0 0 15px rgba(200, 170, 109, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #0a0e14;
+    border-color: var(--border-dark);
+    color: var(--text-muted);
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent-light);
+}
+
+.btn-primary.large {
+    padding: 20px;
+    font-size: 1.2rem;
+    width: 100%;
+}
+
+.btn-secondary.small {
+    padding: 5px 15px;
+    font-size: 0.8rem;
+    width: auto;
+}
+
+/* ==========================================
+   TELA DE LOGIN ESPECÍFICA
+   ========================================== */
+#login-screen {
+    max-width: 400px;
+    margin-top: 10vh;
     text-align: center;
 }
 
-.login-panel {
-    width: 450px;
+.logo-container {
+    margin-bottom: 25px;
 }
 
-.game-title {
-    color: var(--gold-primary);
-    font-size: 3rem;
+.logo-container h1 {
+    color: var(--color-accent);
+    font-size: 2rem;
+    text-shadow: 0 2px 4px #000;
     margin-bottom: 5px;
-    text-shadow: 0 0 15px var(--gold-glow);
-    letter-spacing: 2px;
 }
 
 .subtitle {
-    font-size: 1rem;
-    margin-bottom: 40px;
-    color: var(--text-dimmed);
-    letter-spacing: 1px;
-}
-
-/* --- INPUTS --- */
-.input-group {
-    margin-bottom: 30px;
-}
-
-.mystic-input {
-    width: 100%;
-    padding: 15px;
-    background-color: #030406;
-    border: 1px solid var(--gold-primary);
-    color: var(--gold-primary);
-    font-size: 1.2rem;
-    text-align: center;
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-.mystic-input:focus {
-    box-shadow: 0 0 15px var(--gold-glow);
-    background-color: #070a0f;
-}
-
-.mystic-input::placeholder {
-    color: rgba(200, 170, 109, 0.3);
-}
-
-/* --- BOTÕES --- */
-.btn-mystic {
-    background: linear-gradient(180deg, #1c1913 0%, #0d0c09 100%);
-    border: 1px solid var(--gold-primary);
-    color: var(--gold-primary);
-    padding: 15px 40px;
-    font-size: 1.2rem;
-    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    transition: all 0.3s ease;
 }
 
-.btn-mystic:hover {
-    background: linear-gradient(180deg, #2a251b 0%, #1c1913 100%);
-    box-shadow: 0 0 20px var(--gold-glow);
-    text-shadow: 0 0 8px var(--gold-primary);
+.anti-cheat-status {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--warning);
 }
 
-.large-btn {
-    font-size: 1.5rem;
-    padding: 20px 60px;
-}
-
-.btn-cancel {
-    background: transparent;
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    padding: 10px 20px;
-    margin-top: 15px;
-    cursor: pointer;
-    font-size: 1rem;
-    text-transform: uppercase;
-    transition: all 0.3s;
-}
-
-.btn-cancel:hover {
-    background-color: rgba(138, 3, 3, 0.1);
-    box-shadow: 0 0 15px var(--danger-glow);
-    color: #ff4d4d;
-}
-
-/* --- ANIMAÇÕES --- */
-@keyframes breathe {
-    0% { box-shadow: 0 0 5px var(--gold-glow); }
-    50% { box-shadow: 0 0 30px var(--gold-glow), inset 0 0 10px var(--gold-glow); }
-    100% { box-shadow: 0 0 5px var(--gold-glow); }
-}
-
-.pulse-effect {
-    animation: breathe 3s infinite ease-in-out;
-}
-
-/* --- CABEÇALHO DO SAGUÃO (LOBBY) --- */
-#lobby-screen {
-    justify-content: flex-start;
-}
-
-.client-header {
-    width: 100%;
-    height: 80px;
-    background-color: var(--panel-color);
-    border-bottom: 1px solid var(--gold-primary);
+/* ==========================================
+   TELA PRINCIPAL (CLIENT)
+   ========================================== */
+.header-client {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 40px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.8);
-    z-index: 10;
+    margin-bottom: 15px;
+    padding: 15px 20px;
 }
 
-.player-info {
+.brand h2 {
+    color: var(--color-accent);
+    margin: 0;
+}
+
+.badge-ac {
+    font-size: 0.75rem;
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-indicator.loading {
+    background-color: var(--warning);
+    animation: blink 1s infinite alternate;
+}
+
+.status-indicator.active {
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+@keyframes blink {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+.user-profile {
     display: flex;
     align-items: center;
     gap: 15px;
-    color: var(--gold-primary);
-    font-size: 1.2rem;
-    letter-spacing: 1px;
 }
 
-.avatar {
-    width: 45px;
-    height: 45px;
-    background-color: #000;
-    border: 2px solid var(--gold-primary);
-    border-radius: 50%;
-    box-shadow: inset 0 0 10px rgba(200,170,109,0.2);
+#player-name {
+    font-weight: bold;
+    color: var(--color-accent-light);
 }
 
+/* Navegação Tabs */
 .client-nav {
     display: flex;
-    gap: 30px;
+    gap: 5px;
+    margin-bottom: 15px;
 }
 
 .nav-btn {
-    background: none;
-    border: none;
-    color: var(--text-dimmed);
-    font-size: 1.2rem;
+    flex: 1;
+    background: #0a0e14;
+    border: 1px solid var(--border-dark);
+    color: var(--text-muted);
+    padding: 12px;
     cursor: pointer;
-    padding: 10px;
+    transition: 0.3s;
+    font-size: 1rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    transition: all 0.3s;
-    position: relative;
-}
-
-.nav-btn:hover {
-    color: var(--text-light);
 }
 
 .nav-btn.active {
-    color: var(--gold-primary);
-    text-shadow: 0 0 10px var(--gold-glow);
+    background: var(--bg-panel);
+    border: 1px solid var(--color-accent);
+    border-bottom: none;
+    color: var(--color-accent-light);
+    box-shadow: 0 -5px 15px rgba(200, 170, 109, 0.1);
 }
 
-/* Sublinhado Dourado na Aba Ativa */
-.nav-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background-color: var(--gold-primary);
-    box-shadow: 0 0 10px var(--gold-glow);
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.ping-indicator {
-    color: #4caf50; /* Verde escuro pra ping bom */
-    font-size: 0.9rem;
-    font-family: sans-serif; /* Unica fonte sem serrafa pra leitura tecnica */
-    letter-spacing: 1px;
-}
-
-.icon-btn {
-    background: none;
-    border: none;
-    color: var(--gold-primary);
-    font-size: 1.5rem;
-    cursor: pointer;
-    transition: transform 0.3s;
-}
-
-.icon-btn:hover {
-    transform: rotate(90deg);
-}
-
-/* --- ÁREA DE CONTEÚDO (ABAS) --- */
-.client-content {
-    flex-grow: 1;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px;
-    position: relative;
-}
-
-.tab-content {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    animation: fadeIn 0.4s ease forwards;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.tab-content h2 {
-    color: var(--gold-primary);
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
-}
-
-.tab-content p {
-    color: var(--text-dimmed);
-    font-size: 1.2rem;
-    margin-bottom: 50px;
-}
-
-/* --- FILA E BUSCA DE PARTIDA --- */
-.queue-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    min-height: 150px;
-}
-
-.status-text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.2rem;
-    color: var(--gold-primary);
-}
-
-.loading-dots {
-    animation: pulse-text 1.5s infinite;
-}
-
-#queue-timer {
-    font-size: 2rem;
-    text-shadow: 0 0 10px var(--gold-glow);
-}
-
-@keyframes pulse-text {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; text-shadow: 0 0 8px var(--gold-glow); }
-    100% { opacity: 0.6; }
-}
-
-/* --- GRID DE PERSONAGENS (PREPARAÇÃO) --- */
-.character-grid {
+/* Área de Matchmaking */
+.matchmaking-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: 1.5fr 1fr;
     gap: 20px;
-    width: 80%;
-    max-width: 1000px;
-    max-height: 60vh;
-    overflow-y: auto;
-    padding: 20px;
+}
+
+.play-section {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-dark);
+    padding: 25px;
+    border-radius: 6px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.play-section h3 {
+    color: var(--color-accent);
+    margin-bottom: 5px;
+    font-size: 1.3rem;
+}
+
+.timer-display {
+    margin-top: 15px;
+    font-size: 1.2rem;
+    color: var(--success);
+    font-weight: bold;
+    font-family: monospace;
+}
+
+/* Responsividade Básica */
+@media (max-width: 768px) {
+    .matchmaking-container {
+        grid-template-columns: 1fr;
+    }
 }
