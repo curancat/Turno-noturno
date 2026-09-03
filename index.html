@@ -1,93 +1,95 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grimório Vivo - Client</title>
-    <!-- Importação da fonte mística Cinzel -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <title>Aurore Boreale - Client</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Container Principal do Client -->
-    <div id="game-client" class="client-container">
 
-        <!-- TELA 1: Tela de Autenticação/Login -->
-        <section id="login-screen" class="screen">
-            <div class="panel login-panel">
-                <h1 class="game-title">Grimório Vivo</h1>
-                <p class="subtitle">Adentre o Conhecimento Arcano</p>
-                <div class="input-group">
-                    <input type="text" id="username" placeholder="Nome do Mago" class="mystic-input" autocomplete="off">
-                </div>
-                <button id="btn-login" class="btn-mystic pulse-effect">Despertar</button>
+    <div id="login-screen" class="screen panel-animated">
+        <div class="logo-container">
+            <h1>Aurore Boreale</h1>
+            <p class="subtitle">Client de Conexão</p>
+        </div>
+        
+        <form id="login-form" onsubmit="event.preventDefault();">
+            <div class="input-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" class="input-standard" placeholder="Digite seu usuário" autocomplete="off" required>
             </div>
-        </section>
-
-        <!-- TELA 2: Saguão Principal (Lobby) -->
-        <section id="lobby-screen" class="screen hidden">
             
-            <!-- Cabeçalho de Navegação e Perfil -->
-            <header class="client-header">
-                <div class="player-info">
-                    <div class="avatar" id="player-avatar"></div>
-                    <span id="player-name">Mago Desconhecido</span>
-                </div>
-                
-                <nav class="client-nav">
-                    <button class="nav-btn active" data-target="tab-play">Jogar</button>
-                    <button class="nav-btn" data-target="tab-roster">Magos (19)</button>
-                    <button class="nav-btn" data-target="tab-grimoire">Grimório</button>
-                </nav>
-                
-                <div class="header-actions">
-                    <span id="player-ping" class="ping-indicator">Ping: -- ms</span>
-                    <button id="btn-settings" class="icon-btn">⚙️</button>
-                </div>
-            </header>
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" class="input-standard" placeholder="Digite sua senha" required>
+            </div>
 
-            <!-- Área de Conteúdo Dinâmico -->
-            <main class="client-content">
-                
-                <!-- Aba: Buscar Partida -->
-                <div id="tab-play" class="tab-content active">
-                    <div class="matchmaking-container">
-                        <h2>Arena Arcana</h2>
-                        <p>O servidor aguarda seu comando para o emparelhamento.</p>
-                        
-                        <div class="queue-box">
-                            <button id="btn-find-match" class="btn-mystic large-btn pulse-effect">Procurar Partida</button>
-                            <div id="match-status" class="status-text hidden">
-                                <span class="loading-dots">Sintonizando frequências arcanas...</span>
-                                <span id="queue-timer">00:00</span>
-                                <button id="btn-cancel-match" class="btn-cancel">Cancelar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <button type="submit" id="btn-login" class="btn-primary w-full mt-15">Entrar</button>
+        </form>
 
-                <!-- Aba: Seleção de Personagens (Preparação para os 19 Magos) -->
-                <div id="tab-roster" class="tab-content hidden">
-                    <h2>Seleção de Personagem</h2>
-                    <p>Conheça as mecânicas dos 19 magos disponíveis.</p>
-                    <div id="character-grid" class="character-grid">
-                        <!-- O JS irá popular isso com os 19 cards de personagens posteriormente -->
-                    </div>
-                </div>
-
-                <!-- Aba: Grimório (Inventário/Cartas/Magias) -->
-                <div id="tab-grimoire" class="tab-content hidden">
-                    <h2>Seu Grimório</h2>
-                    <p>Organize suas magias, runas e relíquias.</p>
-                    <!-- Estrutura futura do inventário -->
-                </div>
-
-            </main>
-        </section>
+        <div class="anti-cheat-status">
+            <span class="status-indicator loading"></span>
+            <small>AuroreGuard (Anti-Cheat) inicializando...</small>
+        </div>
     </div>
 
-    <script src="app.js"></script>
+    <div id="client-screen" class="screen hidden">
+        
+        <header class="panel-animated header-client">
+            <div class="brand">
+                <h2>Aurore Boreale</h2>
+                <div class="badge-ac">
+                    <span class="status-indicator active"></span> Anti-Cheat Ativo
+                </div>
+            </div>
+            <div class="user-profile">
+                <span id="player-name">Jogador</span>
+                <button id="btn-logout" class="btn-secondary small">Sair</button>
+            </div>
+        </header>
+
+        <nav class="client-nav">
+            <button class="nav-btn active" data-target="tab-play">Jogar</button>
+            <button class="nav-btn" data-target="tab-heroes">Heróis</button>
+            <button class="nav-btn" data-target="tab-settings">Configurações</button>
+        </nav>
+
+        <main class="panel-animated main-content">
+            
+            <div id="tab-play" class="tab-content active">
+                <div class="matchmaking-container">
+                    
+                    <div class="play-section primary-action">
+                        <h3>Partida Rápida</h3>
+                        <p class="text-muted">Encontre jogadores do seu nível de habilidade.</p>
+                        <button id="btn-find-match" class="btn-primary large">Procurar Partida</button>
+                        <div id="queue-timer" class="hidden timer-display">Tempo na fila: 00:00</div>
+                    </div>
+
+                    <div class="play-section secondary-action">
+                        <h3>Partida Personalizada</h3>
+                        <p class="text-muted">Crie uma sala privada e convide amigos.</p>
+                        <button id="btn-create-room" class="btn-secondary">Criar Sala</button>
+                        <button id="btn-join-room" class="btn-secondary mt-10">Entrar em Sala</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="tab-heroes" class="tab-content hidden text-center">
+                <h3>Seleção de Heróis</h3>
+                <p class="text-muted">Em breve: Gerencie seus Miraculous, habilidades e customizações.</p>
+            </div>
+
+            <div id="tab-settings" class="tab-content hidden text-center">
+                <h3>Configurações do Client</h3>
+                <p class="text-muted">Ajustes de vídeo, áudio e atalhos de teclado.</p>
+            </div>
+
+        </main>
+    </div>
+
 </body>
 </html>
