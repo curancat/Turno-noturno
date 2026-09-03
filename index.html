@@ -1,157 +1,93 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- Meta tags para Fullscreen e desativar zoom no Mobile -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <title>Aurore Boreale</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grimório Vivo - Client</title>
+    <!-- Importação da fonte mística Cinzel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Container Principal do Client -->
+    <div id="game-client" class="client-container">
 
-    <!-- ========================================== -->
-    <!-- TELA DE LOBBY (Criação/Entrada de Salas)   -->
-    <!-- ========================================== -->
-    <div id="lobby-screen" class="screen unified-panel">
-        <h1 class="title-gold">Aurore Boreale</h1>
-        <div class="lobby-box">
-            <input type="text" id="player-name" class="input-mystic" placeholder="Seu Nome de Invocador">
-            <select id="hero-select" class="input-mystic">
-                <!-- O JS injetará novos heróis aqui automaticamente -->
-            </select>
-            
-            <hr class="divider">
-            
-            <input type="text" id="room-name" class="input-mystic" placeholder="Nome da Sala">
-            <input type="password" id="room-pass" class="input-mystic" placeholder="Senha da Sala (Opcional)">
-            
-            <div class="btn-group">
-                <button id="btn-create-room" class="btn-action">Criar Partida</button>
-                <button id="btn-join-room" class="btn-action">Entrar na Partida</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TELA PRINCIPAL DO JOGO (Painel Único)      -->
-    <!-- ========================================== -->
-    <div id="game-screen" class="screen hidden">
-        
-        <!-- Cabeçalho (Tempo e Ouro) -->
-        <header class="game-header">
-            <div class="header-info">
-                <span id="match-time">00:00</span> | <span id="current-lane">Base</span>
-            </div>
-            <div class="header-gold">
-                🪙 <span id="player-gold">500</span> | Lvl <span id="player-level">1</span>
-            </div>
-        </header>
-
-        <div class="dashboard-grid">
-            
-            <!-- Painel Esquerdo: Atributos -->
-            <aside class="stats-panel">
-                <div class="bar-container tooltip" data-tip="Vida (HP)">
-                    <div id="hp-bar" class="bar hp-bar" style="width: 100%;"></div>
-                    <span id="hp-text">100/100</span>
+        <!-- TELA 1: Tela de Autenticação/Login -->
+        <section id="login-screen" class="screen">
+            <div class="panel login-panel">
+                <h1 class="game-title">Grimório Vivo</h1>
+                <p class="subtitle">Adentre o Conhecimento Arcano</p>
+                <div class="input-group">
+                    <input type="text" id="username" placeholder="Nome do Mago" class="mystic-input" autocomplete="off">
                 </div>
-                <div class="bar-container tooltip" data-tip="Mana / Tinta">
-                    <div id="mana-bar" class="bar mana-bar" style="width: 100%;"></div>
-                    <span id="mana-text">100/100</span>
-                </div>
-                <div class="bar-container tooltip" data-tip="Experiência">
-                    <div id="xp-bar" class="bar xp-bar" style="width: 0%;"></div>
-                </div>
+                <button id="btn-login" class="btn-mystic pulse-effect">Despertar</button>
+            </div>
+        </section>
 
-                <div class="attributes-grid mt-10">
-                    <div class="attr">⚔️ <span id="stat-ad">0</span></div>
-                    <div class="attr">🔮 <span id="stat-ap">0</span></div>
-                    <div class="attr">🛡️ <span id="stat-def">0</span></div>
-                    <div class="attr">🌀 <span id="stat-mdef">0</span></div>
-                    <div class="attr">💨 <span id="stat-ms">300</span></div>
-                    <div class="attr">⏳ <span id="stat-cdr">0</span></div>
+        <!-- TELA 2: Saguão Principal (Lobby) -->
+        <section id="lobby-screen" class="screen hidden">
+            
+            <!-- Cabeçalho de Navegação e Perfil -->
+            <header class="client-header">
+                <div class="player-info">
+                    <div class="avatar" id="player-avatar"></div>
+                    <span id="player-name">Mago Desconhecido</span>
                 </div>
                 
-                <button id="btn-open-shop" class="btn-action w-full mt-10">Acessar Loja</button>
-            </aside>
-
-            <!-- Painel Central: Chat e Log de Combate -->
-            <main class="chat-panel">
-                <div id="chat-log" class="log-area">
-                    <div class="sys-msg">Bem-vindo a Summoner's Rift. As tropas foram liberadas.</div>
-                    <!-- Mensagens do servidor e dos jogadores aparecerão aqui -->
-                </div>
+                <nav class="client-nav">
+                    <button class="nav-btn active" data-target="tab-play">Jogar</button>
+                    <button class="nav-btn" data-target="tab-roster">Magos (19)</button>
+                    <button class="nav-btn" data-target="tab-grimoire">Grimório</button>
+                </nav>
                 
-                <div class="chat-input-area">
-                    <input type="text" id="chat-input" class="input-mystic" placeholder="Falar com a equipe...">
-                    <button id="btn-send-chat" class="btn-action">Enviar</button>
+                <div class="header-actions">
+                    <span id="player-ping" class="ping-indicator">Ping: -- ms</span>
+                    <button id="btn-settings" class="icon-btn">⚙️</button>
                 </div>
+            </header>
+
+            <!-- Área de Conteúdo Dinâmico -->
+            <main class="client-content">
+                
+                <!-- Aba: Buscar Partida -->
+                <div id="tab-play" class="tab-content active">
+                    <div class="matchmaking-container">
+                        <h2>Arena Arcana</h2>
+                        <p>O servidor aguarda seu comando para o emparelhamento.</p>
+                        
+                        <div class="queue-box">
+                            <button id="btn-find-match" class="btn-mystic large-btn pulse-effect">Procurar Partida</button>
+                            <div id="match-status" class="status-text hidden">
+                                <span class="loading-dots">Sintonizando frequências arcanas...</span>
+                                <span id="queue-timer">00:00</span>
+                                <button id="btn-cancel-match" class="btn-cancel">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba: Seleção de Personagens (Preparação para os 19 Magos) -->
+                <div id="tab-roster" class="tab-content hidden">
+                    <h2>Seleção de Personagem</h2>
+                    <p>Conheça as mecânicas dos 19 magos disponíveis.</p>
+                    <div id="character-grid" class="character-grid">
+                        <!-- O JS irá popular isso com os 19 cards de personagens posteriormente -->
+                    </div>
+                </div>
+
+                <!-- Aba: Grimório (Inventário/Cartas/Magias) -->
+                <div id="tab-grimoire" class="tab-content hidden">
+                    <h2>Seu Grimório</h2>
+                    <p>Organize suas magias, runas e relíquias.</p>
+                    <!-- Estrutura futura do inventário -->
+                </div>
+
             </main>
-        </div>
-
-        <!-- Painel Inferior: Habilidades (Focado no Litlegot inicial) -->
-        <footer class="skills-panel">
-            <div class="color-picker-container" id="litlegot-mechanic">
-                <!-- Seletor de Tinta do Litlegot (Vermelho, Laranja, Verde, Amarelo, Azul, Roxo) -->
-                <button class="color-btn bg-vermelho" data-color="red" title="Fogo"></button>
-                <button class="color-btn bg-laranja" data-color="orange" title="Vampirismo"></button>
-                <button class="color-btn bg-verde" data-color="green" title="Cura"></button>
-                <button class="color-btn bg-amarelo" data-color="yellow" title="Visão/Luz"></button>
-                <button class="color-btn bg-azul" data-color="blue" title="Escudos"></button>
-                <button class="color-btn bg-roxo" data-color="purple" title="Controle de Grupo"></button>
-            </div>
-            
-            <div class="action-buttons">
-                <button id="skill-x" class="btn-skill">X</button>
-                <button id="skill-o" class="btn-skill">O</button>
-                <button id="skill-z" class="btn-skill">Z</button>
-                <button id="skill-redraw" class="btn-action">Desenhar Nova Página</button>
-                <button id="btn-map" class="btn-action">Mover (Mapa)</button>
-            </div>
-        </footer>
+        </section>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAIS (Loja e Mapa)                       -->
-    <!-- ========================================== -->
-
-    <!-- Modal da Loja -->
-    <div id="shop-modal" class="modal hidden">
-        <div class="modal-content unified-panel">
-            <span class="close-btn" id="close-shop">&times;</span>
-            <h2 class="title-gold">Loja da Base</h2>
-            <div class="tabs">
-                <button class="tab-btn active" data-tier="lixo">Lixo</button>
-                <button class="tab-btn" data-tier="normal">Normal</button>
-                <button class="tab-btn" data-tier="epico">Épico</button>
-                <button class="tab-btn" data-tier="raro">Raro</button>
-                <button class="tab-btn" data-tier="ultra">Ultra (Final)</button>
-            </div>
-            <div id="shop-items" class="shop-grid">
-                <!-- O JS (items.js) renderizará os 50 itens aqui -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal do Mini-Mapa -->
-    <div id="map-modal" class="modal hidden">
-        <div class="modal-content unified-panel">
-            <span class="close-btn" id="close-map">&times;</span>
-            <h2 class="title-gold">Rotas (Fog of War)</h2>
-            <div class="lane-selector">
-                <button class="lane-btn" data-lane="top">Top Lane (Visão Parcial)</button>
-                <button class="lane-btn" data-lane="mid">Mid Lane (Visão Escura)</button>
-                <button class="lane-btn" data-lane="bot">Bot Lane (Visão Aliada)</button>
-                <button class="lane-btn" data-lane="base">Retornar à Base</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts (A ordem é vital para a arquitetura funcionar) -->
-    <script type="module" src="js/app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
