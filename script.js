@@ -1,913 +1,774 @@
-/* ==========================================================================
-   HWEI: CARD GAME - MOTOR PRINCIPAL DE JOGO (SCRIPT.JS)
-   ========================================================================== */
-// 1. CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE
+/**
+ * HWEI: O PINTOR - JOGO DE CARTAS MULTIPLAYER
+ * Script Completo, Mobile-Optimized e Integrado com Firebase.
+ * Contém Autenticação, Matchmaking, Sincronização em Tempo Real (Realtime Database),
+ * Motor de Desenho em Canvas e Lógica de Combate.
+ */
+
+// ============================================================================
+// 1. CONFIGURAÇÃO DO FIREBASE (Insira as credenciais do seu projeto aqui)
+// ============================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
-  authDomain: "turno-noturno.firebaseapp.com",
-  databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com",
-  projectId: "turno-noturno",
-  storageBucket: "turno-noturno.firebasestorage.app",
-  messagingSenderId: "452104216659",
-  appId: "1:452104216659:web:982293f3f30b372e1b26a6",
-  measurementId: "G-YQVGM2LLHW"
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_PROJETO.firebaseapp.com",
+    databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+    projectId: "SEU_PROJETO",
+    storageBucket: "SEU_PROJETO.appspot.com",
+    messagingSenderId: "SEU_SENDER_ID",
+    appId: "SEU_APP_ID"
 };
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// Inicialização
+firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db = firebase.firestore();
+const db = firebase.database();
 
-// ==========================================================================
-// ESTADO GLOBAL DO JOGO
-// ==========================================================================
-const GameState = {
-    currentUser: null,
-    matchId: null,
-    isMyTurn: true,
-    turnCount: 1,
-    totalDamageDealt: 0,
-    totalGoldEarned: 100,
+// ============================================================================
+// 2. ESTADO GLOBAL DA APLICAÇÃO E VARIÁVEIS
+// ============================================================================
+const AppState = {
+    user: null,
+    gameId: null,
+    isMyTurn: false,
+    playerNum: 0, // 1 ou 2
+    opponentId: null,
     
-    player: {
-        name: "Hwei",
-        hp: 100,
-        maxHp: 100,
-        gold: 100,
-        rune: null,
-        hand: [],
-        board: [],
-        inventory: [null, null, null, null], // 2 ativos, 2 passivos
-        stats: { bonusAtk: 0, bonusHeal: 0, goldMult: 1.0 }
-    },
+    // Status do Jogador Local
+    hp: 100,
+    maxHp: 100,
+    gold: 0,
+    hand: [],
     
-    enemy: {
-        name: "Invocador Sombrio",
-        hp: 100,
-        maxHp: 100,
-        gold: 50,
-        board: [],
-        runes: ["colheita"]
-    },
+    // Status do Inimigo
+    enemyHp: 100,
+    enemyMaxHp: 100,
+    enemyName: "Oponente",
 
-    canvas: {
-        color: "#ff3333",
-        brushSize: 5,
-        isDrawing: false,
-        strokesCount: 0,
-        inkMix: [] // Historico de tintas usadas
-    }
+    // Motor de Desenho
+    currentInk: 'damage', // damage, heal, control
+    isDrawing: false,
+    strokes: [], // Guarda as coordenadas para análise
+    canvasCtx: null,
+    
+    // Sons
+    bgMusic: document.getElementById('bg-music'),
+    musicStarted: false
 };
 
-// ==========================================================================
-// 2. BANCO DE DADOS DE RUNAS
-// ==========================================================================
-const RUNES_DATABASE = [
-    {
-        id: "cometa",
-        name: "Cometa Arcano do Desastre",
-        type: "Ofensiva",
-        desc: "+15 Dano Adicional em todas as magias de Desastre e 10% de chance de crítico.",
-        icon: "☄️",
-        apply: (p) => { p.stats.bonusAtk += 15; }
-    },
-    {
-        id: "conquistador",
-        name: "Pincelada Implacável",
-        type: "Combate",
-        desc: "Cada carta jogada aumenta o ouro ganho no turno em +10 e cura 5 HP.",
-        icon: "⚔️",
-        apply: (p) => { p.stats.goldMult += 0.2; }
-    },
-    {
-        id: "colheita",
-        name: "Colheita de Tinta Sombria",
-        type: "Execução",
-        desc: "Causa 25 de dano extra a inimigos com menos de 50% de HP.",
-        icon: "🩸",
-        apply: (p) => { /* Aplicado em combate */ }
-    },
-    {
-        id: "fluxo",
-        name: "Serenidade Fluida",
-        type: "Suporte",
-        desc: "Restaura 10 HP ao início de cada turno e reduz o custo da Loja em 15%.",
-        icon: "🌊",
-        apply: (p) => { p.stats.bonusHeal += 10; }
-    }
+const ShopItems = [
+    { id: 'item_potion', name: 'Poção Maior', cost: 15, effect: 'heal', value: 30, icon: '🧪' },
+    { id: 'item_upgrade', name: 'Tinta Aprimorada', cost: 25, effect: 'damage_buff', value: 10, icon: '🖌️' },
+    { id: 'item_shield', name: 'Barreira', cost: 20, effect: 'shield', value: 20, icon: '🛡️' }
 ];
 
-// ==========================================================================
-// 3. GERADOR E BANCO DE DADOS DE 100 ITENS (LOJA)
-// ==========================================================================
-function generateShopItems() {
-    const items = [];
-    const rarities = [
-        { key: "trash", name: "Lixo", color: "#7f8c8d", basePrice: 25, count: 20 },
-        { key: "common", name: "Comum", color: "#2ecc71", basePrice: 75, count: 20 },
-        { key: "rare", name: "Raro", color: "#3498db", basePrice: 200, count: 20 },
-        { key: "epic", name: "Épico", color: "#9b59b6", basePrice: 450, count: 20 },
-        { key: "legendary", name: "Lendário", color: "#f1c40f", basePrice: 900, count: 20 }
-    ];
+// ============================================================================
+// 3. MAPEAMENTO DO DOM
+// ============================================================================
+const UI = {
+    // Telas
+    viewAuth: document.getElementById('view-auth'),
+    viewLobby: document.getElementById('view-lobby'),
+    viewMatchmaking: document.getElementById('view-matchmaking'),
+    viewGame: document.getElementById('view-game'),
+    
+    // Formulários de Auth
+    formLogin: document.getElementById('form-login'),
+    formRegister: document.getElementById('form-register'),
+    toggleRegister: document.getElementById('toggle-register'),
+    toggleLogin: document.getElementById('toggle-login'),
+    
+    // Lobby e Matchmaking
+    lobbyUsername: document.getElementById('lobby-username'),
+    btnFindMatch: document.getElementById('btn-find-match'),
+    btnCancelMatch: document.getElementById('btn-cancel-match'),
+    btnLogout: document.getElementById('btn-logout'),
+    matchmakingStatus: document.getElementById('matchmaking-status'),
+    
+    // Jogo - HUD
+    playerName: document.getElementById('player-name'),
+    playerHpText: document.getElementById('player-hp-text'),
+    playerHpFill: document.getElementById('player-hp-fill'),
+    playerGold: document.getElementById('player-gold'),
+    enemyName: document.getElementById('enemy-name'),
+    enemyHpText: document.getElementById('enemy-hp-text'),
+    enemyHpFill: document.getElementById('enemy-hp-fill'),
+    turnIndicator: document.getElementById('turn-indicator'),
+    
+    // Jogo - Tabuleiro e Mão
+    playerHand: document.getElementById('player-hand'),
+    playerBoard: document.getElementById('player-board'),
+    enemyBoard: document.getElementById('enemy-board'),
+    
+    // Jogo - Canvas e Ações
+    canvas: document.getElementById('magic-canvas'),
+    inkBtns: document.querySelectorAll('.ink-btn'),
+    symbolGuide: document.getElementById('symbol-guide'),
+    drawFeedback: document.getElementById('draw-feedback'),
+    btnClearCanvas: document.getElementById('btn-clear-canvas'),
+    btnCreateCard: document.getElementById('btn-create-card'),
+    btnEndTurn: document.getElementById('btn-end-turn'),
+    
+    // Loja e Modais
+    btnOpenShop: document.getElementById('btn-open-shop'),
+    btnCloseShop: document.getElementById('btn-close-shop'),
+    modalShop: document.getElementById('modal-shop'),
+    shopGrid: document.getElementById('shop-grid'),
+    shopGoldDisplay: document.getElementById('shop-gold-display'),
+    
+    // Modal Fim de Jogo
+    modalEndgame: document.getElementById('modal-endgame'),
+    endgameTitle: document.getElementById('endgame-title'),
+    endgameMsg: document.getElementById('endgame-msg'),
+    btnBackLobby: document.getElementById('btn-back-lobby')
+};
 
-    const itemTemplates = {
-        trash: [
-            "Pincel Quebrado", "Tinta Seca", "Trapo Velho", "Frasco Rachado", "Botas Furadas",
-            "Anel de Cobre", "Galho Seco", "Pergaminho Rasgado", "Moeda Enferrujada", "Semente Murcha",
-            "Pedra Comum", "Lente Trincada", "Colher de Madeira", "Vela Apagada", "Restos de Tela",
-            "Corda Gasta", "Osso Roído", "Dente de Monstro", "Escama Quebrada", "Pena Amassada"
-        ],
-        common: [
-            "Pincel de Aprendiz", "Tinta Nanquim", "Sapatilhas de Couro", "Amuleto Simples", "Anel de Prata",
-            "Escudo de Madeira", "Livro de Feitiços", "Poção de Vida", "Frasco de Mana", "Cristal de Quartzo",
-            "Capa de Viagem", "Espada de Ferro", "Luva de Pano", "Cinto de Couro", "Adaga Curta",
-            "Amuleto do Vento", "Lanterna Mágica", "Pergaminho de Fogo", "Pedra de Amolar", "Anel de Vida"
-        ],
-        rare: [
-            "Pincel Rúnico", "Tinta do Desastre", "Botas do Mago", "Amuleto Arcano", "Lâmina Flamejante",
-            "Escudo Prateado", "Grimório Tenebroso", "Elixir Vital", "Cristal Fluido", "Anel de Ouro Místico",
-            "Manto da Invisibilidade", "Cetro da Tempestade", "Orb Solar", "Cajado do Silêncio", "Coroa de Espinhos",
-            "Adaga Sombria", "Broche de Rubi", "Talismã do Caos", "Coração de Pedra", "Manopla Elemental"
-        ],
-        epic: [
-            "Pincel Cósmico", "Tinta de Dragão", "Manto do Vazio", "Espada Celestial", "Escudo Dracônico",
-            "Anel do Tempo", "Cetro da Ruína", "Elixir Imortal", "Cristal Espiritual", "Orb da Aniquilação",
-            "Coroa Imperial", "Manopla Astral", "Botas de Mercúrio", "Coração da Tempestade", "Grimório Ancestral",
-            "Espelho das Almas", "Broche Divino", "Lâmina Infernal", "Orbe Absoluto", "Amuleto do Destino"
-        ],
-        legendary: [
-            "O Pincel do Criador", "Tinta Primordial de Hwei", "Apocalipse de Tinta", "Coroa do Rei Destruído",
-            "Amuleto do Infinito", "Cetro de Valoran", "Escudo do Olimpo", "Anel da Imortabilidade", "Orb Divino",
-            "Lâmina Cósmica", "Manto do Dragão Ancião", "Elixir do Deus Sol", "Grimório do Vazio Absolute",
-            "Manopla do Titan", "Botas do Mapeador de Mundos", "Coração de Astaroth", "Esfera do Caos Primordial",
-            "Espada da Criação", "Cetro do Caos", "Olho do Vazio Supremo"
-        ]
-    };
-
-    let idCounter = 1;
-
-    rarities.forEach(r => {
-        const names = itemTemplates[r.key];
-        names.forEach((name, idx) => {
-            const isPassive = idx % 2 === 0;
-            const powerMultiplier = (rarities.indexOf(r) + 1);
-            items.push({
-                id: idCounter++,
-                name: name,
-                rarity: r.key,
-                rarityName: r.name,
-                price: r.basePrice + (idx * 5 * powerMultiplier),
-                type: isPassive ? "passive" : "active",
-                stats: {
-                    damage: 10 * powerMultiplier + (idx * 2),
-                    heal: isPassive ? 5 * powerMultiplier : 15 * powerMultiplier,
-                    goldBonus: 5 * powerMultiplier
-                },
-                desc: isPassive 
-                    ? `Passiva: Concede +${10 * powerMultiplier + idx} de Dano de Magia e +${5 * powerMultiplier} Ouro por turno.`
-                    : `Ativa: Restaura ${15 * powerMultiplier} HP e causa ${15 * powerMultiplier} de dano direto ao oponente.`,
-                icon: isPassive ? "🛡️" : "⚔️"
-            });
-        });
-    });
-
-    return items;
+// ============================================================================
+// 4. GERENCIADOR DE TELAS E NAVEGAÇÃO
+// ============================================================================
+function switchScreen(screenElement) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    screenElement.classList.remove('hidden');
+    screenElement.classList.add('active');
 }
 
-const ITEMS_DATABASE = generateShopItems();
+function showModal(modalElement) {
+    modalElement.classList.remove('hidden');
+    modalElement.classList.add('active');
+}
 
-// ==========================================================================
-// 4. INICIALIZAÇÃO DE EVENTOS E INTERFACE (DOM)
-// ==========================================================================
-document.addEventListener("DOMContentLoaded", () => {
-    initAuthEvents();
-    initCanvasEngine();
-    initShopUI();
-    initRuneUI();
-    initKeyboardShortcuts();
-    initGameControls();
-    
-    // Tenta reproduzir música ao primeiro clique
-    document.body.addEventListener("click", () => {
-        const audio = document.getElementById("bg-music");
-        if (audio && audio.paused) {
-            audio.volume = 0.3;
-            audio.play().catch(() => {});
-        }
-    }, { once: true });
+function hideModal(modalElement) {
+    modalElement.classList.remove('active');
+    setTimeout(() => modalElement.classList.add('hidden'), 300);
+}
+
+// Iniciar música ao primeiro toque (Política de navegadores)
+document.body.addEventListener('click', () => {
+    if (!AppState.musicStarted && AppState.bgMusic) {
+        AppState.bgMusic.volume = 0.3;
+        AppState.bgMusic.play().catch(e => console.log("Áudio bloqueado pelo navegador", e));
+        AppState.musicStarted = true;
+    }
+}, { once: true });
+
+// ============================================================================
+// 5. AUTENTICAÇÃO (FIREBASE)
+// ============================================================================
+UI.toggleRegister.addEventListener('click', (e) => {
+    e.preventDefault();
+    UI.formLogin.classList.replace('active-form', 'hidden-form');
+    UI.formRegister.classList.replace('hidden-form', 'active-form');
 });
 
-// ==========================================================================
-// 5. MÓDULO DE AUTENTICAÇÃO E LOBBY (FIREBASE)
-// ==========================================================================
-function initAuthEvents() {
-    const viewLogin = document.getElementById("view-login");
-    const viewRegister = document.getElementById("view-register");
-    const viewLobby = document.getElementById("view-lobby");
-    const clientViewport = document.getElementById("client-viewport");
-    const gameViewport = document.getElementById("game-viewport");
+UI.toggleLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    UI.formRegister.classList.replace('active-form', 'hidden-form');
+    UI.formLogin.classList.replace('hidden-form', 'active-form');
+});
 
-    document.getElementById("link-to-register")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        viewLogin.classList.add("hidden");
-        viewRegister.classList.remove("hidden");
-    });
-
-    document.getElementById("link-to-login")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        viewRegister.classList.add("hidden");
-        viewLogin.classList.remove("hidden");
-    });
-
-    // Login Form
-    document.getElementById("form-login")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const email = document.getElementById("login-email").value;
-        const pass = document.getElementById("login-password").value;
-
-        auth.signInWithEmailAndPassword(email, pass)
-            .then(userCred => {
-                showToast("Login realizado com sucesso!");
-            })
-            .catch(err => alert("Erro ao entrar: " + err.message));
-    });
-
-    // Register Form
-    document.getElementById("form-register")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const username = document.getElementById("reg-username").value;
-        const email = document.getElementById("reg-email").value;
-        const pass = document.getElementById("reg-password").value;
-
-        auth.createUserWithEmailAndPassword(email, pass)
-            .then(userCred => {
-                return userCred.user.updateProfile({ displayName: username }).then(() => {
-                    db.collection("users").doc(userCred.user.uid).set({
-                        username: username,
-                        email: email,
-                        createdAt: new Date()
-                    });
-                });
-            })
-            .catch(err => alert("Erro ao criar conta: " + err.message));
-    });
-
-    // Logout
-    document.getElementById("btn-logout")?.addEventListener("click", () => {
-        auth.signOut();
-    });
-
-    // Matchmaking / Play Match
-    document.getElementById("btn-play-match")?.addEventListener("click", () => {
-        clientViewport.classList.add("hidden");
-        document.getElementById("rune-modal").classList.add("active");
-        document.getElementById("rune-modal").classList.remove("hidden");
-    });
-
-    // Firebase Auth State Observer
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            GameState.currentUser = user;
-            GameState.player.name = user.displayName || "Hwei Invocador";
-            document.getElementById("lobby-username").textContent = GameState.player.name;
-            document.getElementById("player-name").textContent = GameState.player.name;
-            
-            viewLogin.classList.add("hidden");
-            viewRegister.classList.add("hidden");
-            viewLobby.classList.remove("hidden");
-        } else {
-            GameState.currentUser = null;
-            viewLobby.classList.add("hidden");
-            clientViewport.classList.remove("hidden");
-            viewLogin.classList.remove("hidden");
-            gameViewport.classList.add("hidden");
-        }
-    });
-}
-
-// ==========================================================================
-// 6. SISTEMA DE SELEÇÃO DE RUNAS
-// ==========================================================================
-function initRuneUI() {
-    const grid = document.getElementById("rune-selection-grid");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    RUNES_DATABASE.forEach(rune => {
-        const card = document.createElement("div");
-        card.className = "rune-card panel-glass";
-        card.style.cssText = "padding: 15px; margin: 10px; cursor: pointer; border: 2px solid transparent; text-align: center; border-radius: 8px; transition: 0.3s;";
-        card.innerHTML = `
-            <div style="font-size: 2.5rem;">${rune.icon}</div>
-            <h3 style="color: var(--gold-primary); margin: 5px 0;">${rune.name}</h3>
-            <p style="font-size: 0.85rem; color: #ccc;">${rune.desc}</p>
-        `;
-
-        card.addEventListener("click", () => {
-            document.querySelectorAll(".rune-card").forEach(c => c.style.borderColor = "transparent");
-            card.style.borderColor = "var(--gold-primary)";
-            GameState.player.rune = rune;
-        });
-
-        grid.appendChild(card);
-    });
-
-    document.getElementById("btn-confirm-runes")?.addEventListener("click", () => {
-        if (!GameState.player.rune) {
-            GameState.player.rune = RUNES_DATABASE[0]; // Padrão
-        }
-        
-        // Aplica efeitos da runa
-        GameState.player.rune.apply(GameState.player);
-        
-        // Transiciona para o jogo
-        document.getElementById("rune-modal").classList.remove("active");
-        document.getElementById("rune-modal").classList.add("hidden");
-        document.getElementById("game-viewport").classList.remove("hidden");
-
-        updateHUD();
-        startBattle();
-    });
-}
-
-// ==========================================================================
-// 7. MOTOR DE DESENHO (CANVAS & MATERIALIZAÇÃO DAS CARTAS DO HWEI)
-// ==========================================================================
-function initCanvasEngine() {
-    const canvas = document.getElementById("magic-canvas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+UI.formRegister.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-password').value;
+    const username = document.getElementById('reg-username').value;
     
-    // Ajusta resolução do Canvas interno
-    canvas.width = 400;
-    canvas.height = 250;
-
-    const sizeInput = document.getElementById("brush-size");
-    if (sizeInput) {
-        sizeInput.addEventListener("input", (e) => {
-            GameState.canvas.brushSize = e.target.value;
+    try {
+        const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+        await userCred.user.updateProfile({ displayName: username });
+        // Salvar dados base no Realtime Database
+        await db.ref('users/' + userCred.user.uid).set({
+            username: username,
+            rating: 1000,
+            gamesPlayed: 0
         });
+    } catch (error) {
+        alert("Erro ao registrar: " + error.message);
     }
+});
 
-    // Seleção de Cores de Tintas (Desastre, Serenidade, Tormento)
-    document.querySelectorAll(".ink-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            const color = btn.getAttribute("data-color");
-            GameState.canvas.color = color;
-            
-            const orb = document.getElementById("active-mixture-display");
-            if (orb) orb.style.backgroundColor = color;
-            
-            const label = document.getElementById("mixture-name");
-            if (label) {
-                if (color === "#ff3333") label.textContent = "Assunto: Desastre (QQ/QW/QE)";
-                else if (color === "#33ccff") label.textContent = "Assunto: Serenidade (WQ/WW/WE)";
-                else if (color === "#9933ff") label.textContent = "Assunto: Tormento (EQ/EW/EE)";
-            }
-
-            GameState.canvas.inkMix.push(color);
-            updateSpellPrediction();
-        });
-    });
-
-    // Limpar Canvas
-    document.getElementById("btn-clear-canvas")?.addEventListener("click", clearCanvas);
-
-    function clearCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        GameState.canvas.strokesCount = 0;
-        GameState.canvas.inkMix = [];
-        updateSpellPrediction();
+UI.formLogin.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    try {
+        await auth.signInWithEmailAndPassword(email, pass);
+    } catch (error) {
+        alert("Erro no login: " + error.message);
     }
+});
 
-    // Eventos de Pincel (Mouse e Touch)
-    function startDrawing(e) {
-        GameState.canvas.isDrawing = true;
-        GameState.canvas.strokesCount++;
-        draw(e);
-    }
+UI.btnLogout.addEventListener('click', () => auth.signOut());
 
-    function stopDrawing() {
-        GameState.canvas.isDrawing = false;
-        ctx.beginPath();
-        updateSpellPrediction();
-    }
-
-    function draw(e) {
-        if (!GameState.canvas.isDrawing) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-
-        ctx.lineWidth = GameState.canvas.brushSize;
-        ctx.lineCap = "round";
-        ctx.strokeStyle = GameState.canvas.color;
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
-    canvas.addEventListener("mousedown", startDrawing);
-    canvas.addEventListener("mousemove", draw);
-    canvas.addEventListener("mouseup", stopDrawing);
-    canvas.addEventListener("mouseleave", stopDrawing);
-
-    canvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDrawing(e); });
-    canvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e); });
-    canvas.addEventListener("touchend", stopDrawing);
-
-    // Botão Materializar Carta
-    document.getElementById("btn-materialize-card")?.addEventListener("click", () => {
-        if (GameState.canvas.strokesCount === 0) {
-            showToast("Desenhe uma forma na tela primeiro!");
-            return;
-        }
-
-        materializeCard();
-        clearCanvas();
-    });
-}
-
-function updateSpellPrediction() {
-    const preview = document.getElementById("spell-prediction");
-    const shapeLabel = document.getElementById("detected-shape");
-    if (!preview || !shapeLabel) return;
-
-    if (GameState.canvas.strokesCount === 0) {
-        preview.classList.add("hidden");
-        return;
-    }
-
-    preview.classList.remove("hidden");
-    const lastColor = GameState.canvas.color;
-
-    if (lastColor === "#ff3333") shapeLabel.textContent = "Chama Devastadora (Ataque de Área)";
-    else if (lastColor === "#33ccff") shapeLabel.textContent = "Escudo Fluido (Defesa & Cura)";
-    else shapeLabel.textContent = "Olho do Tormento (Dano e Roubo de Vida)";
-}
-
-function materializeCard() {
-    if (GameState.player.hand.length >= 6) {
-        showToast("Sua mão está cheia (Máximo 6 cartas)!");
-        return;
-    }
-
-    const color = GameState.canvas.color;
-    let cardData = {};
-
-    if (color === "#ff3333") {
-        // Carta de Desastre
-        cardData = {
-            id: Date.now(),
-            name: "Devastação Calcinante",
-            type: "desastre",
-            cost: 2,
-            damage: 25 + GameState.player.stats.bonusAtk,
-            heal: 0,
-            color: "#ff3333",
-            desc: "Causa dano direto devastador ao oponente."
-        };
-    } else if (color === "#33ccff") {
-        // Carta de Serenidade
-        cardData = {
-            id: Date.now(),
-            name: "Piscina Protetora",
-            type: "serenidade",
-            cost: 1,
-            damage: 5,
-            heal: 20 + GameState.player.stats.bonusHeal,
-            color: "#33ccff",
-            desc: "Restaura vida e concede proteção mística."
-        };
+// Listener de Estado de Autenticação
+auth.onAuthStateChanged(user => {
+    if (user) {
+        AppState.user = user;
+        UI.lobbyUsername.textContent = user.displayName || "Jogador";
+        UI.playerName.textContent = user.displayName || "Você";
+        switchScreen(UI.viewLobby);
     } else {
-        // Carta de Tormento
-        cardData = {
-            id: Date.now(),
-            name: "Garras do Tormento",
-            type: "tormento",
-            cost: 3,
-            damage: 35 + GameState.player.stats.bonusAtk,
-            heal: 10,
-            color: "#9933ff",
-            desc: "Drena a vida do oponente e aplica pavor."
-        };
+        AppState.user = null;
+        switchScreen(UI.viewAuth);
     }
+});
 
-    GameState.player.hand.push(cardData);
-    renderPlayerHand();
-    showToast(`Carta "${cardData.name}" Materializada!`);
-}
+// ============================================================================
+// 6. MATCHMAKING E GERENCIAMENTO DE FILA
+// ============================================================================
+let matchmakingRef = null;
+let gameRef = null;
 
-function renderPlayerHand() {
-    const handContainer = document.getElementById("player-hand");
-    if (!handContainer) return;
-    handContainer.innerHTML = "";
+UI.btnFindMatch.addEventListener('click', joinMatchmaking);
+UI.btnCancelMatch.addEventListener('click', cancelMatchmaking);
 
-    GameState.player.hand.forEach((card, index) => {
-        const cardEl = document.createElement("div");
-        cardEl.className = "card-item panel-glass";
-        cardEl.style.cssText = `
-            width: 110px;
-            height: 150px;
-            border: 2px solid ${card.color};
-            border-radius: 8px;
-            padding: 8px;
-            margin: 0 5px;
-            display: inline-flex;
-            flex-direction: column;
-            justify-content: space-between;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            background: rgba(10, 15, 25, 0.85);
-        `;
-
-        cardEl.innerHTML = `
-            <div style="font-size: 0.75rem; font-weight: bold; color: ${card.color}">${card.name}</div>
-            <div style="font-size: 0.7rem; color: #aaa;">${card.desc}</div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: bold;">
-                <span style="color: #ff5555">⚔️ ${card.damage}</span>
-                <span style="color: #55ff55">💚 ${card.heal}</span>
-            </div>
-        `;
-
-        cardEl.addEventListener("mouseenter", () => { cardEl.style.transform = "translateY(-15px) scale(1.05)"; });
-        cardEl.addEventListener("mouseleave", () => { cardEl.style.transform = "none"; });
-
-        // Jogar Carta ao clicar
-        cardEl.addEventListener("click", () => {
-            playCard(index);
-        });
-
-        handContainer.appendChild(cardEl);
-    });
-}
-
-function playCard(index) {
-    if (!GameState.isMyTurn) {
-        showToast("Aguarde seu turno!");
-        return;
-    }
-
-    const card = GameState.player.hand.splice(index, 1)[0];
-    if (!card) return;
-
-    // Aplica Efeitos da Carta
-    if (card.damage > 0) {
-        let finalDamage = card.damage;
-        if (GameState.enemy.hp < 50 && GameState.player.rune?.id === "colheita") {
-            finalDamage += 25; // Runa Colheita
-        }
-        GameState.enemy.hp = Math.max(0, GameState.enemy.hp - finalDamage);
-        GameState.totalDamageDealt += finalDamage;
-    }
-
-    if (card.heal > 0) {
-        GameState.player.hp = Math.min(GameState.player.maxHp, GameState.player.hp + card.heal);
-    }
-
-    // Animação de envio ao tabuleiro
-    const boardContainer = document.getElementById("player-board-cards");
-    if (boardContainer) {
-        const playedCard = document.createElement("div");
-        playedCard.className = "played-card-effect";
-        playedCard.style.cssText = `padding: 5px 10px; background: ${card.color}; color: #fff; border-radius: 4px; margin: 3px; font-weight: bold; animation: fadeIn 0.3s;`;
-        playedCard.textContent = `${card.name} (-${card.damage} HP / +${card.heal} HP)`;
-        boardContainer.appendChild(playedCard);
-        setTimeout(() => playedCard.remove(), 2500);
-    }
-
-    updateHUD();
-    checkEndGame();
-}
-
-// ==========================================================================
-// 8. GERENCIAMENTO DA LOJA DE ITENS (BAZAR - 100 ITENS)
-// ==========================================================================
-function initShopUI() {
-    const shopModal = document.getElementById("shop-modal");
-    const btnOpen = document.getElementById("btn-open-shop");
-    const btnClose = document.getElementById("btn-close-shop");
-    const grid = document.getElementById("shop-items-grid");
-
-    btnOpen?.addEventListener("click", () => {
-        shopModal.classList.remove("hidden");
-        shopModal.classList.add("active");
-        renderShopItems("all");
-    });
-
-    btnClose?.addEventListener("click", () => {
-        shopModal.classList.add("hidden");
-        shopModal.classList.remove("active");
-    });
-
-    // Abas de Raridade
-    document.querySelectorAll(".shop-tabs .tab-btn").forEach(tab => {
-        tab.addEventListener("click", (e) => {
-            document.querySelectorAll(".shop-tabs .tab-btn").forEach(t => t.classList.remove("active"));
-            e.target.classList.add("active");
-            const rarity = e.target.getAttribute("data-rarity");
-            renderShopItems(rarity);
-        });
-    });
-}
-
-function renderShopItems(filterRarity = "all") {
-    const grid = document.getElementById("shop-items-grid");
-    const goldDisplay = document.getElementById("shop-player-gold");
-    if (!grid) return;
-
-    if (goldDisplay) goldDisplay.textContent = GameState.player.gold;
-
-    grid.innerHTML = "";
-    grid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; max-height: 60vh; overflow-y: auto; padding: 10px;";
-
-    const filtered = filterRarity === "all" 
-        ? ITEMS_DATABASE 
-        : ITEMS_DATABASE.filter(item => item.rarity === filterRarity);
-
-    filtered.forEach(item => {
-        const itemCard = document.createElement("div");
-        itemCard.className = `shop-item-card panel-glass rarity-${item.rarity}`;
-        itemCard.style.cssText = `
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background: rgba(15, 20, 30, 0.8);
-        `;
-
-        itemCard.innerHTML = `
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 1.5rem;">${item.icon}</span>
-                    <span style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1);">${item.rarityName}</span>
-                </div>
-                <h4 style="color: var(--gold-primary); margin: 6px 0; font-size: 0.95rem;">${item.name}</h4>
-                <p style="font-size: 0.75rem; color: #bbb; line-height: 1.2;">${item.desc}</p>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="btn-primary full-width btn-buy-item" style="padding: 6px; font-size: 0.85rem;">
-                    Comprar 🪙 ${item.price}
-                </button>
-            </div>
-        `;
-
-        itemCard.querySelector(".btn-buy-item").addEventListener("click", () => {
-            buyItem(item);
-        });
-
-        grid.appendChild(itemCard);
-    });
-}
-
-function buyItem(item) {
-    if (GameState.player.gold < item.price) {
-        showToast("Ouro insuficiente!");
-        return;
-    }
-
-    // Encontra slot livre no inventário (4 slots max)
-    const freeSlotIndex = GameState.player.inventory.findIndex(slot => slot === null);
-    if (freeSlotIndex === -1) {
-        showToast("Inventário Cheio (Máximo 4 Itens)!");
-        return;
-    }
-
-    GameState.player.gold -= item.price;
-    GameState.player.inventory[freeSlotIndex] = item;
-
-    // Aplica Bônus do Item se Passivo
-    if (item.type === "passive") {
-        GameState.player.stats.bonusAtk += item.stats.damage;
-        GameState.player.maxHp += 10;
-        GameState.player.hp += 10;
-    }
-
-    showToast(`Comprado: ${item.name}!`);
-    renderShopItems(document.querySelector(".shop-tabs .tab-btn.active")?.getAttribute("data-rarity") || "all");
-    updateHUD();
-    renderInventorySlots();
-}
-
-function renderInventorySlots() {
-    const slots = document.querySelectorAll("#player-inventory .item-slot");
-    slots.forEach((slotEl, idx) => {
-        const item = GameState.player.inventory[idx];
-        if (item) {
-            slotEl.innerHTML = `<span style="font-size: 1.2rem;" title="${item.name}: ${item.desc}">${item.icon}</span>`;
-            slotEl.style.border = "1px solid var(--gold-primary)";
-            
-            // Permite usar item se for do tipo ativo
-            slotEl.onclick = () => {
-                if (item.type === "active" && GameState.isMyTurn) {
-                    useActiveItem(idx, item);
-                }
-            };
-        } else {
-            slotEl.innerHTML = "";
-            slotEl.style.border = "1px dashed var(--text-muted)";
-            slotEl.onclick = null;
-        }
-    });
-}
-
-function useActiveItem(index, item) {
-    GameState.enemy.hp = Math.max(0, GameState.enemy.hp - item.stats.damage);
-    GameState.player.hp = Math.min(GameState.player.maxHp, GameState.player.hp + item.stats.heal);
+async function joinMatchmaking() {
+    switchScreen(UI.viewMatchmaking);
+    UI.matchmakingStatus.textContent = "Procurando oponente...";
+    const uid = AppState.user.uid;
     
-    showToast(`Usou ${item.name}! -${item.stats.damage} HP no inimigo / +${item.stats.heal} Cura`);
+    // Tenta encontrar alguém na fila
+    const queueRef = db.ref('queue');
+    const snapshot = await queueRef.once('value');
+    const queue = snapshot.val();
     
-    // Consome o item ativo
-    GameState.player.inventory[index] = null;
-    renderInventorySlots();
-    updateHUD();
-    checkEndGame();
-}
-
-// ==========================================================================
-// 9. CONTROLE DE TURNOS, IA DO OPONENTE E LOOP DE COMBATE
-// ==========================================================================
-function startBattle() {
-    GameState.player.hp = 100;
-    GameState.enemy.hp = 100;
-    GameState.player.gold = 100;
-    GameState.turnCount = 1;
-    GameState.isMyTurn = true;
-
-    updateHUD();
-    renderInventorySlots();
-    showToast("A Batalha Começou! Desenhe suas cartas.");
-}
-
-function initGameControls() {
-    document.getElementById("btn-end-turn")?.addEventListener("click", () => {
-        if (!GameState.isMyTurn) return;
-        endTurn();
-    });
-
-    document.getElementById("btn-restart")?.addEventListener("click", () => {
-        document.getElementById("death-modal").classList.add("hidden");
-        document.getElementById("death-modal").classList.remove("active");
-        startBattle();
-    });
-}
-
-function endTurn() {
-    GameState.isMyTurn = false;
-    document.getElementById("turn-indicator").textContent = "Turno do Oponente";
-    document.getElementById("turn-indicator").style.color = "#ff4444";
-
-    // Executa Efeitos de Fim de Turno
-    if (GameState.player.rune?.id === "fluxo") {
-        GameState.player.hp = Math.min(GameState.player.maxHp, GameState.player.hp + 10);
-    }
-
-    showToast("Turno Encerrado. Oponente pensando...");
-
-    // Turno da IA Oponente
-    setTimeout(() => {
-        executeEnemyTurn();
-    }, 1500);
-}
-
-function executeEnemyTurn() {
-    const enemyDamage = Math.floor(Math.random() * 20) + 10;
-    GameState.player.hp = Math.max(0, GameState.player.hp - enemyDamage);
-
-    showToast(`Oponente atacou e causou ${enemyDamage} de dano!`);
-
-    // Inicia Próximo Turno do Jogador
-    GameState.turnCount++;
-    GameState.isMyTurn = true;
-    
-    // Renda por Turno
-    const earnedGold = Math.floor(25 * GameState.player.stats.goldMult);
-    GameState.player.gold += earnedGold;
-    GameState.totalGoldEarned += earnedGold;
-
-    document.getElementById("turn-indicator").textContent = "Seu Turno";
-    document.getElementById("turn-indicator").style.color = "var(--gold-primary)";
-
-    updateHUD();
-    checkEndGame();
-}
-
-// ==========================================================================
-// 10. ATUALIZAÇÃO DA INTERFACE (HUD) E TELA DE FIM DE JOGO
-// ==========================================================================
-function updateHUD() {
-    // Player Vitals
-    const playerHpBar = document.getElementById("player-hp-bar");
-    const playerHpText = document.getElementById("player-hp-text");
-    const playerGold = document.getElementById("player-gold");
-
-    if (playerHpBar) playerHpBar.style.width = `${(GameState.player.hp / GameState.player.maxHp) * 100}%`;
-    if (playerHpText) playerHpText.textContent = `${GameState.player.hp} / ${GameState.player.maxHp}`;
-    if (playerGold) playerGold.textContent = GameState.player.gold;
-
-    // Enemy Vitals
-    const enemyHpBar = document.getElementById("enemy-hp-bar");
-    const enemyHpText = document.getElementById("enemy-hp-text");
-    const enemyGold = document.getElementById("enemy-gold");
-
-    if (enemyHpBar) enemyHpBar.style.width = `${(GameState.enemy.hp / GameState.enemy.maxHp) * 100}%`;
-    if (enemyHpText) enemyHpText.textContent = `${GameState.enemy.hp} / ${GameState.enemy.maxHp}`;
-    if (enemyGold) enemyGold.textContent = GameState.enemy.gold;
-}
-
-function checkEndGame() {
-    if (GameState.player.hp <= 0 || GameState.enemy.hp <= 0) {
-        const deathModal = document.getElementById("death-modal");
-        const title = document.getElementById("endgame-status-title");
-        const subtitle = document.getElementById("endgame-status-subtitle");
-
-        if (GameState.player.hp <= 0) {
-            title.textContent = "VOCÊ FOI DERROTADO";
-            title.style.color = "#ff3333";
-            subtitle.textContent = "Sua arte sucumbiu às sombras.";
-        } else {
-            title.textContent = "VITÓRIA MAGNÍFICA";
-            title.style.color = "var(--gold-primary)";
-            subtitle.textContent = "Sua visão artística prevaleceu no campo de batalha!";
-        }
-
-        document.getElementById("stat-turns").textContent = GameState.turnCount;
-        document.getElementById("stat-damage").textContent = GameState.totalDamageDealt;
-        document.getElementById("stat-gold").textContent = GameState.totalGoldEarned;
-
-        deathModal.classList.remove("hidden");
-        deathModal.classList.add("active");
-    }
-}
-
-// ==========================================================================
-// 11. TECLAS DE ATALHO (DESKTOP) E UTILITÁRIOS
-// ==========================================================================
-function initKeyboardShortcuts() {
-    window.addEventListener("keydown", (e) => {
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-
-        // 'P' - Abrir/Fechar Loja
-        if (e.key.toLowerCase() === "p") {
-            const shopModal = document.getElementById("shop-modal");
-            if (shopModal.classList.contains("hidden")) {
-                shopModal.classList.remove("hidden");
-                shopModal.classList.add("active");
-                renderShopItems("all");
-            } else {
-                shopModal.classList.add("hidden");
-                shopModal.classList.remove("active");
+    let matched = false;
+    if (queue) {
+        for (let playerId in queue) {
+            if (playerId !== uid) {
+                // Oponente encontrado! Cria a sala.
+                matched = true;
+                const gameId = 'game_' + Date.now();
+                
+                // Estrutura inicial do jogo
+                const gameData = {
+                    status: 'playing',
+                    currentTurn: playerId, // Oponente começa
+                    turnCount: 1,
+                    players: {
+                        [playerId]: { hp: 100, maxHp: 100, gold: 0, name: queue[playerId].name, num: 1 },
+                        [uid]: { hp: 100, maxHp: 100, gold: 0, name: AppState.user.displayName, num: 2 }
+                    },
+                    lastAction: { type: 'start' }
+                };
+                
+                await db.ref('games/' + gameId).set(gameData);
+                // Remove oponente da fila e notifica-o do jogo criado
+                await db.ref('queue/' + playerId).remove();
+                await db.ref('users/' + playerId + '/activeGame').set(gameId);
+                await db.ref('users/' + uid + '/activeGame').set(gameId);
+                
+                initGame(gameId, 2, queue[playerId].name, playerId);
+                break;
             }
         }
+    }
+    
+    if (!matched) {
+        // Entra na fila e aguarda
+        matchmakingRef = db.ref('queue/' + uid);
+        await matchmakingRef.set({ name: AppState.user.displayName, time: Date.now() });
+        
+        // Fica ouvindo se foi puxado para um jogo
+        db.ref('users/' + uid + '/activeGame').on('value', (snap) => {
+            const activeGameId = snap.val();
+            if (activeGameId) {
+                db.ref('users/' + uid + '/activeGame').off(); // Remove listener
+                
+                // Busca nome do oponente no jogo
+                db.ref('games/' + activeGameId + '/players').once('value').then(pSnap => {
+                    const players = pSnap.val();
+                    let oppName = "Oponente";
+                    let oppId = null;
+                    for (let id in players) {
+                        if (id !== uid) { oppName = players[id].name; oppId = id; }
+                    }
+                    initGame(activeGameId, 1, oppName, oppId);
+                });
+            }
+        });
+    }
+}
 
-        // 'Espaço' - Passar Turno
-        if (e.code === "Space") {
-            e.preventDefault();
-            if (GameState.isMyTurn) endTurn();
+async function cancelMatchmaking() {
+    const uid = AppState.user.uid;
+    if (matchmakingRef) {
+        await matchmakingRef.remove();
+        matchmakingRef = null;
+    }
+    db.ref('users/' + uid + '/activeGame').off();
+    switchScreen(UI.viewLobby);
+}
+
+// ============================================================================
+// 7. LÓGICA DE SINCRONIZAÇÃO DA PARTIDA
+// ============================================================================
+function initGame(gameId, playerNum, opponentName, opponentId) {
+    AppState.gameId = gameId;
+    AppState.playerNum = playerNum;
+    AppState.opponentId = opponentId;
+    AppState.enemyName = opponentName;
+    
+    // Resetar Status Local
+    AppState.hp = 100;
+    AppState.gold = 0;
+    AppState.hand = [];
+    AppState.enemyHp = 100;
+    
+    UI.enemyName.textContent = opponentName;
+    updateHUD();
+    
+    switchScreen(UI.viewGame);
+    setupCanvas();
+    renderShop();
+    
+    gameRef = db.ref('games/' + gameId);
+    
+    // Listener principal do estado do jogo
+    gameRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+        
+        // Atualizar Status HPs
+        const me = data.players[AppState.user.uid];
+        const enemy = data.players[AppState.opponentId];
+        
+        AppState.hp = me.hp;
+        AppState.gold = me.gold;
+        AppState.enemyHp = enemy.hp;
+        updateHUD();
+        
+        // Controle de Turno
+        AppState.isMyTurn = (data.currentTurn === AppState.user.uid);
+        
+        if (AppState.isMyTurn) {
+            UI.turnIndicator.textContent = "Seu Turno";
+            UI.turnIndicator.style.color = "var(--color-heal)";
+            UI.canvas.style.pointerEvents = "auto";
+            UI.btnEndTurn.disabled = false;
+        } else {
+            UI.turnIndicator.textContent = "Turno do Inimigo";
+            UI.turnIndicator.style.color = "var(--color-damage)";
+            UI.canvas.style.pointerEvents = "none";
+            UI.btnEndTurn.disabled = true;
         }
-
-        // 'C' - Limpar Canvas
-        if (e.key.toLowerCase() === "c") {
-            document.getElementById("btn-clear-canvas")?.click();
+        
+        // Verificar Condição de Vitória/Derrota
+        if (data.status === 'finished') {
+            handleEndgame(data.winner);
         }
     });
 }
 
-function showToast(message) {
-    let toast = document.getElementById("game-toast");
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "game-toast";
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(12, 16, 24, 0.95);
-            border: 1px solid var(--gold-primary);
-            color: var(--gold-light);
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
-            z-index: 9999;
-            font-family: 'Cinzel', serif;
-            transition: opacity 0.3s;
-        `;
-        document.body.appendChild(toast);
+async function performAction(actionType, value, cardElement = null) {
+    if (!AppState.isMyTurn) return;
+    
+    let updates = {};
+    
+    if (actionType === 'damage') {
+        const newEnemyHp = Math.max(0, AppState.enemyHp - value);
+        updates[`players/${AppState.opponentId}/hp`] = newEnemyHp;
+        if (newEnemyHp === 0) updates['status'] = 'finished';
+    } 
+    else if (actionType === 'heal') {
+        const newHp = Math.min(100, AppState.hp + value);
+        updates[`players/${AppState.user.uid}/hp`] = newHp;
+    }
+    
+    updates['lastAction'] = { type: actionType, value: value, by: AppState.user.uid };
+    
+    // Remove a carta da mão localmente e visualmente
+    if (cardElement) {
+        cardElement.remove();
+        const index = AppState.hand.indexOf(cardElement);
+        if (index > -1) AppState.hand.splice(index, 1);
+    }
+    
+    await gameRef.update(updates);
+    
+    if (updates['status'] === 'finished') {
+        await gameRef.update({ winner: AppState.user.uid });
+    }
+}
+
+UI.btnEndTurn.addEventListener('click', async () => {
+    if (!AppState.isMyTurn) return;
+    
+    // Adicionar ouro ao passar o turno
+    const newGold = AppState.gold + 10;
+    
+    const updates = {
+        currentTurn: AppState.opponentId,
+        [`players/${AppState.user.uid}/gold`]: newGold,
+        lastAction: { type: 'end_turn', by: AppState.user.uid }
+    };
+    
+    await gameRef.update(updates);
+    
+    // Limpar área de desenho
+    clearCanvas();
+    UI.drawFeedback.textContent = "Aguarde seu turno...";
+});
+
+function handleEndgame(winnerUid) {
+    gameRef.off(); // Remove listener
+    db.ref('users/' + AppState.user.uid + '/activeGame').remove();
+    
+    showModal(UI.modalEndgame);
+    if (winnerUid === AppState.user.uid) {
+        UI.endgameTitle.textContent = "VITÓRIA!";
+        UI.endgameTitle.style.color = "var(--color-heal)";
+        UI.endgameMsg.textContent = "Sua arte dominou o campo de batalha.";
+    } else {
+        UI.endgameTitle.textContent = "DERROTA";
+        UI.endgameTitle.style.color = "var(--color-damage)";
+        UI.endgameMsg.textContent = "Você foi superado pela técnica inimiga.";
+    }
+}
+
+UI.btnBackLobby.addEventListener('click', () => {
+    hideModal(UI.modalEndgame);
+    switchScreen(UI.viewLobby);
+});
+
+function updateHUD() {
+    UI.playerHpText.textContent = `${AppState.hp}/100`;
+    UI.playerHpFill.style.width = `${AppState.hp}%`;
+    UI.playerGold.textContent = AppState.gold;
+    UI.shopGoldDisplay.textContent = AppState.gold;
+    
+    UI.enemyHpText.textContent = `${AppState.enemyHp}/100`;
+    UI.enemyHpFill.style.width = `${AppState.enemyHp}%`;
+}
+
+// ============================================================================
+// 8. MOTOR DE DESENHO NO CANVAS E RECONHECIMENTO (MOBILE & DESKTOP)
+// ============================================================================
+
+// Seleção de Tinta
+UI.inkBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        UI.inkBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        AppState.currentInk = btn.dataset.ink;
+        
+        // Atualiza a instrução
+        if (AppState.currentInk === 'damage') UI.symbolGuide.textContent = "Símbolo: V";
+        if (AppState.currentInk === 'heal') UI.symbolGuide.textContent = "Símbolo: O (Círculo)";
+        if (AppState.currentInk === 'control') UI.symbolGuide.textContent = "Símbolo: — (Linha)";
+        
+        setCanvasStyle();
+    });
+});
+
+function setupCanvas() {
+    const canvas = UI.canvas;
+    AppState.canvasCtx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    // Ajuste dinâmico de resolução baseada no CSS
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    
+    setCanvasStyle();
+
+    // Eventos Mouse
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Eventos Touch (Mobile)
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+}
+
+function setCanvasStyle() {
+    const ctx = AppState.canvasCtx;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowBlur = 10;
+    
+    if (AppState.currentInk === 'damage') {
+        ctx.strokeStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+    } else if (AppState.currentInk === 'heal') {
+        ctx.strokeStyle = '#10b981';
+        ctx.shadowColor = '#10b981';
+    } else {
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.shadowColor = '#8b5cf6';
+    }
+}
+
+// Manipuladores de Coordenadas
+function getCoordinates(e) {
+    const rect = UI.canvas.getBoundingClientRect();
+    const scaleX = UI.canvas.width / rect.width;
+    const scaleY = UI.canvas.height / rect.height;
+    
+    if (e.touches && e.touches.length > 0) {
+        return {
+            x: (e.touches[0].clientX - rect.left) * scaleX,
+            y: (e.touches[0].clientY - rect.top) * scaleY
+        };
+    }
+    return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+    };
+}
+
+function startDrawing(e) {
+    if (!AppState.isMyTurn) return;
+    if (e.type.includes('touch')) e.preventDefault(); // Previne scroll no mobile
+    
+    AppState.isDrawing = true;
+    AppState.strokes = [];
+    const pos = getCoordinates(e);
+    AppState.strokes.push(pos);
+    
+    AppState.canvasCtx.beginPath();
+    AppState.canvasCtx.moveTo(pos.x, pos.y);
+    UI.drawFeedback.textContent = "Desenhando...";
+}
+
+function handleTouchStart(e) { startDrawing(e); }
+
+function draw(e) {
+    if (!AppState.isDrawing) return;
+    if (e.type.includes('touch')) e.preventDefault();
+    
+    const pos = getCoordinates(e);
+    // Filtrar pontos muito próximos para otimizar a performance do vetor
+    const lastPos = AppState.strokes[AppState.strokes.length - 1];
+    const dist = Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y);
+    
+    if (dist > 5) {
+        AppState.strokes.push(pos);
+        AppState.canvasCtx.lineTo(pos.x, pos.y);
+        AppState.canvasCtx.stroke();
+    }
+}
+
+function handleTouchMove(e) { draw(e); }
+
+function stopDrawing() {
+    if (!AppState.isDrawing) return;
+    AppState.isDrawing = false;
+    AppState.canvasCtx.closePath();
+}
+
+UI.btnClearCanvas.addEventListener('click', clearCanvas);
+
+function clearCanvas() {
+    if (!AppState.canvasCtx) return;
+    AppState.canvasCtx.clearRect(0, 0, UI.canvas.width, UI.canvas.height);
+    AppState.strokes = [];
+    UI.drawFeedback.textContent = "Pinte para criar";
+}
+
+// Lógica de Reconhecimento de Forma Direcional Simplificada
+function analyzeDrawing() {
+    if (AppState.strokes.length < 10) return "invalido"; // Traço muito curto
+    
+    const pts = AppState.strokes;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
+    pts.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    });
+    
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const pStart = pts[0];
+    const pEnd = pts[pts.length - 1];
+    const distStartEnd = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y);
+    const boundingBoxDiagonal = Math.hypot(width, height);
+    
+    // Regra 1: Círculo ('O' - Curar)
+    // Se desenhar muito, tem altura e largura proporcionais, e o começo encontra o fim.
+    if (width > 30 && height > 30 && distStartEnd < (boundingBoxDiagonal * 0.3)) {
+        return "circulo";
+    }
+    
+    // Regra 2: Linha ('-' - Controle)
+    // Muito mais largo do que alto.
+    if (width > height * 2.5) {
+        return "linha";
+    }
+    
+    // Regra 3: Letra 'V' (Dano)
+    // Começa alto, vai baixo (meio), e termina alto.
+    // Simples check de direção y:
+    let minIndex = 0;
+    for(let i=0; i<pts.length; i++) {
+        if(pts[i].y > pts[minIndex].y) minIndex = i; // Encontra o ponto mais baixo (maior Y)
+    }
+    // O ponto mais baixo deve estar mais ou menos no meio do array
+    if (minIndex > pts.length * 0.2 && minIndex < pts.length * 0.8) {
+        if (pStart.y < pts[minIndex].y - 20 && pEnd.y < pts[minIndex].y - 20) {
+            return "v";
+        }
     }
 
-    toast.textContent = message;
-    toast.style.opacity = "1";
-
-    setTimeout(() => {
-        toast.style.opacity = "0";
-    }, 2500);
+    return "invalido";
 }
+
+// ============================================================================
+// 9. SISTEMA DE CARTAS
+// ============================================================================
+UI.btnCreateCard.addEventListener('click', () => {
+    if (!AppState.isMyTurn) return;
+    
+    const forma = analyzeDrawing();
+    
+    if (forma === "invalido") {
+        UI.drawFeedback.textContent = "Desenho fraco ou incorreto.";
+        UI.drawFeedback.style.color = "var(--color-damage)";
+        setTimeout(() => { UI.drawFeedback.style.color = "var(--text-muted)"; }, 2000);
+        clearCanvas();
+        return;
+    }
+
+    // Validar Tinta vs Forma
+    let cardGerada = null;
+    
+    if (AppState.currentInk === 'damage' && forma === 'v') {
+        cardGerada = { name: "Golpe Cortante", type: "damage", value: 20, icon: "⚔️" };
+    } 
+    else if (AppState.currentInk === 'heal' && forma === 'circulo') {
+        cardGerada = { name: "Brisa Curativa", type: "heal", value: 15, icon: "🌿" };
+    } 
+    else if (AppState.currentInk === 'control' && forma === 'linha') {
+        cardGerada = { name: "Muralha de Tinta", type: "control", value: 10, icon: "🛡️" }; // Dano penetrante
+    } 
+    else {
+        UI.drawFeedback.textContent = "O símbolo não combinou com a tinta.";
+        UI.drawFeedback.style.color = "var(--color-gold)";
+        setTimeout(() => { UI.drawFeedback.style.color = "var(--text-muted)"; }, 2000);
+        clearCanvas();
+        return;
+    }
+
+    createCardDOM(cardGerada);
+    clearCanvas();
+    UI.drawFeedback.textContent = "Carta criada!";
+});
+
+function createCardDOM(cardData) {
+    if (AppState.hand.length >= 5) {
+        alert("Sua mão está cheia (Max 5)");
+        return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    
+    // Cor da borda baseada no tipo
+    if (cardData.type === 'damage') card.style.borderColor = 'var(--color-damage)';
+    if (cardData.type === 'heal') card.style.borderColor = 'var(--color-heal)';
+    if (cardData.type === 'control') card.style.borderColor = 'var(--color-control)';
+
+    card.innerHTML = `
+        <div class="card-icon" style="text-align: center; font-size: 1.5rem;">${cardData.icon}</div>
+        <div class="card-title">${cardData.name}</div>
+        <div class="card-stats">
+            <span>Ativ:</span>
+            <span>${cardData.value}</span>
+        </div>
+    `;
+
+    // Evento de Jogar a carta
+    card.addEventListener('click', () => {
+        if (!AppState.isMyTurn) return;
+        
+        // Efeito visual de jogar para o campo
+        UI.playerBoard.appendChild(card);
+        card.style.transform = "translateY(-50px) scale(1.1)";
+        card.style.opacity = "0";
+        card.style.transition = "all 0.5s ease";
+        
+        setTimeout(() => {
+            performAction(cardData.type, cardData.value, card);
+        }, 500);
+    });
+
+    UI.playerHand.appendChild(card);
+    AppState.hand.push(card);
+}
+
+// ============================================================================
+// 10. LOJA DE ITENS
+// ============================================================================
+UI.btnOpenShop.addEventListener('click', () => showModal(UI.modalShop));
+UI.btnCloseShop.addEventListener('click', () => hideModal(UI.modalShop));
+
+function renderShop() {
+    UI.shopGrid.innerHTML = '';
+    ShopItems.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'shop-item';
+        itemDiv.innerHTML = `
+            <div style="font-size: 2rem;">${item.icon}</div>
+            <h4>${item.name}</h4>
+            <div class="gold">🪙 ${item.cost}</div>
+            <button class="btn btn-primary small mt-15">Comprar</button>
+        `;
+        
+        const btn = itemDiv.querySelector('button');
+        btn.addEventListener('click', () => buyItem(item));
+        
+        UI.shopGrid.appendChild(itemDiv);
+    });
+}
+
+async function buyItem(item) {
+    if (!AppState.isMyTurn) {
+        alert("Você só pode comprar no seu turno.");
+        return;
+    }
+    if (AppState.gold < item.cost) {
+        alert("Ouro insuficiente.");
+        return;
+    }
+    
+    // Deduz o custo
+    const novoOuro = AppState.gold - item.cost;
+    let updates = {
+        [`players/${AppState.user.uid}/gold`]: novoOuro
+    };
+
+    // Aplica efeito
+    if (item.effect === 'heal') {
+        const newHp = Math.min(100, AppState.hp + item.value);
+        updates[`players/${AppState.user.uid}/hp`] = newHp;
+    } else if (item.effect === 'damage_buff') {
+        // Exemplo: Causa dano direto mágico
+        const newEnemyHp = Math.max(0, AppState.enemyHp - item.value);
+        updates[`players/${AppState.opponentId}/hp`] = newEnemyHp;
+        if (newEnemyHp === 0) updates['status'] = 'finished';
+    }
+
+    updates['lastAction'] = { type: 'buy_item', item: item.name, by: AppState.user.uid };
+    
+    await gameRef.update(updates);
+    
+    if (updates['status'] === 'finished') {
+        await gameRef.update({ winner: AppState.user.uid });
+    }
+    
+    alert(`Você comprou e usou: ${item.name}`);
+    hideModal(UI.modalShop);
+}
+
+// ============================================================================
+// INICIALIZAÇÃO DA APLICAÇÃO
+// ============================================================================
+window.addEventListener('DOMContentLoaded', () => {
+    // Força o reset visual do Canvas e UI na montagem inicial
+    switchScreen(UI.viewAuth);
+});
