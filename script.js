@@ -1,6 +1,4 @@
-/* ==========================================================================
-   HWEI: CARD GAME - MOTOR PRINCIPAL DE JOGO (SCRIPT.JS)
-   ========================================================================== */
+
 
 // 1. CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE
 const firebaseConfig = {
