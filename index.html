@@ -3,198 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hwei: Card Game</title>
+    <title>Hwei: O Visionário</title>
     
-    <!-- Estilos -->
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDKs (Compatíveis) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-    <!-- Script Principal -->
-    <script defer src="script.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- ÁUDIO -->
-    <audio id="bg-music" loop preload="auto">
-        <source src="bg-music.mp3" type="audio/mpeg">
-    </audio>
+    <!-- NOTIFICAÇÕES (TOASTS) -->
+    <div id="notification-container"></div>
 
-    <!-- CONTAINER PRINCIPAL DO APP -->
-    <div id="app-container">
-        
-        <!-- ==========================================
-             1. TELAS DE AUTENTICAÇÃO
-             ========================================== -->
-        <section id="view-auth" class="screen active">
-            <div class="panel login-panel">
-                <h1 class="title">Hwei: O Pintor</h1>
-                
-                <!-- Login -->
-                <form id="form-login" class="form-group active-form">
-                    <h2>Entrar</h2>
-                    <input type="email" id="login-email" required placeholder="E-mail">
-                    <input type="password" id="login-password" required placeholder="Senha">
-                    <button type="submit" class="btn btn-primary">Conectar</button>
-                    <p>Novo aqui? <a href="#" id="toggle-register">Criar conta</a></p>
-                </form>
-
-                <!-- Registro -->
-                <form id="form-register" class="form-group hidden-form">
-                    <h2>Registrar</h2>
-                    <input type="text" id="reg-username" required placeholder="Nome de Usuário">
-                    <input type="email" id="reg-email" required placeholder="E-mail">
-                    <input type="password" id="reg-password" required placeholder="Senha">
-                    <button type="submit" class="btn btn-primary">Criar Conta</button>
-                    <p>Já tem conta? <a href="#" id="toggle-login">Fazer login</a></p>
-                </form>
-            </div>
-        </section>
-
-        <!-- ==========================================
-             2. LOBBY PRINCIPAL
-             ========================================== -->
-        <section id="view-lobby" class="screen hidden">
-            <header class="lobby-header panel">
-                <div class="user-info">
-                    <div class="avatar"></div>
-                    <div>
-                        <h3 id="lobby-username">Jogador</h3>
-                        <span class="status">Online</span>
-                    </div>
-                </div>
-                <button id="btn-logout" class="btn btn-danger">Sair</button>
-            </header>
-
-            <main class="lobby-content panel">
-                <div class="menu-actions">
-                    <button id="btn-find-match" class="btn btn-primary btn-large">Procurar Partida</button>
-                    <button id="btn-collection" class="btn btn-secondary">Minhas Cartas</button>
-                    <button id="btn-settings" class="btn btn-secondary">Configurações</button>
-                </div>
-            </main>
-        </section>
-
-        <!-- ==========================================
-             3. FILA DE PAREAMENTO (MATCHMAKING)
-             ========================================== -->
-        <section id="view-matchmaking" class="screen hidden">
-            <div class="panel center-content">
-                <h2>Procurando Oponente...</h2>
-                <div class="spinner"></div>
-                <p id="matchmaking-status">Conectando ao servidor...</p>
-                <button id="btn-cancel-match" class="btn btn-danger mt-15">Cancelar</button>
-            </div>
-        </section>
-
-        <!-- ==========================================
-             4. TABULEIRO DE JOGO
-             ========================================== -->
-        <section id="view-game" class="screen hidden">
-            
-            <!-- OPONENTE -->
-            <header class="board-zone enemy-zone">
-                <div class="player-stats">
-                    <div class="avatar enemy-avatar"></div>
-                    <div class="info">
-                        <span id="enemy-name" class="name">Oponente</span>
-                        <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill enemy"></div></div>
-                        <span id="enemy-hp-text" class="hp-text">100/100</span>
-                    </div>
-                </div>
-                <div id="enemy-board" class="cards-on-board"></div>
-            </header>
-
-            <!-- CENTRO (TELA DE DESENHO) -->
-            <main class="board-center">
-                <div id="turn-indicator" class="turn-banner">Aguardando...</div>
-                
-                <div class="drawing-station panel">
-                    <!-- Paleta de Cores -->
-                    <div class="tools-sidebar">
-                        <div class="ink-selector">
-                            <button class="ink-btn bg-damage active" data-ink="damage" title="Dano"></button>
-                            <button class="ink-btn bg-heal" data-ink="heal" title="Cura"></button>
-                            <button class="ink-btn bg-control" data-ink="control" title="Controle"></button>
-                        </div>
-                        <button id="btn-clear-canvas" class="btn btn-secondary small">Limpar</button>
-                    </div>
-
-                    <!-- Canvas de Desenho -->
-                    <div class="canvas-wrapper">
-                        <!-- Guia de Símbolo (Mostra o que deve ser desenhado) -->
-                        <div id="symbol-guide" class="symbol-guide">Símbolo: /</div>
-                        <canvas id="magic-canvas"></canvas>
-                    </div>
-
-                    <!-- Ações -->
-                    <div class="action-sidebar">
-                        <button id="btn-create-card" class="btn btn-magic">Criar Carta</button>
-                        <span id="draw-feedback" class="feedback-text">Pinte para criar</span>
-                    </div>
-                </div>
-            </main>
-
-            <!-- JOGADOR -->
-            <footer class="board-zone player-zone">
-                <div id="player-board" class="cards-on-board"></div>
-                
-                <div id="player-hand" class="cards-hand">
-                    <!-- Cartas geradas vão aqui -->
-                </div>
-
-                <div class="player-hud panel">
-                    <div class="player-stats">
-                        <div class="avatar player-avatar"></div>
-                        <div class="info">
-                            <span id="player-name" class="name">Você</span>
-                            <div class="hp-bar"><div id="player-hp-fill" class="hp-fill player"></div></div>
-                            <span id="player-hp-text" class="hp-text">100/100</span>
-                        </div>
-                    </div>
-
-                    <!-- Inventário / Loja -->
-                    <div class="inventory">
-                        <span class="gold">🪙 <span id="player-gold">0</span></span>
-                        <button id="btn-open-shop" class="btn btn-secondary">Loja</button>
-                    </div>
-
-                    <button id="btn-end-turn" class="btn btn-danger">Passar Turno</button>
-                </div>
-            </footer>
-        </section>
-        
-        <!-- ==========================================
-             MODAIS (SOBREPOSIÇÕES)
-             ========================================== -->
-        <!-- Loja -->
-        <div id="modal-shop" class="modal hidden">
-            <div class="panel modal-content shop-modal">
-                <header class="modal-header">
-                    <h2>Loja de Itens</h2>
-                    <span class="gold">🪙 <span id="shop-gold-display">0</span></span>
-                    <button class="btn-close" id="btn-close-shop">X</button>
-                </header>
-                <div id="shop-grid" class="shop-grid">
-                    <!-- Itens via JS -->
-                </div>
-            </div>
+    <!-- TELA DE ENTRADA / LOGIN -->
+    <div id="screen-login" class="screen active">
+        <div class="panel login-panel">
+            <h1>Hwei</h1>
+            <p class="subtitle">O Visionário</p>
+            <form id="form-login">
+                <input type="text" id="player-name-input" placeholder="Digite seu Nome de Invocador" required maxlength="15">
+                <button type="submit" class="btn primary">Entrar no Grimório</button>
+            </form>
         </div>
-
-        <!-- Fim de Jogo -->
-        <div id="modal-endgame" class="modal hidden">
-            <div class="panel modal-content text-center">
-                <h1 id="endgame-title">Fim de Jogo</h1>
-                <p id="endgame-msg">A partida acabou.</p>
-                <button id="btn-back-lobby" class="btn btn-primary mt-15">Voltar ao Lobby</button>
-            </div>
-        </div>
-
     </div>
+
+    <!-- TELA DO LOBBY (Matchmaking e Progressão) -->
+    <div id="screen-lobby" class="screen hidden">
+        <div class="lobby-container">
+            <header class="lobby-header panel">
+                <div class="profile-info">
+                    <div class="avatar hwei-avatar"></div>
+                    <div class="profile-details">
+                        <h2 id="lobby-player-name">Invocador</h2>
+                        <div class="level-badge">Nível <span id="lobby-player-level">1</span></div>
+                    </div>
+                </div>
+                <div class="xp-bar-container">
+                    <div class="xp-info">
+                        <span>Experiência</span>
+                        <span id="xp-text">0 / 100</span>
+                    </div>
+                    <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
+                    <p class="level-hint">Alcance o Nível 20 para liberar o Desespero Espiral (Ultimate).</p>
+                </div>
+            </header>
+
+            <main class="lobby-actions">
+                <button id="btn-find-match" class="btn huge primary">Procurar Partida</button>
+                <div id="matchmaking-status" class="hidden">Buscando oponente... <span class="spinner"></span></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- TELA DO JOGO (Tabuleiro) -->
+    <div id="screen-game" class="screen hidden">
+        
+        <!-- ZONA DO INIMIGO -->
+        <header id="enemy-zone">
+            <div class="hud panel">
+                <div class="avatar enemy-avatar"></div>
+                <div class="stats">
+                    <h3 id="enemy-name">Adversário</h3>
+                    <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill enemy-hp"></div></div>
+                    <span id="enemy-hp-text" class="hp-text">100/100</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CENTRO: GRIMÓRIO E COMBINAÇÕES (Mecânica do Hwei) -->
+        <main id="center-zone">
+            <div class="turn-indicator" id="turn-display">Seu Turno</div>
+            
+            <div class="grimoire panel">
+                <div class="ink-selection">
+                    <h3>Tintas</h3>
+                    <div class="ink-buttons">
+                        <button class="ink-btn disaster" data-ink="Q" title="Desastre (Q)"></button>
+                        <button class="ink-btn serenity" data-ink="W" title="Serenidade (W)"></button>
+                        <button class="ink-btn torment" data-ink="E" title="Tormento (E)"></button>
+                        <button class="ink-btn ultimate locked" data-ink="R" id="btn-ultimate" title="Ultimate (R) - Requer Nv 20"></button>
+                    </div>
+                    <div class="current-mix">
+                        <span>Mistura: </span>
+                        <strong id="mix-display">Nenhuma</strong>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="magic-canvas" width="300" height="200"></canvas>
+                    <p class="instruction">Misture as tintas e desenhe para canalizar.</p>
+                </div>
+
+                <div class="actions">
+                    <button id="btn-clear-canvas" class="btn secondary">Limpar Tela</button>
+                    <button id="btn-materialize" class="btn primary magic-btn" disabled>Materializar Magia</button>
+                </div>
+            </div>
+            
+            <div id="battle-log"></div>
+        </main>
+
+        <!-- ZONA DO JOGADOR -->
+        <footer id="player-zone">
+            <!-- Mão de Cartas -->
+            <div id="player-hand" class="hand-container"></div>
+
+            <div class="hud panel">
+                <div class="stats">
+                    <h3 id="game-player-name">Hwei</h3>
+                    <div class="hp-bar"><div id="player-hp-fill" class="hp-fill player-hp"></div></div>
+                    <span id="player-hp-text" class="hp-text">100/100</span>
+                    <div class="passive-tracker" title="Assinatura do Conjurador: Acertar 2 magias de dano causa dano explosivo extra.">
+                        Passiva: <span id="passive-stacks">0/2</span>
+                    </div>
+                </div>
+                <button id="btn-end-turn" class="btn danger">Passar Turno</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- TELA DE FIM DE JOGO -->
+    <div id="modal-endgame" class="modal hidden">
+        <div class="panel text-center">
+            <h1 id="endgame-title">Vitória!</h1>
+            <p id="endgame-xp-gained">+50 XP Obtido</p>
+            <button id="btn-return-lobby" class="btn primary">Voltar ao Lobby</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
