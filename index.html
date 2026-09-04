@@ -2,135 +2,205 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurore Boreale - Client</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hwei:  Card Game</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Fontes Premium: Cinzel para Títulos/Botões e Roboto para Textos -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- ==========================================
-         TELA DE LOGIN & ANTI-CHEAT
-         ========================================== -->
-    <div id="login-screen" class="screen panel-animated">
-        <div class="logo-container">
-            <h1>Aurore Boreale</h1>
-            <p class="subtitle">Client de Conexão</p>
-        </div>
-        
-        <form id="login-form" onsubmit="event.preventDefault();">
-            <div class="input-group">
-                <label for="username">Usuário</label>
-                <input type="text" id="username" class="input-standard" placeholder="Digite seu usuário" autocomplete="off" required>
-            </div>
-            
-            <div class="input-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" class="input-standard" placeholder="Digite sua senha" required>
-            </div>
-
-            <!-- Botão com efeito de "Shine" (Brilho) do novo CSS -->
-            <button type="submit" id="btn-login" class="btn-primary w-full mt-15">Entrar</button>
-        </form>
-
-        <div class="anti-cheat-status">
-            <span class="status-indicator loading"></span>
-            <span>AuroreGuard Inicializando...</span>
-        </div>
-    </div>
-
+    <!-- ÁUDIO DE FUNDO E EFEITOS -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="assets/bg-music.mp3" type="audio/mpeg">
+    </audio>
 
     <!-- ==========================================
-         TELA PRINCIPAL DO CLIENT (LOBBY)
+         CAMADA DE MODAIS / OVERLAYS
          ========================================== -->
-    <!-- A classe 'hidden' oculta esta tela inicialmente. O JS vai removê-la após o login -->
-    <div id="client-screen" class="screen hidden">
+    <div id="modal-layer">
         
-        <!-- Cabeçalho Superior -->
-        <header class="panel-animated header-client">
-            <div class="brand">
-                <h2>Aurore Boreale</h2>
-                <div class="badge-ac">
-                    <span class="status-indicator active"></span> Anti-Cheat Ativo
+        <!-- TELA DE SELEÇÃO DE RUNAS -->
+        <div id="rune-modal" class="modal-overlay active">
+            <div class="modal-card panel-glass">
+                <h1 class="modal-title">Escolha sua Runa Primária</h1>
+                <p class="modal-subtitle">Seu estilo de pintura definirá o ritmo da partida</p>
+                
+                <div id="rune-selection-grid" class="rune-grid">
+                    <!-- Gerado dinamicamente via JS (ex: Cometa Arcano, Primeiro Golpe, Colheita Sombria) -->
+                </div>
+                
+                <button id="btn-confirm-runes" class="btn-primary full-width mt-20">Entrar na Tela</button>
+            </div>
+        </div>
+
+        <!-- TELA DA LOJA DE ITENS (100 ITENS OP) -->
+        <div id="shop-modal" class="modal-overlay hidden">
+            <div class="modal-card shop-card panel-glass">
+                <header class="shop-header">
+                    <div>
+                        <h2>O Bazar do Visionário</h2>
+                        <span class="gold-display">Seu Ouro: <strong id="shop-player-gold">0</strong> 🪙</span>
+                    </div>
+                    <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja">&times;</button>
+                </header>
+
+                <!-- Filtro de Raridades -->
+                <nav class="shop-tabs">
+                    <button class="tab-btn active" data-rarity="all">Todos</button>
+                    <button class="tab-btn rarity-trash" data-rarity="trash">Lixo</button>
+                    <button class="tab-btn rarity-common" data-rarity="common">Comum</button>
+                    <button class="tab-btn rarity-rare" data-rarity="rare">Raro</button>
+                    <button class="tab-btn rarity-epic" data-rarity="epic">Épico</button>
+                    <button class="tab-btn rarity-legendary" data-rarity="legendary">Lendário</button>
+                </nav>
+
+                <!-- Grid onde os 100 Itens serão renderizados -->
+                <div id="shop-items-grid" class="shop-grid">
+                    <!-- Preenchido via JavaScript -->
                 </div>
             </div>
-            <div class="user-profile">
-                <span id="player-name">Jogador</span>
-                <button id="btn-logout" class="btn-secondary small">Sair</button>
+        </div>
+
+        <!-- TELA DE MORTE / VITÓRIA -->
+        <div id="death-modal" class="modal-overlay hidden">
+            <div class="modal-card death-card panel-glass text-center">
+                <div class="death-banner">
+                    <h1 id="endgame-status-title">GAME OVER</h1>
+                    <p id="endgame-status-subtitle">Sua vida chegou a 0</p>
+                </div>
+
+                <div class="game-stats-summary">
+                    <div class="stat-box">
+                        <span>Turnos Durados</span>
+                        <strong id="stat-turns">0</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Dano Causado</span>
+                        <strong id="stat-damage">0</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Ouro Acumulado</span>
+                        <strong id="stat-gold">0</strong>
+                    </div>
+                </div>
+
+                <button id="btn-restart" class="btn-primary full-width mt-20">Novo Destino</button>
             </div>
+        </div>
+
+    </div>
+
+    <!-- ==========================================
+         TABULEIRO PRINCIPAL
+         ========================================== -->
+    <div id="game-viewport" class="hidden">
+        
+        <!-- ZONA DO ADVERSÁRIO -->
+        <header id="enemy-zone" class="player-zone">
+            <div class="player-hud">
+                <div class="avatar-container">
+                    <div class="avatar-frame enemy-avatar"></div>
+                    <span class="player-name" id="enemy-name">Oponente</span>
+                </div>
+                <div class="vitals">
+                    <div class="hp-bar-container">
+                        <div id="enemy-hp-bar" class="hp-bar-fill" style="width: 100%;"></div>
+                        <span id="enemy-hp-text" class="hp-text">100 / 100</span>
+                    </div>
+                    <div class="hud-sub-info">
+                        <span class="gold-text">🪙 <span id="enemy-gold">0</span></span>
+                        <div id="enemy-active-runes" class="runes-badge-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campo de Batalha Inimigo (Cartas Baixadas) -->
+            <div id="enemy-board-cards" class="card-field-zone"></div>
         </header>
 
-        <!-- Navegação de Abas -->
-        <nav class="client-nav">
-            <button class="nav-btn active" data-target="tab-play">Jogar</button>
-            <button class="nav-btn" data-target="tab-heroes">Heróis</button>
-            <button class="nav-btn" data-target="tab-settings">Configurações</button>
-        </nav>
+        <!-- ZONA CENTRAL / ATELIÊ DE PINTURA (MECÂNICA DO HWEI) -->
+        <main id="canvas-center-zone">
+            <div class="turn-banner" id="turn-indicator">Seu Turno</div>
 
-        <!-- Área de Conteúdo (Usa o Glassmorphism principal) -->
-        <main class="panel-animated main-content">
+            <!-- Mecânica de Mistura de Assuntos (Q: Desastre, W: Serenidade, E: Tormento) -->
+            <div class="hwei-palette-container">
+                <p class="palette-instruction">Combine 2 assuntos para desenhar uma carta:</p>
+                <div class="palette-buttons">
+                    <button id="btn-subject-q" class="btn-subject subject-q" title="Assunto: Desastre (Q)">
+                        <span class="key-badge">Q</span>
+                        <span class="subject-label">Desastre</span>
+                    </button>
+                    <button id="btn-subject-w" class="btn-subject subject-w" title="Assunto: Serenidade (W)">
+                        <span class="key-badge">W</span>
+                        <span class="subject-label">Serenidade</span>
+                    </button>
+                    <button id="btn-subject-e" class="btn-subject subject-e" title="Assunto: Tormento (E)">
+                        <span class="key-badge">E</span>
+                        <span class="subject-label">Tormento</span>
+                    </button>
+                </div>
+                
+                <!-- Slot de Combinação Atual -->
+                <div class="ink-preview">
+                    <span id="ink-slot-1" class="ink-slot">?</span>
+                    <span class="ink-plus">+</span>
+                    <span id="ink-slot-2" class="ink-slot">?</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- ZONA DO JOGADOR -->
+        <footer id="player-zone" class="player-zone">
             
-            <!-- ABA: JOGAR (Matchmaking) -->
-            <div id="tab-play" class="tab-content active">
-                <div class="matchmaking-container">
-                    
-                    <!-- Painel de Busca de Partida Rápida -->
-                    <div class="play-section primary-action">
-                        <h3>Partida Rápida</h3>
-                        <p class="text-muted">Encontre jogadores do seu nível de habilidade.</p>
-                        <button id="btn-find-match" class="btn-primary large">Procurar Partida</button>
-                        <div id="queue-timer" class="hidden timer-display">00:00</div>
-                    </div>
+            <!-- Campo de Batalha do Jogador (Cartas Baixadas) -->
+            <div id="player-board-cards" class="card-field-zone"></div>
 
-                    <!-- Painel de Partida Personalizada -->
-                    <div class="play-section secondary-action">
-                        <h3>Partida Personalizada</h3>
-                        <p class="text-muted">Crie uma sala privada e convide amigos.</p>
-                        <button id="btn-create-room" class="btn-secondary">Criar Sala</button>
-                        <button id="btn-join-room" class="btn-secondary mt-10">Entrar em Sala</button>
-                    </div>
+            <!-- Mão de Cartas do Jogador -->
+            <div id="player-hand" class="hand-container">
+                <!-- Cartas animadas serão injetadas aqui pelo JS -->
+            </div>
 
+            <!-- HUD e Inventário do Jogador -->
+            <div class="player-hud-bottom">
+                <div class="player-hud">
+                    <div class="avatar-container">
+                        <div class="avatar-frame player-avatar"></div>
+                        <span class="player-name" id="player-name">Hwei</span>
+                    </div>
+                    <div class="vitals">
+                        <div class="hp-bar-container">
+                            <div id="player-hp-bar" class="hp-bar-fill player-hp" style="width: 100%;"></div>
+                            <span id="player-hp-text" class="hp-text">100 / 100</span>
+                        </div>
+                        <div class="hud-sub-info">
+                            <span class="gold-text">🪙 <span id="player-gold">0</span></span>
+                            <div id="player-active-runes" class="runes-badge-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slots de Itens Comprados (Passivas e Ativas) -->
+                <div class="inventory-slots" id="player-inventory">
+                    <div class="item-slot active-slot" title="Slot Ativo 1" data-slot="0"></div>
+                    <div class="item-slot active-slot" title="Slot Ativo 2" data-slot="1"></div>
+                    <div class="item-slot passive-slot" title="Passiva 1" data-slot="2"></div>
+                    <div class="item-slot passive-slot" title="Passiva 2" data-slot="3"></div>
+                </div>
+
+                <!-- Barra de Ações Rápidas (Desktop + Touch) -->
+                <div class="action-bar">
+                    <button id="btn-open-shop" class="btn-action">
+                        <span class="key-badge">P</span> Loja
+                    </button>
+                    <button id="btn-end-turn" class="btn-action btn-end-turn">
+                        <span class="key-badge">Espaço</span> Passar Turno
+                    </button>
                 </div>
             </div>
 
-            <!-- ABA: HERÓIS (Placeholder) -->
-            <div id="tab-heroes" class="tab-content hidden text-center">
-                <h3 style="color: var(--color-accent); margin-bottom: 10px; font-size: 1.5rem;">Arsenal e Miraculous</h3>
-                <p class="text-muted">Personalize seus heróis, habilidades e loadouts.</p>
-            </div>
+        </footer>
 
-            <!-- ABA: CONFIGURAÇÕES (Placeholder) -->
-            <div id="tab-settings" class="tab-content hidden text-center">
-                <h3 style="color: var(--color-accent); margin-bottom: 10px; font-size: 1.5rem;">Configurações</h3>
-                <p class="text-muted">Ajustes de vídeo, áudio, rede e atalhos.</p>
-            </div>
-
-        </main>
     </div>
 
-    <!-- Script temporário APENAS para testar as abas e ver as animações do CSS -->
-    <script>
-        const navButtons = document.querySelectorAll('.nav-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        navButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Remove a classe ativa de todos os botões e abas
-                navButtons.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(tc => {
-                    tc.classList.add('hidden');
-                    tc.classList.remove('active');
-                });
-
-                // Adiciona a classe ativa no botão clicado e na aba correspondente
-                btn.classList.add('active');
-                const targetId = btn.getAttribute('data-target');
-                const targetTab = document.getElementById(targetId);
-                targetTab.classList.remove('hidden');
-                targetTab.classList.add('active');
-            });
-        });
-    </script>
 </body>
 </html>
