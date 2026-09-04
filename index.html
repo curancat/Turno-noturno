@@ -11,9 +11,88 @@
 
     <!-- ÁUDIO DE FUNDO E EFEITOS -->
     <audio id="bg-music" loop preload="auto">
-        <source src="assets/bg-music.mp3" type="audio/mpeg">
+        <source src="bg-music.mp3" type="audio/mpeg">
     </audio>
+    <!-- ==========================================
+         CLIENT DO JOGO (Login, Registro, Lobby)
+         ========================================== -->
+    <div id="client-viewport" class="active">
+        
+        <!-- TELA DE LOGIN -->
+        <div id="view-login" class="client-screen active">
+            <div class="modal-card panel-glass">
+                <h1 class="modal-title">Entrar</h1>
+                <form id="form-login" class="client-form">
+                    <div class="input-group">
+                        <label for="login-email">E-mail</label>
+                        <input type="email" id="login-email" required placeholder="seu@email.com">
+                    </div>
+                    <div class="input-group">
+                        <label for="login-password">Senha</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary full-width mt-20">Entrar</button>
+                    <p class="text-center mt-20">Não tem uma conta? <a href="#" id="link-to-register">Criar conta</a></p>
+                </form>
+            </div>
+        </div>
 
+        <!-- TELA DE CRIAR CONTA -->
+        <div id="view-register" class="client-screen hidden">
+            <div class="modal-card panel-glass">
+                <h1 class="modal-title">Criar Conta</h1>
+                <form id="form-register" class="client-form">
+                    <div class="input-group">
+                        <label for="reg-username">Nome de Usuário</label>
+                        <input type="text" id="reg-username" required placeholder="Como quer ser chamado?">
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-email">E-mail</label>
+                        <input type="email" id="reg-email" required placeholder="seu@email.com">
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-password">Senha</label>
+                        <input type="password" id="reg-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary full-width mt-20">Registrar</button>
+                    <p class="text-center mt-20">Já tem uma conta? <a href="#" id="link-to-login">Fazer Login</a></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- TELA DO LOBBY (Pós-login) -->
+        <div id="view-lobby" class="client-screen hidden">
+            <div class="lobby-layout panel-glass">
+                <!-- Cabeçalho do Lobby -->
+                <header class="lobby-header">
+                    <div class="user-profile">
+                        <div class="avatar-frame player-avatar"></div>
+                        <div>
+                            <h2 id="lobby-username">Nome do Jogador</h2>
+                            <span class="status-text">Online</span>
+                        </div>
+                    </div>
+                    <button id="btn-logout" class="btn-secondary small">Sair da Conta</button>
+                </header>
+
+                <!-- Conteúdo Central do Lobby -->
+                <main class="lobby-main">
+                    <div class="lobby-menu">
+                        <button id="btn-play-match" class="btn-primary btn-huge">Jogar</button>
+                        <button class="btn-secondary">Coleção de Cartas</button>
+                        <button class="btn-secondary">Histórico de Partidas</button>
+                        <button class="btn-secondary">Configurações</button>
+                    </div>
+                    
+                    <!-- Área para novidades ou informações padrão -->
+                    <div class="lobby-news panel-glass">
+                        <h3>Bem-vindo ao Jogo</h3>
+                        <p>Selecione "Jogar" para iniciar uma nova partida.</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
     <!-- ==========================================
          CAMADA DE MODAIS / OVERLAYS
          ========================================== -->
