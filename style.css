@@ -4,12 +4,13 @@
 :root {
     /* Paleta Principal (Sombrio & Ouro) */
     --bg-deep: #05070a;
-    --bg-glass: rgba(12, 16, 24, 0.75);
+    --bg-glass: rgba(12, 16, 24, 0.85);
     --gold-primary: #d4af37;
     --gold-light: #fef0c7;
     --gold-dark: #8c7322;
     --text-main: #e2e8f0;
     --text-muted: #8b949e;
+    --danger: #e74c3c;
     
     /* Cores das Tintas (Mecânica do Hwei) */
     --ink-disaster: #ff3333;
@@ -24,10 +25,14 @@
     --rarity-legendary: #f1c40f;
 
     /* Efeitos e Sombras */
-    --glass-border: rgba(212, 175, 55, 0.15);
-    --glow-gold: 0 0 20px rgba(212, 175, 55, 0.3);
-    --shadow-heavy: 0 15px 35px rgba(0, 0, 0, 0.8);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --glass-border: rgba(212, 175, 55, 0.2);
+    --glow-gold: 0 0 15px rgba(212, 175, 55, 0.4);
+    --glow-magic: 0 0 20px rgba(51, 204, 255, 0.5);
+    --shadow-heavy: 0 10px 30px rgba(0, 0, 0, 0.9);
+    
+    /* Animações (Otimizadas) */
+    --transition-fast: 0.15s ease-out;
+    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==========================================
@@ -37,18 +42,18 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    user-select: none; /* Previne seleção acidental no mobile */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
     font-family: 'Rajdhani', sans-serif;
     background-color: var(--bg-deep);
     color: var(--text-main);
-    background-image: 
-        radial-gradient(circle at 50% 50%, #111622 0%, var(--bg-deep) 100%);
+    background-image: radial-gradient(circle at 50% 50%, #111622 0%, var(--bg-deep) 100%);
     height: 100vh;
     width: 100vw;
-    overflow: hidden; /* Impede scroll na página toda, parecendo um app nativo */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -64,44 +69,86 @@ h1, h2, h3, h4, .btn-primary, .btn-magic, .turn-banner {
 .text-center { text-align: center; }
 
 /* ==========================================
-   COMPONENTES GERAIS (BOTÕES E GLASSMORPHISM)
+   ANIMAÇÕES DE HARDWARE (ALTO DESEMPENHO)
+   ========================================== */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    70% { transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
+    50% { box-shadow: var(--glow-gold); }
+    100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
+}
+
+/* ==========================================
+   COMPONENTES GERAIS (GLASSMORPHISM & BOTÕES)
    ========================================== */
 .panel-glass {
     background: var(--bg-glass);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    box-shadow: var(--shadow-heavy), inset 0 0 20px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-heavy);
 }
 
-.btn-primary, .btn-action, .btn-magic {
+.btn-primary, .btn-secondary, .btn-action, .btn-magic {
     cursor: pointer;
     border: none;
     border-radius: 6px;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    transition: var(--transition-smooth);
+    letter-spacing: 1px;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
     position: relative;
-    overflow: hidden;
+    will-change: transform;
 }
 
 .btn-primary {
-    padding: 15px 25px;
+    padding: 12px 24px;
     background: linear-gradient(135deg, #241d10 0%, #0a0804 100%);
     border: 1px solid var(--gold-primary);
     color: var(--gold-light);
     font-size: 1.1rem;
 }
 
-.btn-primary:hover {
-    box-shadow: var(--glow-gold);
+.btn-secondary {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+}
+
+.btn-primary:hover, .btn-secondary:hover {
     transform: translateY(-2px);
+    box-shadow: var(--glow-gold);
     border-color: #fce899;
 }
 
+.btn-primary:active, .btn-secondary:active {
+    transform: translateY(1px);
+}
+
+.btn-primary:disabled, .btn-magic:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(100%);
+}
+
 .key-badge {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
     border: 1px solid var(--gold-dark);
     padding: 2px 6px;
     border-radius: 4px;
@@ -111,314 +158,7 @@ h1, h2, h3, h4, .btn-primary, .btn-magic, .turn-banner {
 }
 
 /* ==========================================
-   CAMADA DE MODAIS (RUNAS, LOJA E MORTE)
-   ========================================== */
-#modal-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none; /* Deixa o clique passar quando vazio */
-    z-index: 1000;
-}
-
-.modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: all;
-    animation: fadeIn 0.4s ease-out;
-}
-
-.modal-card {
-    padding: 40px;
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-}
-
-.modal-title {
-    color: var(--gold-primary);
-    font-size: 2.5rem;
-    text-shadow: 0 4px 10px rgba(0,0,0,0.8);
-    margin-bottom: 5px;
-    text-align: center;
-}
-
-.modal-subtitle {
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 1.1rem;
-}
-
-/* LOJA - TABS E GRID */
-.shop-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--glass-border);
-    padding-bottom: 15px;
-}
-
-.shop-header h2 { color: var(--gold-primary); font-size: 1.8rem; }
-.gold-display { font-size: 1.2rem; color: var(--gold-light); font-weight: bold; }
-.btn-close {
-    background: none; border: none; color: var(--text-muted);
-    font-size: 2rem; cursor: pointer; transition: 0.3s;
-}
-.btn-close:hover { color: var(--gold-primary); transform: scale(1.1); }
-
-.shop-tabs {
-    display: flex;
-    gap: 10px;
-Para garantir que sua estrutura HTML recém-editada receba um estilo profissional, responsivo e de fácil manutenção, utilize esta arquitetura CSS completa. O código abaixo é fundamentado em variáveis customizáveis, um *reset* moderno para consistência entre navegadores e utilitários modulares adaptáveis a qualquer marcação padrão.
-
-```css
-/* ==========================================================================
-   SISTEMA DE DESIGN (VARIÁVEIS)
-   ========================================================================== */
-:root {
-  /* Cores Principais */
-  --cor-primaria: #2563eb;
-  --cor-primaria-hover: #1d4ed8;
-  --cor-secundaria: #475569;
-  --cor-sucesso: #16a34a;
-  --cor-perigo: #dc2626;
-
-  /* Cores de Fundo e Texto */
-  --bg-corpo: #f8fafc;
-  --bg-container: #ffffff;
-  --texto-principal: #0f172a;
-  --texto-mutado: #64748b;
-  --borda-cor: #e2e8f0;
-
-  /* Tipografia */
-  --fonte-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --peso-normal: 400;
-  --peso-medio: 500;
-  --peso-negrito: 700;
-
-  /* Espaçamento e Layout */
-  --espaco-sm: 0.5rem;
-  --espaco-md: 1rem;
-  --espaco-lg: 1.5rem;
-  --espaco-xl: 2rem;
-  --raio-borda: 8px;
-  --transicao-padrao: 0.3s ease;
-  --container-max: 1200px;
-}
-
-/* Suporte Automático a Modo Escuro */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-corpo: #0f172a;
-    --bg-container: #1e293b;
-    --texto-principal: #f8fafc;
-    --texto-mutado: #94a3b8;
-    --borda-cor: #334155;
-    --cor-primaria: #3b82f6;
-  }
-}
-
-/* ==========================================================================
-   RESET MODERNO & ACESSIBILIDADE
-   ========================================================================== */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  font-size: 16px;
-}
-
-body {
-  font-family: var(--fonte-sans);
-  background-color: var(--bg-corpo);
-  color: var(--texto-principal);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
-
-img, picture, video, canvas, svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-/* Foco Acessível (a11y) */
-*:focus-visible {
-  outline: 3px solid var(--cor-primaria);
-  outline-offset: 2px;
-}
-
-/* ==========================================================================
-   TIPOGRAFIA BASE
-   ========================================================================== */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--texto-principal);
-  font-weight: var(--peso-negrito);
-  line-height: 1.2;
-  margin-bottom: var(--espaco-md);
-}
-
-h1 { font-size: clamp(2rem, 5vw, 3rem); }
-h2 { font-size: clamp(1.75rem, 4vw, 2.25rem); }
-h3 { font-size: clamp(1.5rem, 3vw, 1.75rem); }
-
-p {
-  margin-bottom: var(--espaco-md);
-  color: var(--texto-mutado);
-}
-
-a {
-  color: var(--cor-primaria);
-  text-decoration: none;
-  transition: color var(--transicao-padrao);
-}
-
-a:hover {
-  color: var(--cor-primaria-hover);
-  text-decoration: underline;
-}
-
-/* ==========================================================================
-   LAYOUT & CONTAINERS
-   ========================================================================== */
-.container {
-  width: 100%;
-  max-width: var(--container-max);
-  margin-inline: auto;
-  padding-inline: var(--espaco-md);
-}
-
-.grid-auto {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--espaco-lg);
-}
-
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* ==========================================================================
-   COMPONENTES ESSENCIAIS
-   ========================================================================== */
-
-/* Cartões (Cards) */
-.card {
-  background-color: var(--bg-container);
-  border: 1px solid var(--borda-cor);
-  border-radius: var(--raio-borda);
-  padding: var(--espaco-lg);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: transform var(--transicao-padrao), box-shadow var(--transicao-padrao);
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* Botões */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.5rem;
-  font-weight: var(--peso-medio);
-  border-radius: var(--raio-borda);
-  border: none;
-  cursor: pointer;
-  transition: background-color var(--transicao-padrao), transform 0.1s;
-  font-family: inherit;
-  font-size: 1rem;
-}
-
-.btn-primario {
-  background-color: var(--cor-primaria);
-  color: #ffffff;
-}
-
-.btn-primario:hover {
-  background-color: var(--cor-primaria-hover);
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-/* Formulários */
-.form-group {
-  margin-bottom: var(--espaco-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--espaco-sm);
-}
-
-label {
-  font-weight: var(--peso-medio);
-  color: var(--texto-principal);
-}
-
-input, select, textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--borda-cor);
-  border-radius: var(--raio-borda);
-  background-color: var(--bg-container);
-  color: var(--texto-principal);
-  font-family: inherit;
-  font-size: 1rem;
-  transition: border-color var(--transicao-padrao);
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--cor-primaria);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-}
-
-/* ==========================================================================
-   UTILITÁRIOS RESPONSIVOS (MEDIA QUERIES)
-   ========================================================================== */
-@media (max-width: 768px) {
-  :root {
-    --espaco-lg: 1.25rem;
-    --espaco-xl: 1.5rem;
-  }
-  
-  .flex-between {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--espaco-md);
-  }
-}
-   /* ==========================================
-   ESTILOS DO CLIENT (LOGIN / LOBBY)
+   TELA DO CLIENT (LOGIN / LOBBY)
    ========================================== */
 #client-viewport {
     width: 100vw;
@@ -426,11 +166,8 @@ input:focus, select:focus, textarea:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: url('assets/bg-client.jpg') center/cover no-repeat; /* Opcional: imagem de fundo do client */
-}
-
-#client-viewport.hidden {
-    display: none;
+    background: url('assets/bg-client.jpg') center/cover no-repeat;
+    animation: fadeIn 0.5s ease-out;
 }
 
 .client-screen {
@@ -439,123 +176,392 @@ input:focus, select:focus, textarea:focus {
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: slideUpFade 0.4s ease-out;
 }
 
-.client-screen.hidden {
-    display: none;
-}
-
-/* Formulários */
-.client-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    text-align: left;
-}
+.client-form { display: flex; flex-direction: column; gap: 15px; }
+.input-group { display: flex; flex-direction: column; gap: 5px; }
 
 .input-group label {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
-    color: #ccc;
+    font-size: 0.9rem;
+    color: var(--text-muted);
     text-transform: uppercase;
 }
 
 .input-group input {
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px 15px;
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 12px;
+    border-radius: 6px;
     color: #fff;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 16px;
-    outline: none;
-    transition: 0.3s ease;
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition-smooth);
 }
 
 .input-group input:focus {
-    border-color: #33ccff;
-    box-shadow: 0 0 8px rgba(51, 204, 255, 0.4);
+    border-color: var(--ink-serenity);
+    box-shadow: var(--glow-magic);
+    outline: none;
 }
 
-.client-form a {
-    color: #33ccff;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.client-form a:hover {
-    text-decoration: underline;
-}
-
-/* Layout do Lobby */
+/* LOBBY */
 .lobby-layout {
     width: 90%;
     max-width: 1000px;
     height: 80vh;
     display: flex;
     flex-direction: column;
-    padding: 0; /* Remove padding padrão do panel-glass para estruturar melhor */
-    overflow: hidden;
 }
 
 .lobby-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 30px;
-    background: rgba(0, 0, 0, 0.3);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid var(--glass-border);
 }
 
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.user-profile h2 {
-    margin: 0;
-    font-size: 24px;
-    font-family: 'Cinzel', serif;
-}
-
-.status-text {
-    font-size: 14px;
-    color: #4CAF50; /* Verde indicando Online */
-    font-family: 'Rajdhani', sans-serif;
-}
+.user-profile { display: flex; align-items: center; gap: 15px; }
+.status-text { color: #4CAF50; font-size: 0.9rem; }
 
 .lobby-main {
     display: flex;
     flex: 1;
-    padding: 30px;
-    gap: 30px;
+    padding: 25px;
+    gap: 25px;
 }
 
-.lobby-menu {
+.lobby-menu { display: flex; flex-direction: column; gap: 15px; flex: 1; }
+.lobby-news { flex: 2; padding: 20px; background: rgba(0,0,0,0.3); }
+
+/* ==========================================
+   CAMADA DE MODAIS (RUNAS, LOJA, MORTE)
+   ========================================== */
+#modal-layer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-card {
+    padding: 30px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-title {
+    color: var(--gold-primary);
+    font-size: 2rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    text-align: center;
+}
+
+.modal-subtitle { color: var(--text-muted); text-align: center; margin-bottom: 20px; }
+
+/* LOJA DE ITENS */
+.shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.gold-display { color: var(--gold-light); font-size: 1.2rem; }
+.btn-close {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 2rem; cursor: pointer; transition: transform 0.2s;
+}
+.btn-close:hover { color: var(--gold-primary); transform: scale(1.2); }
+
+.shop-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn {
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--text-muted);
+    color: var(--text-main);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.tab-btn.active, .tab-btn:hover { border-color: var(--gold-primary); box-shadow: var(--glow-gold); }
+
+/* Cores das Tabs por Raridade */
+.tab-btn.rarity-trash:hover { border-color: var(--rarity-trash); }
+.tab-btn.rarity-common:hover { border-color: var(--rarity-common); }
+.tab-btn.rarity-rare:hover { border-color: var(--rarity-rare); }
+.tab-btn.rarity-epic:hover { border-color: var(--rarity-epic); }
+.tab-btn.rarity-legendary:hover { border-color: var(--rarity-legendary); }
+
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+/* ==========================================
+   TABULEIRO PRINCIPAL E HUDS
+   ========================================== */
+#game-viewport {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100vh;
+    width: 100vw;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.player-zone {
+    padding: 15px 30px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    z-index: 10;
+}
+#player-zone { background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
+
+/* HUD Vitals */
+.player-hud { display: flex; align-items: center; gap: 20px; }
+.avatar-frame {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-primary);
+    background: #111;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.hp-bar-container {
+    width: 250px; height: 20px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c0392b, #e74c3c);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width;
+}
+.player-hp { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+
+.hp-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.hud-sub-info { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
+
+/* ==========================================
+   ZONA CENTRAL (GRIMÓRIO / CANVAS)
+   ========================================== */
+#canvas-center-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.turn-banner {
+    position: absolute;
+    top: 20px;
+    font-size: 1.5rem;
+    color: var(--gold-primary);
+    text-shadow: var(--shadow-heavy);
+    animation: pulseGlow 2s infinite;
+    padding: 10px 20px;
+    background: var(--bg-glass);
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+
+.grimoire-container {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+}
+
+/* Paleta de Tintas */
+.ink-palette { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+.ink-wells { display: flex; gap: 10px; }
+.ink-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+.ink-btn:hover { transform: scale(1.1); }
+.disaster-ink { background: var(--ink-disaster); box-shadow: 0 0 10px var(--ink-disaster); }
+.serenity-ink { background: var(--ink-serenity); box-shadow: 0 0 10px var(--ink-serenity); }
+.torment-ink { background: var(--ink-torment); box-shadow: 0 0 10px var(--ink-torment); }
+
+.mixture-orb {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: #222;
+    border: 2px solid var(--gold-primary);
+    margin: 5px auto;
+    transition: background 0.3s;
+}
+
+/* Área do Canvas */
+.drawing-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#magic-canvas {
+    background: #0d1117;
+    border: 2px solid var(--glass-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-heavy);
+    cursor: crosshair;
+    touch-action: none; /* Crucial para desenhar no mobile sem rolar a tela */
+}
+
+.canvas-instruction { margin-top: 10px; color: var(--text-muted); font-size: 0.9rem; }
+
+.grimoire-actions {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    flex: 1;
+    width: 180px;
 }
 
-.btn-huge {
-    padding: 20px;
-    font-size: 24px;
-    font-family: 'Cinzel', serif;
-    letter-spacing: 2px;
+.btn-magic {
+    background: linear-gradient(135deg, #4b0082, #2a004f);
+    border: 1px solid #9933ff;
+    color: #fff;
+    padding: 15px;
+}
+.btn-magic:hover:not(:disabled) { box-shadow: 0 0 15px #9933ff; }
+
+/* ==========================================
+   CARTAS E MÃO (ANIMAÇÕES)
+   ========================================== */
+.card-field-zone {
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
 }
 
-.lobby-news {
-    flex: 2;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+.hand-container {
+    display: flex;
+    justify-content: center;
+    gap: -20px; /* Cartas sobrepostas */
+    height: 150px;
+    perspective: 1000px;
+}
+
+/* Estilo base dinâmico para as cartas geradas pelo JS */
+.game-card {
+    width: 100px;
+    height: 140px;
+    background: #1a1a1a;
+    border: 2px solid var(--gold-dark);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+    transition: transform 0.2s, z-index 0s;
+    cursor: grab;
+    will-change: transform;
+    animation: slideUpFade 0.3s ease-out;
+}
+
+.game-card:hover {
+    transform: translateY(-15px) scale(1.1);
+    z-index: 100;
+    box-shadow: var(--glow-gold);
+}
+
+/* ==========================================
+   INVENTÁRIO E BARRA DE AÇÃO (BOTTOM HUD)
+   ========================================== */
+.player-hud-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 10px;
+}
+
+.inventory-slots { display: flex; gap: 10px; }
+.item-slot {
+    width: 45px; height: 45px;
+    background: rgba(0,0,0,0.5);
+    border: 1px dashed var(--text-muted);
+    border-radius: 4px;
+}
+
+.action-bar { display: flex; gap: 10px; }
+.btn-action {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    padding: 10px 15px;
+}
+.btn-end-turn { background: rgba(231, 76, 60, 0.2); border-color: var(--danger); }
+.btn-end-turn:hover { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+
+/* ==========================================
+   RESPONSIVIDADE (MOBILE OPTIMIZATION)
+   ========================================== */
+@media (max-width: 768px) {
+    .grimoire-container {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+        transform: scale(0.9);
+    }
+    
+    #magic-canvas {
+        width: 300px; /* Adapta o canvas para telas menores */
+        height: 200px;
+    }
+
+    .player-hud-bottom {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .key-badge { display: none; } /* Oculta dicas de teclado no mobile */
+    
+    .hp-bar-container { width: 150px; }
+    
+    .shop-grid { grid-template-columns: repeat(2, 1fr); }
+    
+    .lobby-main { flex-direction: column; }
 }
