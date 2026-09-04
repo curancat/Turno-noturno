@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hwei:  Card Game</title>
+    <title>Hwei: O Grimório Vivo - Card Game</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 </head>
@@ -23,17 +23,17 @@
         <div id="rune-modal" class="modal-overlay active">
             <div class="modal-card panel-glass">
                 <h1 class="modal-title">Escolha sua Runa Primária</h1>
-                <p class="modal-subtitle">Seu estilo de pintura definirá o ritmo da partida</p>
+                <p class="modal-subtitle">Seu traço inicial definirá o ritmo da partida</p>
                 
                 <div id="rune-selection-grid" class="rune-grid">
-                    <!-- Gerado dinamicamente via JS (ex: Cometa Arcano, Primeiro Golpe, Colheita Sombria) -->
+                    <!-- Gerado dinamicamente via JS -->
                 </div>
                 
-                <button id="btn-confirm-runes" class="btn-primary full-width mt-20">Entrar na Tela</button>
+                <button id="btn-confirm-runes" class="btn-primary full-width mt-20">Abrir o Grimório</button>
             </div>
         </div>
 
-        <!-- TELA DA LOJA DE ITENS (100 ITENS OP) -->
+        <!-- TELA DA LOJA DE ITENS -->
         <div id="shop-modal" class="modal-overlay hidden">
             <div class="modal-card shop-card panel-glass">
                 <header class="shop-header">
@@ -44,17 +44,15 @@
                     <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja">&times;</button>
                 </header>
 
-                <!-- Filtro de Raridades -->
                 <nav class="shop-tabs">
                     <button class="tab-btn active" data-rarity="all">Todos</button>
-                    <button class="tab-btn rarity-trash" data-rarity="trash">Lixo</button>
+                    <button class="tab-btn rarity-trash" data-rarity="trash">Rascunho</button>
                     <button class="tab-btn rarity-common" data-rarity="common">Comum</button>
                     <button class="tab-btn rarity-rare" data-rarity="rare">Raro</button>
-                    <button class="tab-btn rarity-epic" data-rarity="epic">Épico</button>
+                    <button class="tab-btn rarity-epic" data-rarity="epic">Obra-Prima</button>
                     <button class="tab-btn rarity-legendary" data-rarity="legendary">Lendário</button>
                 </nav>
 
-                <!-- Grid onde os 100 Itens serão renderizados -->
                 <div id="shop-items-grid" class="shop-grid">
                     <!-- Preenchido via JavaScript -->
                 </div>
@@ -65,13 +63,13 @@
         <div id="death-modal" class="modal-overlay hidden">
             <div class="modal-card death-card panel-glass text-center">
                 <div class="death-banner">
-                    <h1 id="endgame-status-title">GAME OVER</h1>
-                    <p id="endgame-status-subtitle">Sua vida chegou a 0</p>
+                    <h1 id="endgame-status-title">A Tinta Secou</h1>
+                    <p id="endgame-status-subtitle">Sua tela foi rasgada e sua vida chegou a 0</p>
                 </div>
 
                 <div class="game-stats-summary">
                     <div class="stat-box">
-                        <span>Turnos Durados</span>
+                        <span>Turnos Pintados</span>
                         <strong id="stat-turns">0</strong>
                     </div>
                     <div class="stat-box">
@@ -84,10 +82,9 @@
                     </div>
                 </div>
 
-                <button id="btn-restart" class="btn-primary full-width mt-20">Novo Destino</button>
+                <button id="btn-restart" class="btn-primary full-width mt-20">Pintar um Novo Destino</button>
             </div>
         </div>
-
     </div>
 
     <!-- ==========================================
@@ -113,54 +110,67 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Campo de Batalha Inimigo (Cartas Baixadas) -->
             <div id="enemy-board-cards" class="card-field-zone"></div>
         </header>
 
-        <!-- ZONA CENTRAL / ATELIÊ DE PINTURA (MECÂNICA DO HWEI) -->
+        <!-- ZONA CENTRAL: O GRIMÓRIO DE DESENHO (NOVA MECÂNICA) -->
         <main id="canvas-center-zone">
             <div class="turn-banner" id="turn-indicator">Seu Turno</div>
 
-            <!-- Mecânica de Mistura de Assuntos (Q: Desastre, W: Serenidade, E: Tormento) -->
-            <div class="hwei-palette-container">
-                <p class="palette-instruction">Combine 2 assuntos para desenhar uma carta:</p>
-                <div class="palette-buttons">
-                    <button id="btn-subject-q" class="btn-subject subject-q" title="Assunto: Desastre (Q)">
-                        <span class="key-badge">Q</span>
-                        <span class="subject-label">Desastre</span>
-                    </button>
-                    <button id="btn-subject-w" class="btn-subject subject-w" title="Assunto: Serenidade (W)">
-                        <span class="key-badge">W</span>
-                        <span class="subject-label">Serenidade</span>
-                    </button>
-                    <button id="btn-subject-e" class="btn-subject subject-e" title="Assunto: Tormento (E)">
-                        <span class="key-badge">E</span>
-                        <span class="subject-label">Tormento</span>
-                    </button>
-                </div>
+            <div class="grimoire-container">
                 
-                <!-- Slot de Combinação Atual -->
-                <div class="ink-preview">
-                    <span id="ink-slot-1" class="ink-slot">?</span>
-                    <span class="ink-plus">+</span>
-                    <span id="ink-slot-2" class="ink-slot">?</span>
-                </div>
+                <!-- Paleta de Tintas Mágicas e Mistura -->
+                <aside class="ink-palette">
+                    <h3>Paleta de Essências</h3>
+                    
+                    <div class="ink-wells">
+                        <!-- Botões para selecionar a cor do pincel -->
+                        <button class="ink-btn disaster-ink" data-color="#ff3333" title="Desastre (Fogo/Dano)"></button>
+                        <button class="ink-btn serenity-ink" data-color="#33ccff" title="Serenidade (Água/Cura)"></button>
+                        <button class="ink-btn torment-ink" data-color="#9933ff" title="Tormento (Sombra/Controle)"></button>
+                    </div>
+
+                    <div class="ink-mixer">
+                        <p>Mistura Atual</p>
+                        <div id="active-mixture-display" class="mixture-orb"></div>
+                        <span id="mixture-name" class="mixture-label">Tinta Pura</span>
+                    </div>
+
+                    <div class="brush-controls">
+                        <input type="range" id="brush-size" min="2" max="20" value="5" title="Tamanho do Pincel">
+                        <button id="btn-clear-canvas" class="btn-secondary small">Limpar Tela</button>
+                    </div>
+                </aside>
+
+                <!-- Tela de Desenho Interativa -->
+                <section class="drawing-area">
+                    <canvas id="magic-canvas" width="400" height="250"></canvas>
+                    <p class="canvas-instruction">Desenhe um símbolo para materializar sua magia</p>
+                </section>
+
+                <!-- Ação Final do Turno de Desenho -->
+                <aside class="grimoire-actions">
+                    <button id="btn-materialize-card" class="btn-magic block-action">
+                        Materializar Carta
+                    </button>
+                    <div id="spell-prediction" class="spell-preview hidden">
+                        <!-- O JS identificará o desenho e mostrará aqui qual carta vai sair -->
+                        <span>Forma Detectada:</span>
+                        <strong id="detected-shape">Fogo Devastador</strong>
+                    </div>
+                </aside>
             </div>
         </main>
 
         <!-- ZONA DO JOGADOR -->
         <footer id="player-zone" class="player-zone">
             
-            <!-- Campo de Batalha do Jogador (Cartas Baixadas) -->
             <div id="player-board-cards" class="card-field-zone"></div>
 
-            <!-- Mão de Cartas do Jogador -->
             <div id="player-hand" class="hand-container">
-                <!-- Cartas animadas serão injetadas aqui pelo JS -->
+                <!-- Cartas materializadas aparecerão aqui -->
             </div>
 
-            <!-- HUD e Inventário do Jogador -->
             <div class="player-hud-bottom">
                 <div class="player-hud">
                     <div class="avatar-container">
@@ -179,7 +189,6 @@
                     </div>
                 </div>
 
-                <!-- Slots de Itens Comprados (Passivas e Ativas) -->
                 <div class="inventory-slots" id="player-inventory">
                     <div class="item-slot active-slot" title="Slot Ativo 1" data-slot="0"></div>
                     <div class="item-slot active-slot" title="Slot Ativo 2" data-slot="1"></div>
@@ -187,7 +196,6 @@
                     <div class="item-slot passive-slot" title="Passiva 2" data-slot="3"></div>
                 </div>
 
-                <!-- Barra de Ações Rápidas (Desktop + Touch) -->
                 <div class="action-bar">
                     <button id="btn-open-shop" class="btn-action">
                         <span class="key-badge">P</span> Loja
@@ -197,9 +205,7 @@
                     </button>
                 </div>
             </div>
-
         </footer>
-
     </div>
 
 </body>
