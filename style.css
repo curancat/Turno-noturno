@@ -1,264 +1,182 @@
 /* ==========================================
-   VARIÁVEIS GERAIS (DESIGN SYSTEM)
+   VARIÁVEIS DE CORES E TEMA (HWEI)
    ========================================== */
 :root {
-    /* Cores de Fundo e UI */
-    --bg-main: #0f172a;        /* Azul escuro profundo */
-    --bg-panel: rgba(30, 41, 59, 0.85);
-    --border-color: rgba(255, 255, 255, 0.1);
+    --bg-dark: #0a0a0c;
+    --panel-bg: rgba(18, 20, 28, 0.85);
+    --border-color: rgba(200, 170, 110, 0.3);
+    --gold: #c8aa6e;
+    --text-main: #f0e6d2;
+    --text-muted: #a09b8c;
     
-    /* Textos */
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
+    /* Cores das Tintas */
+    --ink-q: #ff4e4e; /* Desastre */
+    --ink-w: #4ea5ff; /* Serenidade */
+    --ink-e: #b54eff; /* Tormento */
+    --ink-r: #ffb84e; /* Ultimate */
+
+    --hp-player: #02c076;
+    --hp-enemy: #ff3333;
     
-    /* Ações e Interações */
-    --accent-primary: #3b82f6; /* Azul botão principal */
-    --accent-hover: #2563eb;
-    --danger: #ef4444;         /* Vermelho botoes de perigo/passar turno */
-    --danger-hover: #dc2626;
-    
-    /* Cores das Tintas / Magias */
-    --color-damage: #ef4444;   /* Vermelho */
-    --color-heal: #10b981;     /* Verde */
-    --color-control: #8b5cf6;  /* Roxo */
-    --color-gold: #fbbf24;     /* Ouro (Loja) */
+    --transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* ==========================================
-   RESETS E CONFIGURAÇÕES BASES
-   ========================================== */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none; /* Evita selecionar texto sem querer no mobile */
-    -webkit-tap-highlight-color: transparent;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
-body, html {
+body {
     font-family: 'Rajdhani', sans-serif;
-    background-color: var(--bg-main);
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at center, #1a1c23 0%, var(--bg-dark) 100%);
     color: var(--text-main);
-    width: 100vw;
     height: 100vh;
-    overflow: hidden; /* Fundamental para segurar o layout como um App */
-}
-
-#app-container {
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
-
-/* Classes Utilitárias */
-.hidden { display: none !important; }
-.active { display: flex !important; }
-.hidden-form { display: none; }
-.mt-15 { margin-top: 15px; }
-.text-center { text-align: center; }
-
-/* ==========================================
-   COMPONENTES UI (PAINÉIS E BOTÕES)
-   ========================================== */
-.panel {
-    background: var(--bg-panel);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.btn {
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn:active { transform: scale(0.96); }
-
-.btn-primary { background: var(--accent-primary); color: white; }
-.btn-primary:hover { background: var(--accent-hover); }
-
-.btn-secondary { background: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
-.btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--text-main); }
-
-.btn-danger { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: var(--text-main); }
-.btn-danger:hover { background: var(--danger-hover); }
-
-.btn-magic { background: linear-gradient(135deg, var(--color-control), #4c1d95); color: white; width: 100%; }
-.small { padding: 8px 12px; font-size: 0.85rem; }
-.btn-large { padding: 15px 30px; font-size: 1.2rem; width: 100%; }
-
-/* ==========================================
-   ESTRUTURA DE TELAS (SCREENS)
-   ========================================== */
-.screen {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 0;
 }
-.screen.active { opacity: 1; pointer-events: all; z-index: 10; }
 
-/* 1. Login e Autenticação */
-#view-auth { justify-content: center; align-items: center; }
-.login-panel { width: 90%; max-width: 400px; }
-.title { font-size: 2.2rem; color: var(--accent-primary); text-align: center; margin-bottom: 20px; }
-.form-group { display: flex; flex-direction: column; gap: 15px; }
-.form-group h2 { text-align: center; color: var(--text-muted); font-size: 1.2rem; }
-.form-group input {
-    background: rgba(0, 0, 0, 0.5);
+h1, h2, h3, .btn, .turn-indicator { font-family: 'Cinzel', serif; }
+
+.hidden { display: none !important; }
+
+/* ==========================================
+   COMPONENTES GERAIS
+   ========================================== */
+.screen {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    position: absolute; top: 0; left: 0;
+    transition: opacity var(--transition);
+}
+
+.panel {
+    background: var(--panel-bg);
     border: 1px solid var(--border-color);
-    padding: 12px;
-    border-radius: 8px;
-    color: white;
-    font-family: inherit;
-    font-size: 1rem;
-    outline: none;
-    transition: 0.2s;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 20px;
 }
-.form-group input:focus { border-color: var(--accent-primary); }
-.form-group p { text-align: center; font-size: 0.9rem; color: var(--text-muted); }
-.form-group p a { color: var(--accent-primary); text-decoration: none; }
 
-/* 2. Lobby */
-#view-lobby { padding: 20px; align-items: center; justify-content: flex-start; gap: 20px; }
-.lobby-header { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; }
-.user-info { display: flex; align-items: center; gap: 15px; }
-.status { color: var(--color-heal); font-size: 0.85rem; font-weight: bold; }
-.lobby-content { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px 20px; }
-.menu-actions { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; }
-
-/* 3. Matchmaking */
-#view-matchmaking { justify-content: center; align-items: center; }
-.center-content { display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center; }
-.spinner {
-    width: 50px; height: 50px;
-    border: 4px solid var(--border-color);
-    border-top-color: var(--accent-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+/* BOTÕES */
+.btn {
+    cursor: pointer; border: none; border-radius: 4px;
+    padding: 10px 20px; font-weight: bold; text-transform: uppercase;
+    transition: var(--transition); letter-spacing: 1px;
+    color: #fff;
 }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+.btn:active:not(:disabled) { transform: scale(0.95); }
+
+.btn.primary { background: linear-gradient(135deg, #785a28, #c8aa6e); border: 1px solid #f0e6d2; }
+.btn.primary:hover:not(:disabled) { box-shadow: 0 0 15px rgba(200,170,110,0.5); }
+
+.btn.secondary { background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); }
+.btn.secondary:hover { border-color: var(--text-main); color: var(--text-main); }
+
+.btn.danger { background: rgba(255, 51, 51, 0.2); border: 1px solid var(--ink-q); color: var(--ink-q); }
+.btn.danger:hover { background: var(--ink-q); color: #fff; }
+
+.btn.huge { padding: 15px 40px; font-size: 1.2rem; }
+
+/* ==========================================
+   LOGIN & LOBBY
+   ========================================== */
+#screen-login { justify-content: center; align-items: center; }
+.login-panel { text-align: center; width: 350px; }
+.login-panel h1 { font-size: 3rem; color: var(--gold); }
+.login-panel input {
+    width: 100%; padding: 12px; margin: 20px 0;
+    background: rgba(0,0,0,0.5); border: 1px solid var(--border-color);
+    color: #fff; font-family: inherit; font-size: 1.1rem; border-radius: 4px;
+    text-align: center;
+}
+.login-panel input:focus { outline: none; border-color: var(--gold); }
+
+.lobby-container { width: 90%; max-width: 800px; margin: 50px auto; }
+.lobby-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.profile-info { display: flex; align-items: center; gap: 20px; }
+.avatar { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--gold); background: #333; }
+.level-badge { color: var(--gold); font-weight: bold; }
+
+.xp-bar-container { width: 300px; }
+.xp-info { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 5px; }
+.xp-bar { width: 100%; height: 10px; background: rgba(0,0,0,0.6); border-radius: 5px; overflow: hidden; }
+.xp-fill { height: 100%; background: var(--gold); transition: width 0.5s ease-out; width: 0%; }
+.level-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
+
+.lobby-actions { text-align: center; padding-top: 50px; }
+.spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid transparent; border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ==========================================
-   4. TABULEIRO DE JOGO (O CORE DO APP)
+   TABULEIRO DE JOGO E HUD
    ========================================== */
-#view-game { justify-content: space-between; }
+#screen-game { justify-content: space-between; padding: 20px; }
 
-.board-zone { padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 5; }
-.enemy-zone { background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
-.player-zone { background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding-bottom: 20px; }
+/* Zonas de Jogador e Inimigo */
+#enemy-zone, #player-zone { display: flex; justify-content: center; }
+.hud { display: flex; align-items: center; gap: 20px; min-width: 400px; justify-content: space-between; }
+.stats { flex: 1; position: relative; }
+.hp-bar { width: 100%; height: 15px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 5px;}
+.hp-fill { height: 100%; transition: width 0.4s; }
+.player-hp { background: var(--hp-player); }
+.enemy-hp { background: var(--hp-enemy); }
+.hp-text { position: absolute; top: 25px; right: 0; font-size: 0.8rem; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+.passive-tracker { margin-top: 5px; font-size: 0.85rem; color: var(--ink-e); font-weight: bold; }
 
-/* HUD Vitals (HP, Nomes, Avatares) */
-.player-stats { display: flex; align-items: center; gap: 15px; }
-.avatar { width: 50px; height: 50px; border-radius: 50%; background: #334155; border: 2px solid var(--border-color); }
-.info { display: flex; flex-direction: column; gap: 5px; flex: 1; max-width: 200px; }
-.name { font-weight: bold; font-size: 1.1rem; }
-.hp-bar { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); position: relative; }
-.hp-fill { height: 100%; transition: width 0.4s ease-out; }
-.hp-fill.player { background: var(--color-heal); width: 100%; }
-.hp-fill.enemy { background: var(--color-damage); width: 100%; }
-.hp-text { font-size: 0.8rem; color: var(--text-muted); align-self: flex-end; margin-top: -3px; }
+/* Centro: Grimório */
+#center-zone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.turn-indicator { font-size: 1.5rem; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 10px rgba(200,170,110,0.5); }
+.grimoire { display: flex; gap: 30px; align-items: center; padding: 30px; background: rgba(10,12,18,0.9); }
 
-/* Cartas no Campo e na Mão */
-.cards-on-board { height: 90px; display: flex; justify-content: center; gap: 10px; }
-.cards-hand { height: 100px; display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; perspective: 800px; }
+.ink-selection { text-align: center; }
+.ink-buttons { display: flex; gap: 10px; margin: 15px 0; }
+.ink-btn { width: 45px; height: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; transition: 0.2s; }
+.ink-btn:hover:not(.locked) { transform: scale(1.1); }
+.ink-btn.locked { filter: grayscale(100%); opacity: 0.3; cursor: not-allowed; }
 
-/* Centro - Tela de Desenho */
-.board-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-.turn-banner { position: absolute; top: 10px; font-size: 1.2rem; font-weight: bold; color: var(--text-main); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border-color); }
+.disaster { background: var(--ink-q); box-shadow: 0 0 15px rgba(255,78,78,0.4); }
+.serenity { background: var(--ink-w); box-shadow: 0 0 15px rgba(78,165,255,0.4); }
+.torment { background: var(--ink-e); box-shadow: 0 0 15px rgba(181,78,255,0.4); }
+.ultimate { background: linear-gradient(45deg, var(--ink-r), #fff); box-shadow: 0 0 15px var(--ink-r); }
 
-.drawing-station { display: flex; gap: 15px; align-items: stretch; width: 95%; max-width: 600px; padding: 10px; }
+.current-mix { font-size: 1.1rem; color: var(--gold); }
 
-/* Ferramentas e Pincéis */
-.tools-sidebar { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
-.ink-selector { display: flex; flex-direction: column; gap: 10px; }
-.ink-btn { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: 0.2s; }
-.bg-damage { background: var(--color-damage); }
-.bg-heal { background: var(--color-heal); }
-.bg-control { background: var(--color-control); }
-.ink-btn.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+/* Canvas de Desenho */
+.canvas-container { text-align: center; }
+#magic-canvas { background: #000; border: 2px solid var(--border-color); border-radius: 8px; cursor: crosshair; touch-action: none; box-shadow: inset 0 0 20px rgba(255,255,255,0.05); }
+.instruction { font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; }
 
-/* O Canvas */
-.canvas-wrapper { flex: 1; position: relative; background: #000; border-radius: 8px; border: 2px solid var(--border-color); box-shadow: inset 0 0 20px rgba(0,0,0,0.8); overflow: hidden; min-height: 150px; }
-.symbol-guide { position: absolute; top: 10px; left: 10px; color: rgba(255, 255, 255, 0.4); font-size: 0.9rem; pointer-events: none; }
-#magic-canvas { 
-    width: 100%; height: 100%; 
-    touch-action: none; /* Impede a tela de rolar no mobile ao desenhar */
-    cursor: crosshair; 
-}
-
-.action-sidebar { display: flex; flex-direction: column; justify-content: center; gap: 10px; width: 120px; }
-.feedback-text { font-size: 0.75rem; text-align: center; color: var(--text-muted); }
-
-/* HUD Bottom (Inventario e Ações) */
-.player-hud { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-top: 10px; gap: 10px; }
-.inventory { display: flex; align-items: center; gap: 15px; }
-.gold { color: var(--color-gold); font-weight: bold; font-size: 1.1rem; }
+.actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* ==========================================
-   CARTAS (GERADAS VIA JS)
+   CARTAS E ANIMAÇÕES
    ========================================== */
-.game-card {
-    width: 75px; height: 105px;
-    background: #1e293b;
-    border: 2px solid var(--border-color);
-    border-radius: 6px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+.hand-container { display: flex; justify-content: center; gap: 10px; height: 160px; margin-bottom: 20px; }
+.card {
+    width: 110px; height: 150px;
+    background: #111; border: 2px solid var(--border-color);
+    border-radius: 8px; padding: 10px;
+    display: flex; flex-direction: column; justify-content: space-between;
     cursor: pointer;
-    transition: transform 0.2s ease, z-index 0s;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: slideUp 0.3s ease-out;
 }
-.game-card:hover { transform: translateY(-15px); z-index: 20; border-color: white; }
-.card-title { font-size: 0.7rem; font-weight: bold; text-align: center; line-height: 1.1; }
-.card-stats { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: bold; }
+.card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; box-shadow: 0 0 20px var(--gold); }
+.card-name { font-size: 0.8rem; font-weight: bold; text-align: center; }
+.card-desc { font-size: 0.65rem; color: #aaa; text-align: center; line-height: 1.2; }
+.card-stats { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; }
 
-/* ==========================================
-   MODAIS E LOJA
-   ========================================== */
-.modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
-.modal.active { opacity: 1; pointer-events: all; }
-.modal-content { width: 95%; max-width: 600px; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
-.btn-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
-.btn-close:hover { color: white; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-.shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
-.shop-item { background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
-.shop-item h4 { font-size: 0.9rem; color: var(--color-gold); }
+/* Notificações e Fim de Jogo */
+#notification-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+.toast { background: var(--panel-bg); border: 1px solid var(--gold); padding: 15px 20px; border-radius: 4px; color: #fff; animation: fadeSlide 0.3s, fadeOut 0.3s 2.5s forwards; font-weight: bold; }
+@keyframes fadeSlide { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
 
-/* ==========================================
-   RESPONSIVIDADE (Ajustes finos para Mobile)
-   ========================================== */
-@media (max-width: 768px) {
-    .drawing-station { flex-direction: column; }
-    .tools-sidebar { flex-direction: row; justify-content: center; }
-    .ink-selector { flex-direction: row; }
-    .action-sidebar { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
-    
-    .player-hud { flex-direction: column; gap: 15px; }
-    .player-stats { width: 100%; }
-    .inventory { width: 100%; justify-content: space-between; }
-    #btn-end-turn { width: 100%; }
-}
+.modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal .panel { text-align: center; width: 400px; }
+#endgame-title { font-size: 3rem; margin-bottom: 10px; }
+#endgame-xp-gained { font-size: 1.2rem; color: var(--gold); margin-bottom: 30px; }
