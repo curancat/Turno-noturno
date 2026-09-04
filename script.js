@@ -9,13 +9,23 @@
 // 1. CONFIGURAÇÃO DO FIREBASE (Insira as credenciais do seu projeto aqui)
 // ============================================================================
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
-    projectId: "SEU_PROJETO",
-    storageBucket: "SEU_PROJETO.appspot.com",
-    messagingSenderId: "SEU_SENDER_ID",
-    appId: "SEU_APP_ID"
+
+  apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
+
+  authDomain: "turno-noturno.firebaseapp.com",
+
+  databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com",
+
+  projectId: "turno-noturno",
+
+  storageBucket: "turno-noturno.firebasestorage.app",
+
+  messagingSenderId: "452104216659",
+
+  appId: "1:452104216659:web:982293f3f30b372e1b26a6",
+
+  measurementId: "G-YQVGM2LLHW"
+
 };
 
 // Inicialização
