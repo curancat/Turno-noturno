@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hwei: O Grimório Vivo - Card Game</title>
+    <title>Hwei: Card Game</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 </head>
@@ -38,7 +38,7 @@
             <div class="modal-card shop-card panel-glass">
                 <header class="shop-header">
                     <div>
-                        <h2>O Bazar do Visionário</h2>
+                        <h2>Bazar</h2>
                         <span class="gold-display">Seu Ouro: <strong id="shop-player-gold">0</strong> 🪙</span>
                     </div>
                     <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja">&times;</button>
@@ -46,10 +46,10 @@
 
                 <nav class="shop-tabs">
                     <button class="tab-btn active" data-rarity="all">Todos</button>
-                    <button class="tab-btn rarity-trash" data-rarity="trash">Rascunho</button>
+                    <button class="tab-btn rarity-trash" data-rarity="trash">Tralha</button>
                     <button class="tab-btn rarity-common" data-rarity="common">Comum</button>
                     <button class="tab-btn rarity-rare" data-rarity="rare">Raro</button>
-                    <button class="tab-btn rarity-epic" data-rarity="epic">Obra-Prima</button>
+                    <button class="tab-btn rarity-epic" data-rarity="epic">Epicos</button>
                     <button class="tab-btn rarity-legendary" data-rarity="legendary">Lendário</button>
                 </nav>
 
@@ -63,13 +63,13 @@
         <div id="death-modal" class="modal-overlay hidden">
             <div class="modal-card death-card panel-glass text-center">
                 <div class="death-banner">
-                    <h1 id="endgame-status-title">A Tinta Secou</h1>
-                    <p id="endgame-status-subtitle">Sua tela foi rasgada e sua vida chegou a 0</p>
+                    <h1 id="endgame-status-title">Game over</h1>
+                    <p id="endgame-status-subtitle">você morreu</p>
                 </div>
 
                 <div class="game-stats-summary">
                     <div class="stat-box">
-                        <span>Turnos Pintados</span>
+                        <span>Turnos Jogados</span>
                         <strong id="stat-turns">0</strong>
                     </div>
                     <div class="stat-box">
@@ -82,7 +82,7 @@
                     </div>
                 </div>
 
-                <button id="btn-restart" class="btn-primary full-width mt-20">Pintar um Novo Destino</button>
+                <button id="btn-restart" class="btn-primary full-width mt-20">Novo Destino</button>
             </div>
         </div>
     </div>
@@ -121,19 +121,19 @@
                 
                 <!-- Paleta de Tintas Mágicas e Mistura -->
                 <aside class="ink-palette">
-                    <h3>Paleta de Essências</h3>
+                    <h3>Paleta</h3>
                     
                     <div class="ink-wells">
                         <!-- Botões para selecionar a cor do pincel -->
-                        <button class="ink-btn disaster-ink" data-color="#ff3333" title="Desastre (Fogo/Dano)"></button>
-                        <button class="ink-btn serenity-ink" data-color="#33ccff" title="Serenidade (Água/Cura)"></button>
-                        <button class="ink-btn torment-ink" data-color="#9933ff" title="Tormento (Sombra/Controle)"></button>
+                        <button class="ink-btn disaster-ink" data-color="#ff3333" title="Desastre"></button>
+                        <button class="ink-btn serenity-ink" data-color="#33ccff" title="Serenidade"></button>
+                        <button class="ink-btn torment-ink" data-color="#9933ff" title="Tormento"></button>
                     </div>
 
                     <div class="ink-mixer">
                         <p>Mistura Atual</p>
                         <div id="active-mixture-display" class="mixture-orb"></div>
-                        <span id="mixture-name" class="mixture-label">Tinta Pura</span>
+                        <span id="mixture-name" class="mixture-label">Tintas</span>
                     </div>
 
                     <div class="brush-controls">
@@ -156,7 +156,7 @@
                     <div id="spell-prediction" class="spell-preview hidden">
                         <!-- O JS identificará o desenho e mostrará aqui qual carta vai sair -->
                         <span>Forma Detectada:</span>
-                        <strong id="detected-shape">Fogo Devastador</strong>
+                        <strong id="detected-shape">Fogo</strong>
                     </div>
                 </aside>
             </div>
