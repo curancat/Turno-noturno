@@ -417,3 +417,145 @@ input:focus, select:focus, textarea:focus {
     gap: var(--espaco-md);
   }
 }
+   /* ==========================================
+   ESTILOS DO CLIENT (LOGIN / LOBBY)
+   ========================================== */
+#client-viewport {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('assets/bg-client.jpg') center/cover no-repeat; /* Opcional: imagem de fundo do client */
+}
+
+#client-viewport.hidden {
+    display: none;
+}
+
+.client-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.client-screen.hidden {
+    display: none;
+}
+
+/* Formulários */
+.client-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: left;
+}
+
+.input-group label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    color: #ccc;
+    text-transform: uppercase;
+}
+
+.input-group input {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    outline: none;
+    transition: 0.3s ease;
+}
+
+.input-group input:focus {
+    border-color: #33ccff;
+    box-shadow: 0 0 8px rgba(51, 204, 255, 0.4);
+}
+
+.client-form a {
+    color: #33ccff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.client-form a:hover {
+    text-decoration: underline;
+}
+
+/* Layout do Lobby */
+.lobby-layout {
+    width: 90%;
+    max-width: 1000px;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0; /* Remove padding padrão do panel-glass para estruturar melhor */
+    overflow: hidden;
+}
+
+.lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-profile h2 {
+    margin: 0;
+    font-size: 24px;
+    font-family: 'Cinzel', serif;
+}
+
+.status-text {
+    font-size: 14px;
+    color: #4CAF50; /* Verde indicando Online */
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.lobby-main {
+    display: flex;
+    flex: 1;
+    padding: 30px;
+    gap: 30px;
+}
+
+.lobby-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex: 1;
+}
+
+.btn-huge {
+    padding: 20px;
+    font-size: 24px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 2px;
+}
+
+.lobby-news {
+    flex: 2;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
