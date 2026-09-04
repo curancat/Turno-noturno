@@ -1,784 +1,682 @@
-/**
- * HWEI: O PINTOR - JOGO DE CARTAS MULTIPLAYER
- * Script Completo, Mobile-Optimized e Integrado com Firebase.
- * Contém Autenticação, Matchmaking, Sincronização em Tempo Real (Realtime Database),
- * Motor de Desenho em Canvas e Lógica de Combate.
- */
-
-// ============================================================================
-// 1. CONFIGURAÇÃO DO FIREBASE (Insira as credenciais do seu projeto aqui)
-// ============================================================================
+/* ==========================================================================
+   HWEI: CARD GAME - MOTOR PRINCIPAL DE JOGO (SCRIPT.JS)
+   ========================================================================== */
 const firebaseConfig = {
-
   apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
-
   authDomain: "turno-noturno.firebaseapp.com",
-
   databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com",
-
   projectId: "turno-noturno",
-
   storageBucket: "turno-noturno.firebasestorage.app",
-
   messagingSenderId: "452104216659",
-
   appId: "1:452104216659:web:982293f3f30b372e1b26a6",
-
   measurementId: "G-YQVGM2LLHW"
-
 };
 
-// Inicialização
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
-const db = firebase.database();
+const db = firebase.firestore();
 
-// ============================================================================
-// 2. ESTADO GLOBAL DA APLICAÇÃO E VARIÁVEIS
-// ============================================================================
-const AppState = {
-    user: null,
-    gameId: null,
-    isMyTurn: false,
-    playerNum: 0, // 1 ou 2
-    opponentId: null,
+// ==========================================================================
+// BANCO DE DADOS DAS 11 HABILIDADES DE HWEI (ASSUNTOS Q, W, E, R + PASSIVA)
+// ==========================================================================
+const HWEI_SPELLS = {
+    // PASSIVA: Assustando o Visionário
+    "PASSIVA": { name: "Visão Progressiva", type: "passiva", desc: "Acumula cargas ao conjurar feitiços, causando dano explosivo adicional.", damage: 15, heal: 0, color: "#d4af37" },
     
-    // Status do Jogador Local
-    hp: 100,
-    maxHp: 100,
-    gold: 0,
-    hand: [],
-    
-    // Status do Inimigo
-    enemyHp: 100,
-    enemyMaxHp: 100,
-    enemyName: "Oponente",
+    // ASSUNTO Q (DESASTRE)
+    "QQ": { name: "Fagulha Devastadora", type: "desastre", desc: "Q+Q: Chama concentrada de dano puro.", damage: 30, heal: 0, color: "#ff3333", minLevel: 1, image: "" },
+    "QW": { name: "Trovão Cataclísmico", type: "desastre", desc: "Q+W: Raio elemental cortante.", damage: 40, heal: 0, color: "#ff5533", minLevel: 5, image: "" },
+    "QE": { name: "Erupção Magmática", type: "desastre", desc: "Q+E: Fissura flamejante em área.", damage: 55, heal: 0, color: "#ff1111", minLevel: 10, image: "" },
 
-    // Motor de Desenho
-    currentInk: 'damage', // damage, heal, control
-    isDrawing: false,
-    strokes: [], // Guarda as coordenadas para análise
-    canvasCtx: null,
-    
-    // Sons
-    bgMusic: document.getElementById('bg-music'),
-    musicStarted: false
+    // ASSUNTO W (SERENIDADE)
+    "WQ": { name: "Correnteza Protetora", type: "serenidade", desc: "W+Q: Concede escudo e regeneração rápida.", damage: 5, heal: 25, color: "#33ccff", minLevel: 1, image: "" },
+    "WW": { name: "Poça da Refugiada", type: "serenidade", desc: "W+W: Aura calmante de cura profunda.", damage: 0, heal: 40, color: "#3399ff", minLevel: 8, image: "" },
+    "WE": { name: "Manto de Íris", type: "serenidade", desc: "W+E: Concede vigor e bônus de ouro.", damage: 10, heal: 20, color: "#33ffee", minLevel: 15, image: "" },
+
+    // ASSUNTO E (TORMENTO)
+    "EQ": { name: "Olho do Pavor", type: "tormento", desc: "E+Q: Causa pavor e drena vida.", damage: 25, heal: 15, color: "#9933ff", minLevel: 1, image: "" },
+    "EW": { name: "Abismo Fétido", type: "tormento", desc: "E+W: Zona de aprisionamento e dano contínuo.", damage: 35, heal: 5, color: "#7722ff", minLevel: 12, image: "" },
+    "EE": { name: "Mão Esmagadora", type: "tormento", desc: "E+E: Esmaga o oponente com forças do abismo.", damage: 50, heal: 0, color: "#aa11ff", minLevel: 18, image: "" },
+
+    // ASSUNTO R (SUPREMO - Muda baseado na última tinta usada)
+    "R": { name: "Cataclismo de Hwei", type: "supremo", desc: "R: Eclosão apocalíptica que corrói o oponente.", damage: 70, heal: 20, color: "#ff00ff", minLevel: 20, image: "" }
 };
 
-const ShopItems = [
-    { id: 'item_potion', name: 'Poção Maior', cost: 15, effect: 'heal', value: 30, icon: '🧪' },
-    { id: 'item_upgrade', name: 'Tinta Aprimorada', cost: 25, effect: 'damage_buff', value: 10, icon: '🖌️' },
-    { id: 'item_shield', name: 'Barreira', cost: 20, effect: 'shield', value: 20, icon: '🛡️' }
+// ==========================================================================
+// ESTADO GLOBAL DO JOGO
+// ==========================================================================
+const GameState = {
+    currentUser: null,
+    isMyTurn: true,
+    turnCount: 1,
+    totalDamageDealt: 0,
+    totalGoldEarned: 100,
+    
+    player: {
+        name: "Hwei",
+        hp: 100,
+        maxHp: 100,
+        gold: 100,
+        level: 1,
+        xp: 0,
+        rune: null,
+        hand: [],
+        board: [],
+        inventory: [null, null, null, null],
+        stats: { bonusAtk: 0, bonusHeal: 0, goldMult: 1.0 }
+    },
+    
+    enemy: {
+        name: "Invocador Sombrio",
+        hp: 100,
+        maxHp: 100,
+        gold: 50,
+        board: []
+    },
+
+    canvas: {
+        brushSize: 6,
+        isDrawing: false,
+        strokesCount: 0,
+        inkMix: [] // Armazena sequência exata (ex: ['Q', 'Q'], ['W', 'E'])
+    }
+};
+
+// ==========================================================================
+// BANCO DE RUNAS
+// ==========================================================================
+const RUNES_DATABASE = [
+    {
+        id: "cometa",
+        name: "Cometa Arcano",
+        desc: "+15 Dano Adicional em todas as magias elementais.",
+        icon: "☄️",
+        apply: (p) => { p.stats.bonusAtk += 15; }
+    },
+    {
+        id: "conquistador",
+        name: "Pincelada Implacável",
+        desc: "Cada carta jogada aumenta o ouro ganho por turno em +20%.",
+        icon: "⚔️",
+        apply: (p) => { p.stats.goldMult += 0.2; }
+    },
+    {
+        id: "fluxo",
+        name: "Serenidade Fluida",
+        desc: "Restaura 12 HP ao início de cada turno e aumenta a cura recebida.",
+        icon: "🌊",
+        apply: (p) => { p.stats.bonusHeal += 12; }
+    }
 ];
 
-// ============================================================================
-// 3. MAPEAMENTO DO DOM
-// ============================================================================
-const UI = {
-    // Telas
-    viewAuth: document.getElementById('view-auth'),
-    viewLobby: document.getElementById('view-lobby'),
-    viewMatchmaking: document.getElementById('view-matchmaking'),
-    viewGame: document.getElementById('view-game'),
-    
-    // Formulários de Auth
-    formLogin: document.getElementById('form-login'),
-    formRegister: document.getElementById('form-register'),
-    toggleRegister: document.getElementById('toggle-register'),
-    toggleLogin: document.getElementById('toggle-login'),
-    
-    // Lobby e Matchmaking
-    lobbyUsername: document.getElementById('lobby-username'),
-    btnFindMatch: document.getElementById('btn-find-match'),
-    btnCancelMatch: document.getElementById('btn-cancel-match'),
-    btnLogout: document.getElementById('btn-logout'),
-    matchmakingStatus: document.getElementById('matchmaking-status'),
-    
-    // Jogo - HUD
-    playerName: document.getElementById('player-name'),
-    playerHpText: document.getElementById('player-hp-text'),
-    playerHpFill: document.getElementById('player-hp-fill'),
-    playerGold: document.getElementById('player-gold'),
-    enemyName: document.getElementById('enemy-name'),
-    enemyHpText: document.getElementById('enemy-hp-text'),
-    enemyHpFill: document.getElementById('enemy-hp-fill'),
-    turnIndicator: document.getElementById('turn-indicator'),
-    
-    // Jogo - Tabuleiro e Mão
-    playerHand: document.getElementById('player-hand'),
-    playerBoard: document.getElementById('player-board'),
-    enemyBoard: document.getElementById('enemy-board'),
-    
-    // Jogo - Canvas e Ações
-    canvas: document.getElementById('magic-canvas'),
-    inkBtns: document.querySelectorAll('.ink-btn'),
-    symbolGuide: document.getElementById('symbol-guide'),
-    drawFeedback: document.getElementById('draw-feedback'),
-    btnClearCanvas: document.getElementById('btn-clear-canvas'),
-    btnCreateCard: document.getElementById('btn-create-card'),
-    btnEndTurn: document.getElementById('btn-end-turn'),
-    
-    // Loja e Modais
-    btnOpenShop: document.getElementById('btn-open-shop'),
-    btnCloseShop: document.getElementById('btn-close-shop'),
-    modalShop: document.getElementById('modal-shop'),
-    shopGrid: document.getElementById('shop-grid'),
-    shopGoldDisplay: document.getElementById('shop-gold-display'),
-    
-    // Modal Fim de Jogo
-    modalEndgame: document.getElementById('modal-endgame'),
-    endgameTitle: document.getElementById('endgame-title'),
-    endgameMsg: document.getElementById('endgame-msg'),
-    btnBackLobby: document.getElementById('btn-back-lobby')
-};
+// ==========================================================================
+// GERADOR DE 100 ITENS (LOJA)
+// ==========================================================================
+function generateShopItems() {
+    const items = [];
+    const rarities = [
+        { key: "trash", name: "Lixo", basePrice: 25 },
+        { key: "common", name: "Comum", basePrice: 75 },
+        { key: "rare", name: "Raro", basePrice: 200 },
+        { key: "epic", name: "Épico", basePrice: 450 },
+        { key: "legendary", name: "Lendário", basePrice: 900 }
+    ];
 
-// ============================================================================
-// 4. GERENCIADOR DE TELAS E NAVEGAÇÃO
-// ============================================================================
-function switchScreen(screenElement) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    screenElement.classList.remove('hidden');
-    screenElement.classList.add('active');
-}
+    const templates = {
+        trash: ["Pincel Quebrado", "Tinta Seca", "Trapo Velho", "Frasco Rachado", "Botas Furadas"],
+        common: ["Pincel de Aprendiz", "Tinta Nanquim", "Sapatilhas de Couro", "Amuleto Simples", "Anel de Prata"],
+        rare: ["Pincel Rúnico", "Tinta do Desastre", "Botas do Mago", "Amuleto Arcano", "Lâmina Flamejante"],
+        epic: ["Pincel Cósmico", "Tinta de Dragão", "Manto do Vazio", "Espada Celestial", "Escudo Dracônico"],
+        legendary: ["O Pincel do Criador", "Tinta Primordial", "Apocalipse", "Coroa do Rei", "Infinito"]
+    };
 
-function showModal(modalElement) {
-    modalElement.classList.remove('hidden');
-    modalElement.classList.add('active');
-}
+    let idCounter = 1;
+    rarities.forEach(r => {
+        for (let i = 0; i < 20; i++) {
+            const nameBase = templates[r.key][i % templates[r.key].length];
+            const name = `${nameBase} #${i + 1}`;
+            const isPassive = i % 2 === 0;
+            const mult = rarities.indexOf(r) + 1;
 
-function hideModal(modalElement) {
-    modalElement.classList.remove('active');
-    setTimeout(() => modalElement.classList.add('hidden'), 300);
-}
-
-// Iniciar música ao primeiro toque (Política de navegadores)
-document.body.addEventListener('click', () => {
-    if (!AppState.musicStarted && AppState.bgMusic) {
-        AppState.bgMusic.volume = 0.3;
-        AppState.bgMusic.play().catch(e => console.log("Áudio bloqueado pelo navegador", e));
-        AppState.musicStarted = true;
-    }
-}, { once: true });
-
-// ============================================================================
-// 5. AUTENTICAÇÃO (FIREBASE)
-// ============================================================================
-UI.toggleRegister.addEventListener('click', (e) => {
-    e.preventDefault();
-    UI.formLogin.classList.replace('active-form', 'hidden-form');
-    UI.formRegister.classList.replace('hidden-form', 'active-form');
-});
-
-UI.toggleLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    UI.formRegister.classList.replace('active-form', 'hidden-form');
-    UI.formLogin.classList.replace('hidden-form', 'active-form');
-});
-
-UI.formRegister.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('reg-email').value;
-    const pass = document.getElementById('reg-password').value;
-    const username = document.getElementById('reg-username').value;
-    
-    try {
-        const userCred = await auth.createUserWithEmailAndPassword(email, pass);
-        await userCred.user.updateProfile({ displayName: username });
-        // Salvar dados base no Realtime Database
-        await db.ref('users/' + userCred.user.uid).set({
-            username: username,
-            rating: 1000,
-            gamesPlayed: 0
-        });
-    } catch (error) {
-        alert("Erro ao registrar: " + error.message);
-    }
-});
-
-UI.formLogin.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-password').value;
-    try {
-        await auth.signInWithEmailAndPassword(email, pass);
-    } catch (error) {
-        alert("Erro no login: " + error.message);
-    }
-});
-
-UI.btnLogout.addEventListener('click', () => auth.signOut());
-
-// Listener de Estado de Autenticação
-auth.onAuthStateChanged(user => {
-    if (user) {
-        AppState.user = user;
-        UI.lobbyUsername.textContent = user.displayName || "Jogador";
-        UI.playerName.textContent = user.displayName || "Você";
-        switchScreen(UI.viewLobby);
-    } else {
-        AppState.user = null;
-        switchScreen(UI.viewAuth);
-    }
-});
-
-// ============================================================================
-// 6. MATCHMAKING E GERENCIAMENTO DE FILA
-// ============================================================================
-let matchmakingRef = null;
-let gameRef = null;
-
-UI.btnFindMatch.addEventListener('click', joinMatchmaking);
-UI.btnCancelMatch.addEventListener('click', cancelMatchmaking);
-
-async function joinMatchmaking() {
-    switchScreen(UI.viewMatchmaking);
-    UI.matchmakingStatus.textContent = "Procurando oponente...";
-    const uid = AppState.user.uid;
-    
-    // Tenta encontrar alguém na fila
-    const queueRef = db.ref('queue');
-    const snapshot = await queueRef.once('value');
-    const queue = snapshot.val();
-    
-    let matched = false;
-    if (queue) {
-        for (let playerId in queue) {
-            if (playerId !== uid) {
-                // Oponente encontrado! Cria a sala.
-                matched = true;
-                const gameId = 'game_' + Date.now();
-                
-                // Estrutura inicial do jogo
-                const gameData = {
-                    status: 'playing',
-                    currentTurn: playerId, // Oponente começa
-                    turnCount: 1,
-                    players: {
-                        [playerId]: { hp: 100, maxHp: 100, gold: 0, name: queue[playerId].name, num: 1 },
-                        [uid]: { hp: 100, maxHp: 100, gold: 0, name: AppState.user.displayName, num: 2 }
-                    },
-                    lastAction: { type: 'start' }
-                };
-                
-                await db.ref('games/' + gameId).set(gameData);
-                // Remove oponente da fila e notifica-o do jogo criado
-                await db.ref('queue/' + playerId).remove();
-                await db.ref('users/' + playerId + '/activeGame').set(gameId);
-                await db.ref('users/' + uid + '/activeGame').set(gameId);
-                
-                initGame(gameId, 2, queue[playerId].name, playerId);
-                break;
-            }
+            items.push({
+                id: idCounter++,
+                name: name,
+                rarity: r.key,
+                rarityName: r.name,
+                price: r.basePrice + (i * 3 * mult),
+                type: isPassive ? "passive" : "active",
+                stats: { damage: 8 * mult + i, heal: 10 * mult },
+                desc: isPassive ? `Passiva: +${8 * mult} Dano` : `Ativa: Restaura ${10 * mult} HP`,
+                icon: isPassive ? "🛡️" : "⚔️"
+            });
         }
-    }
-    
-    if (!matched) {
-        // Entra na fila e aguarda
-        matchmakingRef = db.ref('queue/' + uid);
-        await matchmakingRef.set({ name: AppState.user.displayName, time: Date.now() });
-        
-        // Fica ouvindo se foi puxado para um jogo
-        db.ref('users/' + uid + '/activeGame').on('value', (snap) => {
-            const activeGameId = snap.val();
-            if (activeGameId) {
-                db.ref('users/' + uid + '/activeGame').off(); // Remove listener
-                
-                // Busca nome do oponente no jogo
-                db.ref('games/' + activeGameId + '/players').once('value').then(pSnap => {
-                    const players = pSnap.val();
-                    let oppName = "Oponente";
-                    let oppId = null;
-                    for (let id in players) {
-                        if (id !== uid) { oppName = players[id].name; oppId = id; }
-                    }
-                    initGame(activeGameId, 1, oppName, oppId);
+    });
+    return items;
+}
+const ITEMS_DATABASE = generateShopItems();
+
+// ==========================================================================
+// INICIALIZAÇÃO GERAL
+// ==========================================================================
+document.addEventListener("DOMContentLoaded", () => {
+    initAuthEvents();
+    initCanvasEngine();
+    initShopUI();
+    initRuneUI();
+    initKeyboardShortcuts();
+    initGameControls();
+
+    document.body.addEventListener("click", () => {
+        const audio = document.getElementById("bg-music");
+        if (audio && audio.paused) {
+            audio.volume = 0.25;
+            audio.play().catch(() => {});
+        }
+    }, { once: true });
+});
+
+// ==========================================================================
+// AUTENTICAÇÃO E LOBBY
+// ==========================================================================
+function initAuthEvents() {
+    const viewLogin = document.getElementById("view-login");
+    const viewRegister = document.getElementById("view-register");
+    const viewLobby = document.getElementById("view-lobby");
+    const clientViewport = document.getElementById("client-viewport");
+    const gameViewport = document.getElementById("game-viewport");
+
+    document.getElementById("link-to-register")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        viewLogin.classList.add("hidden");
+        viewRegister.classList.remove("hidden");
+    });
+
+    document.getElementById("link-to-login")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        viewRegister.classList.add("hidden");
+        viewLogin.classList.remove("hidden");
+    });
+
+    document.getElementById("form-login")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = document.getElementById("login-email").value;
+        const pass = document.getElementById("login-password").value;
+        auth.signInWithEmailAndPassword(email, pass)
+            .then(() => showToast("Bem-vindo de volta ao Grimório!"))
+            .catch(err => alert("Erro ao entrar: " + err.message));
+    });
+
+    document.getElementById("form-register")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document.getElementById("reg-username").value;
+        const email = document.getElementById("reg-email").value;
+        const pass = document.getElementById("reg-password").value;
+
+        auth.createUserWithEmailAndPassword(email, pass)
+            .then(userCred => {
+                return userCred.user.updateProfile({ displayName: username }).then(() => {
+                    db.collection("users").doc(userCred.user.uid).set({ username, email, level: 1, xp: 0 });
                 });
-            }
-        });
-    }
-}
+            })
+            .catch(err => alert("Erro ao criar conta: " + err.message));
+    });
 
-async function cancelMatchmaking() {
-    const uid = AppState.user.uid;
-    if (matchmakingRef) {
-        await matchmakingRef.remove();
-        matchmakingRef = null;
-    }
-    db.ref('users/' + uid + '/activeGame').off();
-    switchScreen(UI.viewLobby);
-}
+    document.getElementById("btn-logout")?.addEventListener("click", () => auth.signOut());
 
-// ============================================================================
-// 7. LÓGICA DE SINCRONIZAÇÃO DA PARTIDA
-// ============================================================================
-function initGame(gameId, playerNum, opponentName, opponentId) {
-    AppState.gameId = gameId;
-    AppState.playerNum = playerNum;
-    AppState.opponentId = opponentId;
-    AppState.enemyName = opponentName;
-    
-    // Resetar Status Local
-    AppState.hp = 100;
-    AppState.gold = 0;
-    AppState.hand = [];
-    AppState.enemyHp = 100;
-    
-    UI.enemyName.textContent = opponentName;
-    updateHUD();
-    
-    switchScreen(UI.viewGame);
-    setupCanvas();
-    renderShop();
-    
-    gameRef = db.ref('games/' + gameId);
-    
-    // Listener principal do estado do jogo
-    gameRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-        
-        // Atualizar Status HPs
-        const me = data.players[AppState.user.uid];
-        const enemy = data.players[AppState.opponentId];
-        
-        AppState.hp = me.hp;
-        AppState.gold = me.gold;
-        AppState.enemyHp = enemy.hp;
-        updateHUD();
-        
-        // Controle de Turno
-        AppState.isMyTurn = (data.currentTurn === AppState.user.uid);
-        
-        if (AppState.isMyTurn) {
-            UI.turnIndicator.textContent = "Seu Turno";
-            UI.turnIndicator.style.color = "var(--color-heal)";
-            UI.canvas.style.pointerEvents = "auto";
-            UI.btnEndTurn.disabled = false;
+    document.getElementById("btn-play-match")?.addEventListener("click", () => {
+        clientViewport.classList.add("hidden");
+        document.getElementById("rune-modal").classList.remove("hidden");
+        document.getElementById("rune-modal").classList.add("active");
+    });
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            GameState.currentUser = user;
+            GameState.player.name = user.displayName || "Hwei Mestre";
+            document.getElementById("lobby-username").textContent = GameState.player.name;
+            document.getElementById("player-name").textContent = GameState.player.name;
+            
+            viewLogin.classList.add("hidden");
+            viewRegister.classList.add("hidden");
+            viewLobby.classList.remove("hidden");
         } else {
-            UI.turnIndicator.textContent = "Turno do Inimigo";
-            UI.turnIndicator.style.color = "var(--color-damage)";
-            UI.canvas.style.pointerEvents = "none";
-            UI.btnEndTurn.disabled = true;
-        }
-        
-        // Verificar Condição de Vitória/Derrota
-        if (data.status === 'finished') {
-            handleEndgame(data.winner);
+            viewLobby.classList.add("hidden");
+            clientViewport.classList.remove("hidden");
+            viewLogin.classList.remove("hidden");
+            gameViewport.classList.add("hidden");
         }
     });
 }
 
-async function performAction(actionType, value, cardElement = null) {
-    if (!AppState.isMyTurn) return;
-    
-    let updates = {};
-    
-    if (actionType === 'damage') {
-        const newEnemyHp = Math.max(0, AppState.enemyHp - value);
-        updates[`players/${AppState.opponentId}/hp`] = newEnemyHp;
-        if (newEnemyHp === 0) updates['status'] = 'finished';
-    } 
-    else if (actionType === 'heal') {
-        const newHp = Math.min(100, AppState.hp + value);
-        updates[`players/${AppState.user.uid}/hp`] = newHp;
-    }
-    
-    updates['lastAction'] = { type: actionType, value: value, by: AppState.user.uid };
-    
-    // Remove a carta da mão localmente e visualmente
-    if (cardElement) {
-        cardElement.remove();
-        const index = AppState.hand.indexOf(cardElement);
-        if (index > -1) AppState.hand.splice(index, 1);
-    }
-    
-    await gameRef.update(updates);
-    
-    if (updates['status'] === 'finished') {
-        await gameRef.update({ winner: AppState.user.uid });
-    }
+// ==========================================================================
+// SELEÇÃO DE RUNAS
+// ==========================================================================
+function initRuneUI() {
+    const grid = document.getElementById("rune-selection-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    RUNES_DATABASE.forEach(rune => {
+        const card = document.createElement("div");
+        card.className = "rune-card panel-glass";
+        card.style.cssText = "padding: 15px; margin: 10px; cursor: pointer; border: 2px solid transparent; text-align: center; border-radius: 8px; transition: 0.3s;";
+        card.innerHTML = `
+            <div style="font-size: 2.2rem;">${rune.icon}</div>
+            <h3 style="color: var(--gold-primary); margin: 5px 0;">${rune.name}</h3>
+            <p style="font-size: 0.85rem; color: #ccc;">${rune.desc}</p>
+        `;
+
+        card.addEventListener("click", () => {
+            document.querySelectorAll(".rune-card").forEach(c => c.style.borderColor = "transparent");
+            card.style.borderColor = "var(--gold-primary)";
+            GameState.player.rune = rune;
+        });
+
+        grid.appendChild(card);
+    });
+
+    document.getElementById("btn-confirm-runes")?.addEventListener("click", () => {
+        if (!GameState.player.rune) GameState.player.rune = RUNES_DATABASE[0];
+        GameState.player.rune.apply(GameState.player);
+        
+        document.getElementById("rune-modal").classList.add("hidden");
+        document.getElementById("game-viewport").classList.remove("hidden");
+
+        updateHUD();
+        startBattle();
+    });
 }
 
-UI.btnEndTurn.addEventListener('click', async () => {
-    if (!AppState.isMyTurn) return;
+// ==========================================================================
+// MOTOR DE DESENHO E COMBINAÇÕES DE HWEI (11 MAGIAS)
+// ==========================================================================
+function initCanvasEngine() {
+    const canvas = document.getElementById("magic-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = 400;
+    canvas.height = 250;
+
+    const sizeInput = document.getElementById("brush-size");
+    if (sizeInput) {
+        sizeInput.addEventListener("input", (e) => { GameState.canvas.brushSize = e.target.value; });
+    }
+
+    // Botões de Assuntos de Tinta (Q, W, E, R)
+    document.querySelectorAll(".ink-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const subject = btn.getAttribute("data-subject");
+            GameState.canvas.inkMix.push(subject);
+            
+            updateMixtureDisplay();
+            updateSpellPrediction();
+        });
+    });
+
+    document.getElementById("btn-clear-canvas")?.addEventListener("click", clearCanvas);
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        GameState.canvas.strokesCount = 0;
+        GameState.canvas.inkMix = [];
+        updateMixtureDisplay();
+        updateSpellPrediction();
+    }
+
+    function startDrawing(e) {
+        GameState.canvas.isDrawing = true;
+        GameState.canvas.strokesCount++;
+        draw(e);
+    }
+
+    function stopDrawing() {
+        GameState.canvas.isDrawing = false;
+        ctx.beginPath();
+        updateSpellPrediction();
+    }
+
+    function draw(e) {
+        if (!GameState.canvas.isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        ctx.lineWidth = GameState.canvas.brushSize;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = GameState.canvas.inkMix.length > 0 ? getInkColor(GameState.canvas.inkMix[GameState.canvas.inkMix.length - 1]) : "#d4af37";
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
+    canvas.addEventListener("touchstart", (e) => { e.preventDefault(); startDrawing(e); });
+    canvas.addEventListener("touchmove", (e) => { e.preventDefault(); draw(e); });
+    canvas.addEventListener("touchend", stopDrawing);
+
+    document.getElementById("btn-materialize-card")?.addEventListener("click", () => {
+        if (GameState.canvas.inkMix.length === 0 && GameState.canvas.strokesCount === 0) {
+            showToast("Selecione tintas (Q, W, E, R) ou desenhe no canvas!");
+            return;
+        }
+        materializeSpellCard();
+        clearCanvas();
+    });
+}
+
+function getInkColor(subject) {
+    if (subject === "Q") return "#ff3333";
+    if (subject === "W") return "#33ccff";
+    if (subject === "E") return "#9933ff";
+    if (subject === "R") return "#ff00ff";
+    return "#d4af37";
+}
+
+function updateMixtureDisplay() {
+    const orb = document.getElementById("active-mixture-display");
+    const label = document.getElementById("mixture-name");
+    const mixStr = GameState.canvas.inkMix.join("");
+
+    if (!orb || !label) return;
+
+    if (GameState.canvas.inkMix.length === 0) {
+        orb.style.backgroundColor = "#222";
+        label.textContent = "Nenhuma tinta selecionada";
+        return;
+    }
+
+    const lastSubject = GameState.canvas.inkMix[GameState.canvas.inkMix.length - 1];
+    orb.style.backgroundColor = getInkColor(lastSubject);
+    label.textContent = `Mistura: [ ${mixStr} ]`;
+}
+
+function getResolvedSpellKey() {
+    const mix = GameState.canvas.inkMix.join("");
+    if (mix.startsWith("R")) return "R";
+    if (HWEI_SPELLS[mix]) return mix;
     
-    // Adicionar ouro ao passar o turno
-    const newGold = AppState.gold + 10;
-    
-    const updates = {
-        currentTurn: AppState.opponentId,
-        [`players/${AppState.user.uid}/gold`]: newGold,
-        lastAction: { type: 'end_turn', by: AppState.user.uid }
+    // Fallback inteligente para mesclas customizadas longas
+    if (mix.length >= 2) {
+        return mix.substring(0, 2);
+    }
+    return "QQ";
+}
+
+function updateSpellPrediction() {
+    const detectedLabel = document.getElementById("detected-shape");
+    if (!detectedLabel) return;
+
+    if (GameState.canvas.inkMix.length === 0) {
+        detectedLabel.textContent = "Nenhuma";
+        return;
+    }
+
+    const spellKey = getResolvedSpellKey();
+    const spell = HWEI_SPELLS[spellKey] || HWEI_SPELLS["QQ"];
+    detectedLabel.textContent = spell.name;
+}
+
+function materializeSpellCard() {
+    if (GameState.player.hand.length >= 6) {
+        showToast("Mão cheia! (Máximo 6 cartas)");
+        return;
+    }
+
+    const spellKey = getResolvedSpellKey();
+    const spellData = HWEI_SPELLS[spellKey] || HWEI_SPELLS["QQ"];
+
+    // Verificação de Nível para Magias Avançadas (Nível 20 exigido para Ultimates/Avançadas)
+    if (spellData.minLevel && GameState.player.level < spellData.minLevel) {
+        showToast(`Requer Nível ${spellData.minLevel} para conjurar ${spellData.name}!`);
+        return;
+    }
+
+    const card = {
+        id: Date.now(),
+        name: spellData.name,
+        type: spellData.type,
+        damage: spellData.damage + GameState.player.stats.bonusAtk,
+        heal: spellData.heal + GameState.player.stats.bonusHeal,
+        color: spellData.color,
+        desc: spellData.desc,
+        image: spellData.image // Espaço opcional para foto real das skills do Hwei
     };
-    
-    await gameRef.update(updates);
-    
-    // Limpar área de desenho
-    clearCanvas();
-    UI.drawFeedback.textContent = "Aguarde seu turno...";
-});
 
-function handleEndgame(winnerUid) {
-    gameRef.off(); // Remove listener
-    db.ref('users/' + AppState.user.uid + '/activeGame').remove();
-    
-    showModal(UI.modalEndgame);
-    if (winnerUid === AppState.user.uid) {
-        UI.endgameTitle.textContent = "VITÓRIA!";
-        UI.endgameTitle.style.color = "var(--color-heal)";
-        UI.endgameMsg.textContent = "Sua arte dominou o campo de batalha.";
-    } else {
-        UI.endgameTitle.textContent = "DERROTA";
-        UI.endgameTitle.style.color = "var(--color-damage)";
-        UI.endgameMsg.textContent = "Você foi superado pela técnica inimiga.";
-    }
+    GameState.player.hand.push(card);
+    renderPlayerHand();
+    showToast(`Magia Materializada: ${card.name}!`);
+    gainXP(15);
 }
 
-UI.btnBackLobby.addEventListener('click', () => {
-    hideModal(UI.modalEndgame);
-    switchScreen(UI.viewLobby);
-});
+// ==========================================================================
+// RENDERIZAÇÃO DA MÃO E COMBATE
+// ==========================================================================
+function renderPlayerHand() {
+    const handContainer = document.getElementById("player-hand");
+    if (!handContainer) return;
+    handContainer.innerHTML = "";
+
+    GameState.player.hand.forEach((card, index) => {
+        const cardEl = document.createElement("div");
+        cardEl.className = "game-card panel-glass";
+        cardEl.style.borderColor = card.color;
+        
+        cardEl.innerHTML = `
+            <div style="font-size: 0.75rem; font-weight: bold; color: ${card.color}">${card.name}</div>
+            <div style="font-size: 0.68rem; color: #ccc; line-height: 1.1;">${card.desc}</div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: bold;">
+                <span style="color: #ff5555">⚔️ ${card.damage}</span>
+                <span style="color: #55ff55">💚 ${card.heal}</span>
+            </div>
+        `;
+
+        cardEl.addEventListener("click", () => playCard(index));
+        handContainer.appendChild(cardEl);
+    });
+}
+
+function playCard(index) {
+    if (!GameState.isMyTurn) {
+        showToast("Aguarde o seu turno!");
+        return;
+    }
+
+    const card = GameState.player.hand.splice(index, 1)[0];
+    if (!card) return;
+
+    if (card.damage > 0) {
+        GameState.enemy.hp = Math.max(0, GameState.enemy.hp - card.damage);
+        GameState.totalDamageDealt += card.damage;
+    }
+    if (card.heal > 0) {
+        GameState.player.hp = Math.min(GameState.player.maxHp, GameState.player.hp + card.heal);
+    }
+
+    updateHUD();
+    renderPlayerHand();
+    checkEndGame();
+}
+
+// ==========================================================================
+// SISTEMA DE LOJA E INVENTÁRIO
+// ==========================================================================
+function initShopUI() {
+    const shopModal = document.getElementById("shop-modal");
+    document.getElementById("btn-open-shop")?.addEventListener("click", () => {
+        shopModal.classList.remove("hidden");
+        renderShopItems("all");
+    });
+    document.getElementById("btn-close-shop")?.addEventListener("click", () => {
+        shopModal.classList.add("hidden");
+    });
+
+    document.querySelectorAll(".shop-tabs .tab-btn").forEach(tab => {
+        tab.addEventListener("click", (e) => {
+            document.querySelectorAll(".shop-tabs .tab-btn").forEach(t => t.classList.remove("active"));
+            e.target.classList.add("active");
+            renderShopItems(e.target.getAttribute("data-rarity"));
+        });
+    });
+}
+
+function renderShopItems(filterRarity) {
+    const grid = document.getElementById("shop-items-grid");
+    document.getElementById("shop-player-gold").textContent = GameState.player.gold;
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const filtered = filterRarity === "all" ? ITEMS_DATABASE : ITEMS_DATABASE.filter(i => i.rarity === filterRarity);
+
+    filtered.forEach(item => {
+        const itemCard = document.createElement("div");
+        itemCard.className = "panel-glass";
+        itemCard.style.cssText = "padding: 10px; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between;";
+        itemCard.innerHTML = `
+            <div>
+                <div style="font-size: 1.2rem;">${item.icon} <span style="font-size: 0.8rem; color: var(--gold-primary)">${item.name}</span></div>
+                <p style="font-size: 0.72rem; color: #aaa; margin: 5px 0;">${item.desc}</p>
+            </div>
+            <button class="btn-primary full-width" style="padding: 5px; font-size: 0.8rem;">Comprar 🪙 ${item.price}</button>
+        `;
+        itemCard.querySelector("button").addEventListener("click", () => buyItem(item));
+        grid.appendChild(itemCard);
+    });
+}
+
+function buyItem(item) {
+    if (GameState.player.gold < item.price) {
+        showToast("Ouro insuficiente!");
+        return;
+    }
+    const freeSlot = GameState.player.inventory.findIndex(s => s === null);
+    if (freeSlot === -1) {
+        showToast("Inventário cheio (Máximo 4 itens)!");
+        return;
+    }
+
+    GameState.player.gold -= item.price;
+    GameState.player.inventory[freeSlot] = item;
+    if (item.type === "passive") GameState.player.stats.bonusAtk += item.stats.damage;
+
+    showToast(`Adquirido: ${item.name}!`);
+    renderShopItems("all");
+    updateHUD();
+    renderInventorySlots();
+}
+
+function renderInventorySlots() {
+    const slots = document.querySelectorAll("#player-inventory .item-slot");
+    slots.forEach((slotEl, idx) => {
+        const item = GameState.player.inventory[idx];
+        if (item) {
+            slotEl.innerHTML = `<span title="${item.name}">${item.icon}</span>`;
+            slotEl.style.borderColor = "var(--gold-primary)";
+        } else {
+            slotEl.innerHTML = "";
+            slotEl.style.borderColor = "var(--text-muted)";
+        }
+    });
+}
+
+// ==========================================================================
+// TURNOS E XP
+// ==========================================================================
+function startBattle() {
+    GameState.player.hp = GameState.player.maxHp;
+    GameState.enemy.hp = GameState.enemy.maxHp;
+    GameState.turnCount = 1;
+    GameState.isMyTurn = true;
+    updateHUD();
+    renderInventorySlots();
+    showToast("A Batalha Ingressou no Grimório!");
+}
+
+function initGameControls() {
+    document.getElementById("btn-end-turn")?.addEventListener("click", () => {
+        if (!GameState.isMyTurn) return;
+        endTurn();
+    });
+    document.getElementById("btn-restart")?.addEventListener("click", () => {
+        document.getElementById("death-modal").classList.add("hidden");
+        startBattle();
+    });
+}
+
+function endTurn() {
+    GameState.isMyTurn = false;
+    document.getElementById("turn-indicator").textContent = "Turno do Oponente";
+    
+    if (GameState.player.rune?.id === "fluxo") {
+        GameState.player.hp = Math.min(GameState.player.maxHp, GameState.player.hp + 12);
+    }
+
+    setTimeout(() => {
+        const enemyDmg = Math.floor(Math.random() * 15) + 10;
+        GameState.player.hp = Math.max(0, GameState.player.hp - enemyDmg);
+        
+        GameState.turnCount++;
+        GameState.isMyTurn = true;
+        GameState.player.gold += Math.floor(25 * GameState.player.stats.goldMult);
+        
+        document.getElementById("turn-indicator").textContent = "Seu Turno";
+        updateHUD();
+        checkEndGame();
+    }, 1200);
+}
+
+function gainXP(amount) {
+    GameState.player.xp += amount;
+    if (GameState.player.xp >= 100) {
+        GameState.player.level++;
+        GameState.player.xp = 0;
+        showToast(`Subiu para o Nível ${GameState.player.level}! Novas magias liberadas.`);
+        document.getElementById("player-level").textContent = GameState.player.level;
+    }
+    document.getElementById("player-xp").textContent = GameState.player.xp;
+}
 
 function updateHUD() {
-    UI.playerHpText.textContent = `${AppState.hp}/100`;
-    UI.playerHpFill.style.width = `${AppState.hp}%`;
-    UI.playerGold.textContent = AppState.gold;
-    UI.shopGoldDisplay.textContent = AppState.gold;
-    
-    UI.enemyHpText.textContent = `${AppState.enemyHp}/100`;
-    UI.enemyHpFill.style.width = `${AppState.enemyHp}%`;
+    document.getElementById("player-hp-bar").style.width = `${(GameState.player.hp / GameState.player.maxHp) * 100}%`;
+    document.getElementById("player-hp-text").textContent = `${GameState.player.hp} / ${GameState.player.maxHp}`;
+    document.getElementById("player-gold").textContent = GameState.player.gold;
+
+    document.getElementById("enemy-hp-bar").style.width = `${(GameState.enemy.hp / GameState.enemy.maxHp) * 100}%`;
+    document.getElementById("enemy-hp-text").textContent = `${GameState.enemy.hp} / ${GameState.enemy.maxHp}`;
+    document.getElementById("enemy-gold").textContent = GameState.enemy.gold;
 }
 
-// ============================================================================
-// 8. MOTOR DE DESENHO NO CANVAS E RECONHECIMENTO (MOBILE & DESKTOP)
-// ============================================================================
-
-// Seleção de Tinta
-UI.inkBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        UI.inkBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        AppState.currentInk = btn.dataset.ink;
-        
-        // Atualiza a instrução
-        if (AppState.currentInk === 'damage') UI.symbolGuide.textContent = "Símbolo: V";
-        if (AppState.currentInk === 'heal') UI.symbolGuide.textContent = "Símbolo: O (Círculo)";
-        if (AppState.currentInk === 'control') UI.symbolGuide.textContent = "Símbolo: — (Linha)";
-        
-        setCanvasStyle();
-    });
-});
-
-function setupCanvas() {
-    const canvas = UI.canvas;
-    AppState.canvasCtx = canvas.getContext('2d', { willReadFrequently: true });
-    
-    // Ajuste dinâmico de resolução baseada no CSS
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    
-    setCanvasStyle();
-
-    // Eventos Mouse
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    
-    // Eventos Touch (Mobile)
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
-}
-
-function setCanvasStyle() {
-    const ctx = AppState.canvasCtx;
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.shadowBlur = 10;
-    
-    if (AppState.currentInk === 'damage') {
-        ctx.strokeStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-    } else if (AppState.currentInk === 'heal') {
-        ctx.strokeStyle = '#10b981';
-        ctx.shadowColor = '#10b981';
-    } else {
-        ctx.strokeStyle = '#8b5cf6';
-        ctx.shadowColor = '#8b5cf6';
+function checkEndGame() {
+    if (GameState.player.hp <= 0 || GameState.enemy.hp <= 0) {
+        const modal = document.getElementById("death-modal");
+        document.getElementById("endgame-status-title").textContent = GameState.player.hp <= 0 ? "DERROTA" : "VITÓRIA";
+        document.getElementById("stat-turns").textContent = GameState.turnCount;
+        document.getElementById("stat-damage").textContent = GameState.totalDamageDealt;
+        document.getElementById("stat-gold").textContent = GameState.player.gold;
+        modal.classList.remove("hidden");
     }
 }
 
-// Manipuladores de Coordenadas
-function getCoordinates(e) {
-    const rect = UI.canvas.getBoundingClientRect();
-    const scaleX = UI.canvas.width / rect.width;
-    const scaleY = UI.canvas.height / rect.height;
-    
-    if (e.touches && e.touches.length > 0) {
-        return {
-            x: (e.touches[0].clientX - rect.left) * scaleX,
-            y: (e.touches[0].clientY - rect.top) * scaleY
-        };
-    }
-    return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY
-    };
-}
-
-function startDrawing(e) {
-    if (!AppState.isMyTurn) return;
-    if (e.type.includes('touch')) e.preventDefault(); // Previne scroll no mobile
-    
-    AppState.isDrawing = true;
-    AppState.strokes = [];
-    const pos = getCoordinates(e);
-    AppState.strokes.push(pos);
-    
-    AppState.canvasCtx.beginPath();
-    AppState.canvasCtx.moveTo(pos.x, pos.y);
-    UI.drawFeedback.textContent = "Desenhando...";
-}
-
-function handleTouchStart(e) { startDrawing(e); }
-
-function draw(e) {
-    if (!AppState.isDrawing) return;
-    if (e.type.includes('touch')) e.preventDefault();
-    
-    const pos = getCoordinates(e);
-    // Filtrar pontos muito próximos para otimizar a performance do vetor
-    const lastPos = AppState.strokes[AppState.strokes.length - 1];
-    const dist = Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y);
-    
-    if (dist > 5) {
-        AppState.strokes.push(pos);
-        AppState.canvasCtx.lineTo(pos.x, pos.y);
-        AppState.canvasCtx.stroke();
-    }
-}
-
-function handleTouchMove(e) { draw(e); }
-
-function stopDrawing() {
-    if (!AppState.isDrawing) return;
-    AppState.isDrawing = false;
-    AppState.canvasCtx.closePath();
-}
-
-UI.btnClearCanvas.addEventListener('click', clearCanvas);
-
-function clearCanvas() {
-    if (!AppState.canvasCtx) return;
-    AppState.canvasCtx.clearRect(0, 0, UI.canvas.width, UI.canvas.height);
-    AppState.strokes = [];
-    UI.drawFeedback.textContent = "Pinte para criar";
-}
-
-// Lógica de Reconhecimento de Forma Direcional Simplificada
-function analyzeDrawing() {
-    if (AppState.strokes.length < 10) return "invalido"; // Traço muito curto
-    
-    const pts = AppState.strokes;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    
-    pts.forEach(p => {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-    });
-    
-    const width = maxX - minX;
-    const height = maxY - minY;
-    const pStart = pts[0];
-    const pEnd = pts[pts.length - 1];
-    const distStartEnd = Math.hypot(pEnd.x - pStart.x, pEnd.y - pStart.y);
-    const boundingBoxDiagonal = Math.hypot(width, height);
-    
-    // Regra 1: Círculo ('O' - Curar)
-    // Se desenhar muito, tem altura e largura proporcionais, e o começo encontra o fim.
-    if (width > 30 && height > 30 && distStartEnd < (boundingBoxDiagonal * 0.3)) {
-        return "circulo";
-    }
-    
-    // Regra 2: Linha ('-' - Controle)
-    // Muito mais largo do que alto.
-    if (width > height * 2.5) {
-        return "linha";
-    }
-    
-    // Regra 3: Letra 'V' (Dano)
-    // Começa alto, vai baixo (meio), e termina alto.
-    // Simples check de direção y:
-    let minIndex = 0;
-    for(let i=0; i<pts.length; i++) {
-        if(pts[i].y > pts[minIndex].y) minIndex = i; // Encontra o ponto mais baixo (maior Y)
-    }
-    // O ponto mais baixo deve estar mais ou menos no meio do array
-    if (minIndex > pts.length * 0.2 && minIndex < pts.length * 0.8) {
-        if (pStart.y < pts[minIndex].y - 20 && pEnd.y < pts[minIndex].y - 20) {
-            return "v";
-        }
-    }
-
-    return "invalido";
-}
-
-// ============================================================================
-// 9. SISTEMA DE CARTAS
-// ============================================================================
-UI.btnCreateCard.addEventListener('click', () => {
-    if (!AppState.isMyTurn) return;
-    
-    const forma = analyzeDrawing();
-    
-    if (forma === "invalido") {
-        UI.drawFeedback.textContent = "Desenho fraco ou incorreto.";
-        UI.drawFeedback.style.color = "var(--color-damage)";
-        setTimeout(() => { UI.drawFeedback.style.color = "var(--text-muted)"; }, 2000);
-        clearCanvas();
-        return;
-    }
-
-    // Validar Tinta vs Forma
-    let cardGerada = null;
-    
-    if (AppState.currentInk === 'damage' && forma === 'v') {
-        cardGerada = { name: "Golpe Cortante", type: "damage", value: 20, icon: "⚔️" };
-    } 
-    else if (AppState.currentInk === 'heal' && forma === 'circulo') {
-        cardGerada = { name: "Brisa Curativa", type: "heal", value: 15, icon: "🌿" };
-    } 
-    else if (AppState.currentInk === 'control' && forma === 'linha') {
-        cardGerada = { name: "Muralha de Tinta", type: "control", value: 10, icon: "🛡️" }; // Dano penetrante
-    } 
-    else {
-        UI.drawFeedback.textContent = "O símbolo não combinou com a tinta.";
-        UI.drawFeedback.style.color = "var(--color-gold)";
-        setTimeout(() => { UI.drawFeedback.style.color = "var(--text-muted)"; }, 2000);
-        clearCanvas();
-        return;
-    }
-
-    createCardDOM(cardGerada);
-    clearCanvas();
-    UI.drawFeedback.textContent = "Carta criada!";
-});
-
-function createCardDOM(cardData) {
-    if (AppState.hand.length >= 5) {
-        alert("Sua mão está cheia (Max 5)");
-        return;
-    }
-
-    const card = document.createElement('div');
-    card.className = 'game-card';
-    
-    // Cor da borda baseada no tipo
-    if (cardData.type === 'damage') card.style.borderColor = 'var(--color-damage)';
-    if (cardData.type === 'heal') card.style.borderColor = 'var(--color-heal)';
-    if (cardData.type === 'control') card.style.borderColor = 'var(--color-control)';
-
-    card.innerHTML = `
-        <div class="card-icon" style="text-align: center; font-size: 1.5rem;">${cardData.icon}</div>
-        <div class="card-title">${cardData.name}</div>
-        <div class="card-stats">
-            <span>Ativ:</span>
-            <span>${cardData.value}</span>
-        </div>
-    `;
-
-    // Evento de Jogar a carta
-    card.addEventListener('click', () => {
-        if (!AppState.isMyTurn) return;
-        
-        // Efeito visual de jogar para o campo
-        UI.playerBoard.appendChild(card);
-        card.style.transform = "translateY(-50px) scale(1.1)";
-        card.style.opacity = "0";
-        card.style.transition = "all 0.5s ease";
-        
-        setTimeout(() => {
-            performAction(cardData.type, cardData.value, card);
-        }, 500);
-    });
-
-    UI.playerHand.appendChild(card);
-    AppState.hand.push(card);
-}
-
-// ============================================================================
-// 10. LOJA DE ITENS
-// ============================================================================
-UI.btnOpenShop.addEventListener('click', () => showModal(UI.modalShop));
-UI.btnCloseShop.addEventListener('click', () => hideModal(UI.modalShop));
-
-function renderShop() {
-    UI.shopGrid.innerHTML = '';
-    ShopItems.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'shop-item';
-        itemDiv.innerHTML = `
-            <div style="font-size: 2rem;">${item.icon}</div>
-            <h4>${item.name}</h4>
-            <div class="gold">🪙 ${item.cost}</div>
-            <button class="btn btn-primary small mt-15">Comprar</button>
-        `;
-        
-        const btn = itemDiv.querySelector('button');
-        btn.addEventListener('click', () => buyItem(item));
-        
-        UI.shopGrid.appendChild(itemDiv);
+function initKeyboardShortcuts() {
+    window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT") return;
+        if (e.key.toLowerCase() === "p") document.getElementById("btn-open-shop")?.click();
+        if (e.code === "Space") { e.preventDefault(); if (GameState.isMyTurn) endTurn(); }
     });
 }
 
-async function buyItem(item) {
-    if (!AppState.isMyTurn) {
-        alert("Você só pode comprar no seu turno.");
-        return;
-    }
-    if (AppState.gold < item.cost) {
-        alert("Ouro insuficiente.");
-        return;
-    }
-    
-    // Deduz o custo
-    const novoOuro = AppState.gold - item.cost;
-    let updates = {
-        [`players/${AppState.user.uid}/gold`]: novoOuro
-    };
-
-    // Aplica efeito
-    if (item.effect === 'heal') {
-        const newHp = Math.min(100, AppState.hp + item.value);
-        updates[`players/${AppState.user.uid}/hp`] = newHp;
-    } else if (item.effect === 'damage_buff') {
-        // Exemplo: Causa dano direto mágico
-        const newEnemyHp = Math.max(0, AppState.enemyHp - item.value);
-        updates[`players/${AppState.opponentId}/hp`] = newEnemyHp;
-        if (newEnemyHp === 0) updates['status'] = 'finished';
-    }
-
-    updates['lastAction'] = { type: 'buy_item', item: item.name, by: AppState.user.uid };
-    
-    await gameRef.update(updates);
-    
-    if (updates['status'] === 'finished') {
-        await gameRef.update({ winner: AppState.user.uid });
-    }
-    
-    alert(`Você comprou e usou: ${item.name}`);
-    hideModal(UI.modalShop);
+function showToast(message) {
+    const toast = document.getElementById("game-toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.opacity = "1";
+    setTimeout(() => { toast.style.opacity = "0"; }, 2500);
 }
-
-// ============================================================================
-// INICIALIZAÇÃO DA APLICAÇÃO
-// ============================================================================
-window.addEventListener('DOMContentLoaded', () => {
-    // Força o reset visual do Canvas e UI na montagem inicial
-    switchScreen(UI.viewAuth);
-});
