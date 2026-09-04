@@ -1,567 +1,264 @@
 /* ==========================================
-   VARIÁVEIS DE TEMA E CORES MÁGICAS
+   VARIÁVEIS GERAIS (DESIGN SYSTEM)
    ========================================== */
 :root {
-    /* Paleta Principal (Sombrio & Ouro) */
-    --bg-deep: #05070a;
-    --bg-glass: rgba(12, 16, 24, 0.85);
-    --gold-primary: #d4af37;
-    --gold-light: #fef0c7;
-    --gold-dark: #8c7322;
-    --text-main: #e2e8f0;
-    --text-muted: #8b949e;
-    --danger: #e74c3c;
+    /* Cores de Fundo e UI */
+    --bg-main: #0f172a;        /* Azul escuro profundo */
+    --bg-panel: rgba(30, 41, 59, 0.85);
+    --border-color: rgba(255, 255, 255, 0.1);
     
-    /* Cores das Tintas (Mecânica do Hwei) */
-    --ink-disaster: #ff3333;
-    --ink-serenity: #33ccff;
-    --ink-torment: #9933ff;
+    /* Textos */
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
     
-    /* Cores de Raridade (Loja) */
-    --rarity-trash: #7f8c8d;
-    --rarity-common: #2ecc71;
-    --rarity-rare: #3498db;
-    --rarity-epic: #9b59b6;
-    --rarity-legendary: #f1c40f;
-
-    /* Efeitos e Sombras */
-    --glass-border: rgba(212, 175, 55, 0.2);
-    --glow-gold: 0 0 15px rgba(212, 175, 55, 0.4);
-    --glow-magic: 0 0 20px rgba(51, 204, 255, 0.5);
-    --shadow-heavy: 0 10px 30px rgba(0, 0, 0, 0.9);
+    /* Ações e Interações */
+    --accent-primary: #3b82f6; /* Azul botão principal */
+    --accent-hover: #2563eb;
+    --danger: #ef4444;         /* Vermelho botoes de perigo/passar turno */
+    --danger-hover: #dc2626;
     
-    /* Animações (Otimizadas) */
-    --transition-fast: 0.15s ease-out;
-    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Cores das Tintas / Magias */
+    --color-damage: #ef4444;   /* Vermelho */
+    --color-heal: #10b981;     /* Verde */
+    --color-control: #8b5cf6;  /* Roxo */
+    --color-gold: #fbbf24;     /* Ouro (Loja) */
 }
 
 /* ==========================================
-   RESETS E CONFIGURAÇÕES GERAIS
+   RESETS E CONFIGURAÇÕES BASES
    ========================================== */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    user-select: none;
+    user-select: none; /* Evita selecionar texto sem querer no mobile */
     -webkit-tap-highlight-color: transparent;
 }
 
-body {
+body, html {
     font-family: 'Rajdhani', sans-serif;
-    background-color: var(--bg-deep);
+    background-color: var(--bg-main);
     color: var(--text-main);
-    background-image: radial-gradient(circle at 50% 50%, #111622 0%, var(--bg-deep) 100%);
-    height: 100vh;
     width: 100vw;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    height: 100vh;
+    overflow: hidden; /* Fundamental para segurar o layout como um App */
 }
 
-h1, h2, h3, h4, .btn-primary, .btn-magic, .turn-banner {
-    font-family: 'Cinzel', serif;
-    font-weight: 800;
+#app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
 }
 
+/* Classes Utilitárias */
 .hidden { display: none !important; }
-.full-width { width: 100%; }
-.mt-20 { margin-top: 20px; }
+.active { display: flex !important; }
+.hidden-form { display: none; }
+.mt-15 { margin-top: 15px; }
 .text-center { text-align: center; }
 
 /* ==========================================
-   ANIMAÇÕES DE HARDWARE (ALTO DESEMPENHO)
+   COMPONENTES UI (PAINÉIS E BOTÕES)
    ========================================== */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideUpFade {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes popIn {
-    0% { opacity: 0; transform: scale(0.8); }
-    70% { transform: scale(1.05); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
-    50% { box-shadow: var(--glow-gold); }
-    100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
-}
-
-/* ==========================================
-   COMPONENTES GERAIS (GLASSMORPHISM & BOTÕES)
-   ========================================== */
-.panel-glass {
-    background: var(--bg-glass);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
+.panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: var(--shadow-heavy);
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.btn-primary, .btn-secondary, .btn-action, .btn-magic {
+.btn {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 1rem;
     cursor: pointer;
     border: none;
-    border-radius: 6px;
+    transition: all 0.2s ease;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-    position: relative;
-    will-change: transform;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.btn-primary {
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #241d10 0%, #0a0804 100%);
-    border: 1px solid var(--gold-primary);
-    color: var(--gold-light);
-    font-size: 1.1rem;
-}
+.btn:active { transform: scale(0.96); }
 
-.btn-secondary {
-    padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--text-main);
-}
+.btn-primary { background: var(--accent-primary); color: white; }
+.btn-primary:hover { background: var(--accent-hover); }
 
-.btn-primary:hover, .btn-secondary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--glow-gold);
-    border-color: #fce899;
-}
+.btn-secondary { background: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--text-main); }
 
-.btn-primary:active, .btn-secondary:active {
-    transform: translateY(1px);
-}
+.btn-danger { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: var(--text-main); }
+.btn-danger:hover { background: var(--danger-hover); }
 
-.btn-primary:disabled, .btn-magic:disabled {
-    opacity: 0.5;
-    pointer-events: none;
-    filter: grayscale(100%);
-}
-
-.key-badge {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid var(--gold-dark);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    margin-right: 8px;
-    color: var(--gold-light);
-}
+.btn-magic { background: linear-gradient(135deg, var(--color-control), #4c1d95); color: white; width: 100%; }
+.small { padding: 8px 12px; font-size: 0.85rem; }
+.btn-large { padding: 15px 30px; font-size: 1.2rem; width: 100%; }
 
 /* ==========================================
-   TELA DO CLIENT (LOGIN / LOBBY)
+   ESTRUTURA DE TELAS (SCREENS)
    ========================================== */
-#client-viewport {
-    width: 100vw;
-    height: 100vh;
+.screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: url('assets/bg-client.jpg') center/cover no-repeat;
-    animation: fadeIn 0.5s ease-out;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 0;
 }
+.screen.active { opacity: 1; pointer-events: all; z-index: 10; }
 
-.client-screen {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: slideUpFade 0.4s ease-out;
-}
-
-.client-form { display: flex; flex-direction: column; gap: 15px; }
-.input-group { display: flex; flex-direction: column; gap: 5px; }
-
-.input-group label {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-}
-
-.input-group input {
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+/* 1. Login e Autenticação */
+#view-auth { justify-content: center; align-items: center; }
+.login-panel { width: 90%; max-width: 400px; }
+.title { font-size: 2.2rem; color: var(--accent-primary); text-align: center; margin-bottom: 20px; }
+.form-group { display: flex; flex-direction: column; gap: 15px; }
+.form-group h2 { text-align: center; color: var(--text-muted); font-size: 1.2rem; }
+.form-group input {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
     padding: 12px;
-    border-radius: 6px;
-    color: #fff;
+    border-radius: 8px;
+    color: white;
     font-family: inherit;
     font-size: 1rem;
-    transition: var(--transition-smooth);
-}
-
-.input-group input:focus {
-    border-color: var(--ink-serenity);
-    box-shadow: var(--glow-magic);
     outline: none;
-}
-
-/* LOBBY */
-.lobby-layout {
-    width: 90%;
-    max-width: 1000px;
-    height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.lobby-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.4);
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.user-profile { display: flex; align-items: center; gap: 15px; }
-.status-text { color: #4CAF50; font-size: 0.9rem; }
-
-.lobby-main {
-    display: flex;
-    flex: 1;
-    padding: 25px;
-    gap: 25px;
-}
-
-.lobby-menu { display: flex; flex-direction: column; gap: 15px; flex: 1; }
-.lobby-news { flex: 2; padding: 20px; background: rgba(0,0,0,0.3); }
-
-/* ==========================================
-   CAMADA DE MODAIS (RUNAS, LOJA, MORTE)
-   ========================================== */
-#modal-layer {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none;
-    z-index: 1000;
-}
-
-.modal-overlay {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: all;
-    animation: fadeIn 0.3s ease-out;
-}
-
-.modal-card {
-    padding: 30px;
-    width: 90%;
-    max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.modal-title {
-    color: var(--gold-primary);
-    font-size: 2rem;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-    text-align: center;
-}
-
-.modal-subtitle { color: var(--text-muted); text-align: center; margin-bottom: 20px; }
-
-/* LOJA DE ITENS */
-.shop-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--glass-border);
-    padding-bottom: 15px;
-    margin-bottom: 15px;
-}
-
-.gold-display { color: var(--gold-light); font-size: 1.2rem; }
-.btn-close {
-    background: none; border: none; color: var(--text-muted);
-    font-size: 2rem; cursor: pointer; transition: transform 0.2s;
-}
-.btn-close:hover { color: var(--gold-primary); transform: scale(1.2); }
-
-.shop-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.tab-btn {
-    padding: 8px 12px;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid var(--text-muted);
-    color: var(--text-main);
-    border-radius: 4px;
-    cursor: pointer;
     transition: 0.2s;
 }
-.tab-btn.active, .tab-btn:hover { border-color: var(--gold-primary); box-shadow: var(--glow-gold); }
+.form-group input:focus { border-color: var(--accent-primary); }
+.form-group p { text-align: center; font-size: 0.9rem; color: var(--text-muted); }
+.form-group p a { color: var(--accent-primary); text-decoration: none; }
 
-/* Cores das Tabs por Raridade */
-.tab-btn.rarity-trash:hover { border-color: var(--rarity-trash); }
-.tab-btn.rarity-common:hover { border-color: var(--rarity-common); }
-.tab-btn.rarity-rare:hover { border-color: var(--rarity-rare); }
-.tab-btn.rarity-epic:hover { border-color: var(--rarity-epic); }
-.tab-btn.rarity-legendary:hover { border-color: var(--rarity-legendary); }
+/* 2. Lobby */
+#view-lobby { padding: 20px; align-items: center; justify-content: flex-start; gap: 20px; }
+.lobby-header { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; }
+.user-info { display: flex; align-items: center; gap: 15px; }
+.status { color: var(--color-heal); font-size: 0.85rem; font-weight: bold; }
+.lobby-content { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px 20px; }
+.menu-actions { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; }
 
-.shop-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 15px;
-}
-
-/* ==========================================
-   TABULEIRO PRINCIPAL E HUDS
-   ========================================== */
-#game-viewport {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100vh;
-    width: 100vw;
-    animation: fadeIn 0.5s ease-out;
-}
-
-.player-zone {
-    padding: 15px 30px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-    z-index: 10;
-}
-#player-zone { background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
-
-/* HUD Vitals */
-.player-hud { display: flex; align-items: center; gap: 20px; }
-.avatar-frame {
-    width: 60px; height: 60px;
-    border-radius: 50%;
-    border: 2px solid var(--gold-primary);
-    background: #111;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-.hp-bar-container {
-    width: 250px; height: 20px;
-    background: rgba(0,0,0,0.6);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 10px;
-    position: relative;
-    overflow: hidden;
-}
-
-.hp-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #c0392b, #e74c3c);
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: width;
-}
-.player-hp { background: linear-gradient(90deg, #27ae60, #2ecc71); }
-
-.hp-text {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px #000;
-}
-
-.hud-sub-info { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
-
-/* ==========================================
-   ZONA CENTRAL (GRIMÓRIO / CANVAS)
-   ========================================== */
-#canvas-center-zone {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.turn-banner {
-    position: absolute;
-    top: 20px;
-    font-size: 1.5rem;
-    color: var(--gold-primary);
-    text-shadow: var(--shadow-heavy);
-    animation: pulseGlow 2s infinite;
-    padding: 10px 20px;
-    background: var(--bg-glass);
-    border-radius: 8px;
-    border: 1px solid var(--glass-border);
-}
-
-.grimoire-container {
-    display: flex;
-    gap: 30px;
-    align-items: center;
-    background: rgba(0,0,0,0.4);
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.05);
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-}
-
-/* Paleta de Tintas */
-.ink-palette { display: flex; flex-direction: column; gap: 15px; align-items: center; }
-.ink-wells { display: flex; gap: 10px; }
-.ink-btn {
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-.ink-btn:hover { transform: scale(1.1); }
-.disaster-ink { background: var(--ink-disaster); box-shadow: 0 0 10px var(--ink-disaster); }
-.serenity-ink { background: var(--ink-serenity); box-shadow: 0 0 10px var(--ink-serenity); }
-.torment-ink { background: var(--ink-torment); box-shadow: 0 0 10px var(--ink-torment); }
-
-.mixture-orb {
+/* 3. Matchmaking */
+#view-matchmaking { justify-content: center; align-items: center; }
+.center-content { display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center; }
+.spinner {
     width: 50px; height: 50px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent-primary);
     border-radius: 50%;
-    background: #222;
-    border: 2px solid var(--gold-primary);
-    margin: 5px auto;
-    transition: background 0.3s;
+    animation: spin 1s linear infinite;
 }
-
-/* Área do Canvas */
-.drawing-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#magic-canvas {
-    background: #0d1117;
-    border: 2px solid var(--glass-border);
-    border-radius: 8px;
-    box-shadow: var(--shadow-heavy);
-    cursor: crosshair;
-    touch-action: none; /* Crucial para desenhar no mobile sem rolar a tela */
-}
-
-.canvas-instruction { margin-top: 10px; color: var(--text-muted); font-size: 0.9rem; }
-
-.grimoire-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    width: 180px;
-}
-
-.btn-magic {
-    background: linear-gradient(135deg, #4b0082, #2a004f);
-    border: 1px solid #9933ff;
-    color: #fff;
-    padding: 15px;
-}
-.btn-magic:hover:not(:disabled) { box-shadow: 0 0 15px #9933ff; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ==========================================
-   CARTAS E MÃO (ANIMAÇÕES)
+   4. TABULEIRO DE JOGO (O CORE DO APP)
    ========================================== */
-.card-field-zone {
-    height: 120px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 10px 0;
+#view-game { justify-content: space-between; }
+
+.board-zone { padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 5; }
+.enemy-zone { background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+.player-zone { background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding-bottom: 20px; }
+
+/* HUD Vitals (HP, Nomes, Avatares) */
+.player-stats { display: flex; align-items: center; gap: 15px; }
+.avatar { width: 50px; height: 50px; border-radius: 50%; background: #334155; border: 2px solid var(--border-color); }
+.info { display: flex; flex-direction: column; gap: 5px; flex: 1; max-width: 200px; }
+.name { font-weight: bold; font-size: 1.1rem; }
+.hp-bar { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); position: relative; }
+.hp-fill { height: 100%; transition: width 0.4s ease-out; }
+.hp-fill.player { background: var(--color-heal); width: 100%; }
+.hp-fill.enemy { background: var(--color-damage); width: 100%; }
+.hp-text { font-size: 0.8rem; color: var(--text-muted); align-self: flex-end; margin-top: -3px; }
+
+/* Cartas no Campo e na Mão */
+.cards-on-board { height: 90px; display: flex; justify-content: center; gap: 10px; }
+.cards-hand { height: 100px; display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; perspective: 800px; }
+
+/* Centro - Tela de Desenho */
+.board-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.turn-banner { position: absolute; top: 10px; font-size: 1.2rem; font-weight: bold; color: var(--text-main); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border-color); }
+
+.drawing-station { display: flex; gap: 15px; align-items: stretch; width: 95%; max-width: 600px; padding: 10px; }
+
+/* Ferramentas e Pincéis */
+.tools-sidebar { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.ink-selector { display: flex; flex-direction: column; gap: 10px; }
+.ink-btn { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: 0.2s; }
+.bg-damage { background: var(--color-damage); }
+.bg-heal { background: var(--color-heal); }
+.bg-control { background: var(--color-control); }
+.ink-btn.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+/* O Canvas */
+.canvas-wrapper { flex: 1; position: relative; background: #000; border-radius: 8px; border: 2px solid var(--border-color); box-shadow: inset 0 0 20px rgba(0,0,0,0.8); overflow: hidden; min-height: 150px; }
+.symbol-guide { position: absolute; top: 10px; left: 10px; color: rgba(255, 255, 255, 0.4); font-size: 0.9rem; pointer-events: none; }
+#magic-canvas { 
+    width: 100%; height: 100%; 
+    touch-action: none; /* Impede a tela de rolar no mobile ao desenhar */
+    cursor: crosshair; 
 }
 
-.hand-container {
-    display: flex;
-    justify-content: center;
-    gap: -20px; /* Cartas sobrepostas */
-    height: 150px;
-    perspective: 1000px;
-}
+.action-sidebar { display: flex; flex-direction: column; justify-content: center; gap: 10px; width: 120px; }
+.feedback-text { font-size: 0.75rem; text-align: center; color: var(--text-muted); }
 
-/* Estilo base dinâmico para as cartas geradas pelo JS */
+/* HUD Bottom (Inventario e Ações) */
+.player-hud { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-top: 10px; gap: 10px; }
+.inventory { display: flex; align-items: center; gap: 15px; }
+.gold { color: var(--color-gold); font-weight: bold; font-size: 1.1rem; }
+
+/* ==========================================
+   CARTAS (GERADAS VIA JS)
+   ========================================== */
 .game-card {
-    width: 100px;
-    height: 140px;
-    background: #1a1a1a;
-    border: 2px solid var(--gold-dark);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.8);
-    transition: transform 0.2s, z-index 0s;
-    cursor: grab;
-    will-change: transform;
-    animation: slideUpFade 0.3s ease-out;
-}
-
-.game-card:hover {
-    transform: translateY(-15px) scale(1.1);
-    z-index: 100;
-    box-shadow: var(--glow-gold);
-}
-
-/* ==========================================
-   INVENTÁRIO E BARRA DE AÇÃO (BOTTOM HUD)
-   ========================================== */
-.player-hud-bottom {
+    width: 75px; height: 105px;
+    background: #1e293b;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px;
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease, z-index 0s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
 }
-
-.inventory-slots { display: flex; gap: 10px; }
-.item-slot {
-    width: 45px; height: 45px;
-    background: rgba(0,0,0,0.5);
-    border: 1px dashed var(--text-muted);
-    border-radius: 4px;
-}
-
-.action-bar { display: flex; gap: 10px; }
-.btn-action {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid var(--glass-border);
-    color: var(--text-main);
-    padding: 10px 15px;
-}
-.btn-end-turn { background: rgba(231, 76, 60, 0.2); border-color: var(--danger); }
-.btn-end-turn:hover { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+.game-card:hover { transform: translateY(-15px); z-index: 20; border-color: white; }
+.card-title { font-size: 0.7rem; font-weight: bold; text-align: center; line-height: 1.1; }
+.card-stats { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: bold; }
 
 /* ==========================================
-   RESPONSIVIDADE (MOBILE OPTIMIZATION)
+   MODAIS E LOJA
+   ========================================== */
+.modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
+.modal.active { opacity: 1; pointer-events: all; }
+.modal-content { width: 95%; max-width: 600px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
+.btn-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+.btn-close:hover { color: white; }
+
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
+.shop-item { background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.shop-item h4 { font-size: 0.9rem; color: var(--color-gold); }
+
+/* ==========================================
+   RESPONSIVIDADE (Ajustes finos para Mobile)
    ========================================== */
 @media (max-width: 768px) {
-    .grimoire-container {
-        flex-direction: column;
-        gap: 15px;
-        padding: 15px;
-        transform: scale(0.9);
-    }
+    .drawing-station { flex-direction: column; }
+    .tools-sidebar { flex-direction: row; justify-content: center; }
+    .ink-selector { flex-direction: row; }
+    .action-sidebar { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
     
-    #magic-canvas {
-        width: 300px; /* Adapta o canvas para telas menores */
-        height: 200px;
-    }
-
-    .player-hud-bottom {
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .key-badge { display: none; } /* Oculta dicas de teclado no mobile */
-    
-    .hp-bar-container { width: 150px; }
-    
-    .shop-grid { grid-template-columns: repeat(2, 1fr); }
-    
-    .lobby-main { flex-direction: column; }
+    .player-hud { flex-direction: column; gap: 15px; }
+    .player-stats { width: 100%; }
+    .inventory { width: 100%; justify-content: space-between; }
+    #btn-end-turn { width: 100%; }
 }
