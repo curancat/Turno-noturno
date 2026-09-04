@@ -1,0 +1,419 @@
+/* ==========================================
+   VARIÁVEIS DE TEMA E CORES MÁGICAS
+   ========================================== */
+:root {
+    /* Paleta Principal (Sombrio & Ouro) */
+    --bg-deep: #05070a;
+    --bg-glass: rgba(12, 16, 24, 0.75);
+    --gold-primary: #d4af37;
+    --gold-light: #fef0c7;
+    --gold-dark: #8c7322;
+    --text-main: #e2e8f0;
+    --text-muted: #8b949e;
+    
+    /* Cores das Tintas (Mecânica do Hwei) */
+    --ink-disaster: #ff3333;
+    --ink-serenity: #33ccff;
+    --ink-torment: #9933ff;
+    
+    /* Cores de Raridade (Loja) */
+    --rarity-trash: #7f8c8d;
+    --rarity-common: #2ecc71;
+    --rarity-rare: #3498db;
+    --rarity-epic: #9b59b6;
+    --rarity-legendary: #f1c40f;
+
+    /* Efeitos e Sombras */
+    --glass-border: rgba(212, 175, 55, 0.15);
+    --glow-gold: 0 0 20px rgba(212, 175, 55, 0.3);
+    --shadow-heavy: 0 15px 35px rgba(0, 0, 0, 0.8);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================
+   RESETS E CONFIGURAÇÕES GERAIS
+   ========================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none; /* Previne seleção acidental no mobile */
+}
+
+body {
+    font-family: 'Rajdhani', sans-serif;
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    background-image: 
+        radial-gradient(circle at 50% 50%, #111622 0%, var(--bg-deep) 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Impede scroll na página toda, parecendo um app nativo */
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3, h4, .btn-primary, .btn-magic, .turn-banner {
+    font-family: 'Cinzel', serif;
+    font-weight: 800;
+}
+
+.hidden { display: none !important; }
+.full-width { width: 100%; }
+.mt-20 { margin-top: 20px; }
+.text-center { text-align: center; }
+
+/* ==========================================
+   COMPONENTES GERAIS (BOTÕES E GLASSMORPHISM)
+   ========================================== */
+.panel-glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-heavy), inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+.btn-primary, .btn-action, .btn-magic {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary {
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #241d10 0%, #0a0804 100%);
+    border: 1px solid var(--gold-primary);
+    color: var(--gold-light);
+    font-size: 1.1rem;
+}
+
+.btn-primary:hover {
+    box-shadow: var(--glow-gold);
+    transform: translateY(-2px);
+    border-color: #fce899;
+}
+
+.key-badge {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--gold-dark);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: 8px;
+    color: var(--gold-light);
+}
+
+/* ==========================================
+   CAMADA DE MODAIS (RUNAS, LOJA E MORTE)
+   ========================================== */
+#modal-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none; /* Deixa o clique passar quando vazio */
+    z-index: 1000;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.modal-card {
+    padding: 40px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-title {
+    color: var(--gold-primary);
+    font-size: 2.5rem;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.modal-subtitle {
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+/* LOJA - TABS E GRID */
+.shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 15px;
+}
+
+.shop-header h2 { color: var(--gold-primary); font-size: 1.8rem; }
+.gold-display { font-size: 1.2rem; color: var(--gold-light); font-weight: bold; }
+.btn-close {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 2rem; cursor: pointer; transition: 0.3s;
+}
+.btn-close:hover { color: var(--gold-primary); transform: scale(1.1); }
+
+.shop-tabs {
+    display: flex;
+    gap: 10px;
+Para garantir que sua estrutura HTML recém-editada receba um estilo profissional, responsivo e de fácil manutenção, utilize esta arquitetura CSS completa. O código abaixo é fundamentado em variáveis customizáveis, um *reset* moderno para consistência entre navegadores e utilitários modulares adaptáveis a qualquer marcação padrão.
+
+```css
+/* ==========================================================================
+   SISTEMA DE DESIGN (VARIÁVEIS)
+   ========================================================================== */
+:root {
+  /* Cores Principais */
+  --cor-primaria: #2563eb;
+  --cor-primaria-hover: #1d4ed8;
+  --cor-secundaria: #475569;
+  --cor-sucesso: #16a34a;
+  --cor-perigo: #dc2626;
+
+  /* Cores de Fundo e Texto */
+  --bg-corpo: #f8fafc;
+  --bg-container: #ffffff;
+  --texto-principal: #0f172a;
+  --texto-mutado: #64748b;
+  --borda-cor: #e2e8f0;
+
+  /* Tipografia */
+  --fonte-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-negrito: 700;
+
+  /* Espaçamento e Layout */
+  --espaco-sm: 0.5rem;
+  --espaco-md: 1rem;
+  --espaco-lg: 1.5rem;
+  --espaco-xl: 2rem;
+  --raio-borda: 8px;
+  --transicao-padrao: 0.3s ease;
+  --container-max: 1200px;
+}
+
+/* Suporte Automático a Modo Escuro */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-corpo: #0f172a;
+    --bg-container: #1e293b;
+    --texto-principal: #f8fafc;
+    --texto-mutado: #94a3b8;
+    --borda-cor: #334155;
+    --cor-primaria: #3b82f6;
+  }
+}
+
+/* ==========================================================================
+   RESET MODERNO & ACESSIBILIDADE
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--fonte-sans);
+  background-color: var(--bg-corpo);
+  color: var(--texto-principal);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Foco Acessível (a11y) */
+*:focus-visible {
+  outline: 3px solid var(--cor-primaria);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   TIPOGRAFIA BASE
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--texto-principal);
+  font-weight: var(--peso-negrito);
+  line-height: 1.2;
+  margin-bottom: var(--espaco-md);
+}
+
+h1 { font-size: clamp(2rem, 5vw, 3rem); }
+h2 { font-size: clamp(1.75rem, 4vw, 2.25rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 1.75rem); }
+
+p {
+  margin-bottom: var(--espaco-md);
+  color: var(--texto-mutado);
+}
+
+a {
+  color: var(--cor-primaria);
+  text-decoration: none;
+  transition: color var(--transicao-padrao);
+}
+
+a:hover {
+  color: var(--cor-primaria-hover);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   LAYOUT & CONTAINERS
+   ========================================================================== */
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--espaco-md);
+}
+
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--espaco-lg);
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   COMPONENTES ESSENCIAIS
+   ========================================================================== */
+
+/* Cartões (Cards) */
+.card {
+  background-color: var(--bg-container);
+  border: 1px solid var(--borda-cor);
+  border-radius: var(--raio-borda);
+  padding: var(--espaco-lg);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: transform var(--transicao-padrao), box-shadow var(--transicao-padrao);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-weight: var(--peso-medio);
+  border-radius: var(--raio-borda);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transicao-padrao), transform 0.1s;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.btn-primario {
+  background-color: var(--cor-primaria);
+  color: #ffffff;
+}
+
+.btn-primario:hover {
+  background-color: var(--cor-primaria-hover);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Formulários */
+.form-group {
+  margin-bottom: var(--espaco-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-sm);
+}
+
+label {
+  font-weight: var(--peso-medio);
+  color: var(--texto-principal);
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--borda-cor);
+  border-radius: var(--raio-borda);
+  background-color: var(--bg-container);
+  color: var(--texto-principal);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: border-color var(--transicao-padrao);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* ==========================================================================
+   UTILITÁRIOS RESPONSIVOS (MEDIA QUERIES)
+   ========================================================================== */
+@media (max-width: 768px) {
+  :root {
+    --espaco-lg: 1.25rem;
+    --espaco-xl: 1.5rem;
+  }
+  
+  .flex-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--espaco-md);
+  }
+}
