@@ -4,19 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hwei: Card Game</title>
+    
+    <!-- Estilos e Fontes -->
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs (Compat version para manter compatibilidade com sua estrutura) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="script.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <!-- Inicialização do Firebase -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
+            authDomain: "turno-noturno.firebaseapp.com",
+            databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com",
+            projectId: "turno-noturno",
+            storageBucket: "turno-noturno.firebasestorage.app",
+            messagingSenderId: "452104216659",
+            appId: "1:452104216659:web:982293f3f30b372e1b26a6",
+            measurementId: "G-YQVGM2LLHW"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <!-- Script Principal -->
+    <script src="script.js" defer></script>
 </head>
 <body>
 
-    <!-- ÁUDIO DE FUNDO E EFEITOS -->
+    <!-- ÁUDIO DE FUNDO -->
     <audio id="bg-music" loop preload="auto">
         <source src="bg-music.mp3" type="audio/mpeg">
     </audio>
+
     <!-- ==========================================
          CLIENT DO JOGO (Login, Registro, Lobby)
          ========================================== -->
@@ -67,7 +90,6 @@
         <!-- TELA DO LOBBY (Pós-login) -->
         <div id="view-lobby" class="client-screen hidden">
             <div class="lobby-layout panel-glass">
-                <!-- Cabeçalho do Lobby -->
                 <header class="lobby-header">
                     <div class="user-profile">
                         <div class="avatar-frame player-avatar"></div>
@@ -79,31 +101,30 @@
                     <button id="btn-logout" class="btn-secondary small">Sair da Conta</button>
                 </header>
 
-                <!-- Conteúdo Central do Lobby -->
                 <main class="lobby-main">
                     <div class="lobby-menu">
                         <button id="btn-play-match" class="btn-primary btn-huge">Jogar</button>
                         <button class="btn-secondary">Coleção de Cartas</button>
-                        <button class="btn-secondary">Histórico de Partidas</button>
+                        <button class="btn-secondary">Histórico</button>
                         <button class="btn-secondary">Configurações</button>
                     </div>
                     
-                    <!-- Área para novidades ou informações padrão -->
                     <div class="lobby-news panel-glass">
-                        <h3>Bem-vindo ao Jogo</h3>
-                        <p>Selecione "Jogar" para iniciar uma nova partida.</p>
+                        <h3>O Grimório Aguarda</h3>
+                        <p>Selecione "Jogar" para encontrar um oponente e iniciar a pintura de magias.</p>
                     </div>
                 </main>
             </div>
         </div>
     </div>
+
     <!-- ==========================================
          CAMADA DE MODAIS / OVERLAYS
          ========================================== -->
     <div id="modal-layer">
         
         <!-- TELA DE SELEÇÃO DE RUNAS -->
-        <div id="rune-modal" class="modal-overlay active">
+        <div id="rune-modal" class="modal-overlay hidden">
             <div class="modal-card panel-glass">
                 <h1 class="modal-title">Escolha sua Runa Primária</h1>
                 <p class="modal-subtitle">Seu traço inicial definirá o ritmo da partida</p>
@@ -121,7 +142,7 @@
             <div class="modal-card shop-card panel-glass">
                 <header class="shop-header">
                     <div>
-                        <h2>Bazar</h2>
+                        <h2>Bazar de Itens</h2>
                         <span class="gold-display">Seu Ouro: <strong id="shop-player-gold">0</strong> 🪙</span>
                     </div>
                     <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja">&times;</button>
@@ -129,10 +150,10 @@
 
                 <nav class="shop-tabs">
                     <button class="tab-btn active" data-rarity="all">Todos</button>
-                    <button class="tab-btn rarity-trash" data-rarity="trash">Tralha</button>
+                    <button class="tab-btn rarity-trash" data-rarity="trash">Lixo</button>
                     <button class="tab-btn rarity-common" data-rarity="common">Comum</button>
                     <button class="tab-btn rarity-rare" data-rarity="rare">Raro</button>
-                    <button class="tab-btn rarity-epic" data-rarity="epic">Epicos</button>
+                    <button class="tab-btn rarity-epic" data-rarity="epic">Épico</button>
                     <button class="tab-btn rarity-legendary" data-rarity="legendary">Lendário</button>
                 </nav>
 
@@ -146,8 +167,8 @@
         <div id="death-modal" class="modal-overlay hidden">
             <div class="modal-card death-card panel-glass text-center">
                 <div class="death-banner">
-                    <h1 id="endgame-status-title">Game over</h1>
-                    <p id="endgame-status-subtitle">você morreu</p>
+                    <h1 id="endgame-status-title">Game Over</h1>
+                    <p id="endgame-status-subtitle">A tela se apagou.</p>
                 </div>
 
                 <div class="game-stats-summary">
@@ -165,13 +186,13 @@
                     </div>
                 </div>
 
-                <button id="btn-restart" class="btn-primary full-width mt-20">Novo Destino</button>
+                <button id="btn-restart" class="btn-primary full-width mt-20">Retornar ao Lobby</button>
             </div>
         </div>
     </div>
 
     <!-- ==========================================
-         TABULEIRO PRINCIPAL
+         TABULEIRO PRINCIPAL DE JOGO
          ========================================== -->
     <div id="game-viewport" class="hidden">
         
@@ -196,50 +217,44 @@
             <div id="enemy-board-cards" class="card-field-zone"></div>
         </header>
 
-        <!-- ZONA CENTRAL: O GRIMÓRIO DE DESENHO (NOVA MECÂNICA) -->
+        <!-- ZONA CENTRAL: O GRIMÓRIO DE DESENHO -->
         <main id="canvas-center-zone">
-            <div class="turn-banner" id="turn-indicator">Seu Turno</div>
+            <div class="turn-banner" id="turn-indicator">Aguardando...</div>
 
             <div class="grimoire-container">
-                
-                <!-- Paleta de Tintas Mágicas e Mistura -->
                 <aside class="ink-palette">
                     <h3>Paleta</h3>
-                    
                     <div class="ink-wells">
-                        <!-- Botões para selecionar a cor do pincel -->
-                        <button class="ink-btn disaster-ink" data-color="#ff3333" title="Desastre"></button>
-                        <button class="ink-btn serenity-ink" data-color="#33ccff" title="Serenidade"></button>
-                        <button class="ink-btn torment-ink" data-color="#9933ff" title="Tormento"></button>
+                        <button class="ink-btn disaster-ink" data-color="#ff3333" title="Desastre (Dano)"></button>
+                        <button class="ink-btn serenity-ink" data-color="#33ccff" title="Serenidade (Suporte)"></button>
+                        <button class="ink-btn torment-ink" data-color="#9933ff" title="Tormento (Controle)"></button>
                     </div>
 
                     <div class="ink-mixer">
                         <p>Mistura Atual</p>
                         <div id="active-mixture-display" class="mixture-orb"></div>
-                        <span id="mixture-name" class="mixture-label">Tintas</span>
+                        <span id="mixture-name" class="mixture-label">Selecione uma Tinta</span>
                     </div>
 
                     <div class="brush-controls">
-                        <input type="range" id="brush-size" min="2" max="20" value="5" title="Tamanho do Pincel">
+                        <label for="brush-size">Pincel</label>
+                        <input type="range" id="brush-size" min="2" max="20" value="5">
                         <button id="btn-clear-canvas" class="btn-secondary small">Limpar Tela</button>
                     </div>
                 </aside>
 
-                <!-- Tela de Desenho Interativa -->
                 <section class="drawing-area">
                     <canvas id="magic-canvas" width="400" height="250"></canvas>
-                    <p class="canvas-instruction">Desenhe um símbolo para materializar sua magia</p>
+                    <p class="canvas-instruction">Pinte um símbolo para evocar sua magia.</p>
                 </section>
 
-                <!-- Ação Final do Turno de Desenho -->
                 <aside class="grimoire-actions">
-                    <button id="btn-materialize-card" class="btn-magic block-action">
+                    <button id="btn-materialize-card" class="btn-magic block-action" disabled>
                         Materializar Carta
                     </button>
                     <div id="spell-prediction" class="spell-preview hidden">
-                        <!-- O JS identificará o desenho e mostrará aqui qual carta vai sair -->
                         <span>Forma Detectada:</span>
-                        <strong id="detected-shape">Fogo</strong>
+                        <strong id="detected-shape">Nenhuma</strong>
                     </div>
                 </aside>
             </div>
