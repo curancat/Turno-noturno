@@ -3,15 +3,16 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
-  authDomain: "turno-noturno.firebaseapp.com",
-  databaseURL: "https://turno-noturno-default-rtdb.firebaseio.com",
-  projectId: "turno-noturno",
-  storageBucket: "turno-noturno.firebasestorage.app",
-  messagingSenderId: "452104216659",
-  appId: "1:452104216659:web:982293f3f30b372e1b26a6",
-  measurementId: "G-YQVGM2LLHW"
+  apiKey: "AIzaSyBykDF5TNKQHejUJTp-ue7s5CKfpJp1HV0",
+  authDomain: "mestre-471a0.firebaseapp.com",
+  databaseURL: "https://mestre-471a0-default-rtdb.firebaseio.com",
+  projectId: "mestre-471a0",
+  storageBucket: "mestre-471a0.firebasestorage.app",
+  messagingSenderId: "142996111628",
+  appId: "1:142996111628:web:c3785e54588632f468c929",
+  measurementId: "G-XWSF04WNVW"
 };
 
 const app = initializeApp(firebaseConfig);
