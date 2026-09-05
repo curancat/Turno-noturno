@@ -495,7 +495,7 @@ canvas.addEventListener('mousedown', (e) => {
     strokePoints.push({x, y});
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.strokeStyle = var('--blue-glow');
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--blue-glow').trim();
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
 });
