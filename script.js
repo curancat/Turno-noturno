@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, setDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5rYYzsbn7rSfh2Q7iv20VtmWcvUTySaA",
@@ -17,609 +17,709 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const items = [
-    {id:1,n:"Espada Longa",p:350,ap:0,ad:10,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Ferro bruto forjado em desespero."},
-    {id:2,n:"Tomo Amplificador",p:435,ap:20,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Páginas rasgadas de um grimório profano."},
-    {id:3,n:"Cristal de Rubi",p:400,ap:0,ad:0,rm:0,rf:150,vm:0,mm:0,va:0,vp:0,req:[],l:"O sangue da terra solidificado."},
-    {id:4,n:"Cristal de Safira",p:350,ap:0,ad:0,rm:0,rf:0,vm:250,mm:0,va:0,vp:0,req:[],l:"Lágrimas de um deus esquecido."},
-    {id:5,n:"Cota de Malha",p:800,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:40,vp:0,req:[],l:"Anéis metálicos que ressoam proteção."},
-    {id:6,n:"Capa Negatron",p:900,ap:0,ad:0,rm:50,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Absorve a magia ao redor como um buraco negro."},
-    {id:7,n:"Botas da Velocidade",p:300,ap:0,ad:0,rm:0,rf:0,vm:0,mm:25,va:0,vp:0,req:[],l:"Sapatos leves para fugas rápidas."},
-    {id:8,n:"Adaga",p:300,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:12,req:[],l:"Fina, cruel e rápida."},
-    {id:9,n:"Luvas do Lutador",p:400,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Couro curtido na dor."},
-    {id:10,n:"Talismã da Fada",p:250,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Murmúrios celestiais acalmam a mente."},
-    {id:11,n:"Picareta",p:875,ap:0,ad:25,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Usada originalmente para minerar cristal de sangue."},
-    {id:12,n:"Bastão Desnecessariamente Grande",p:1250,ap:60,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Irradia uma aura de pura arrogância mágica."},
-    {id:13,n:"Cinto do Gigante",p:900,ap:0,ad:0,rm:0,rf:380,vm:0,mm:0,va:0,vp:0,req:[],l:"Muito grande para a maioria dos humanos."},
-    {id:14,n:"Manto da Anulação",p:450,ap:0,ad:0,rm:25,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Corta laços fracos de energia arcana."},
-    {id:15,n:"Couraça de Pano",p:300,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:15,vp:0,req:[],l:"Melhor que lutar nu."},
-    {id:16,n:"Espada B.F.",p:1300,ap:0,ad:40,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Incrivelmente pesada e brutal."},
-    {id:17,n:"Arco Recurvo",p:1000,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:25,req:[8,8],l:"Tensionado ao limite."},
-    {id:18,n:"Fagote Vampírico",p:900,ap:0,ad:15,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[1],l:"Suga a vitalidade com cada golpe."},
-    {id:19,n:"Lágrima da Deusa",p:400,ap:0,ad:0,rm:0,rf:0,vm:240,mm:0,va:0,vp:0,req:[],l:"Chora eternamente pelo que foi perdido."},
-    {id:20,n:"Ídolo Proibido",p:800,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[10],l:"Entidade aprisionada em ouro."},
-    {id:21,n:"Hexcore Mk-1",p:1000,ap:20,ad:0,rm:0,rf:0,vm:150,mm:0,va:0,vp:0,req:[2,4],l:"Primeiro protótipo de evolução sintética."},
-    {id:22,n:"Códex Diabólico",p:900,ap:35,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[2],l:"Palavras que queimam os olhos de quem lê."},
-    {id:23,n:"Varinha Explosiva",p:850,ap:40,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[],l:"Vibra com força destrutiva."},
-    {id:24,n:"Brutalizador",p:1337,ap:0,ad:25,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[1,1],l:"Apenas dor."},
-    {id:25,n:"Fago",p:1250,ap:0,ad:15,rm:0,rf:200,vm:0,mm:0,va:0,vp:0,req:[1,3],l:"O cabo esmaga, a lâmina corta."},
-    {id:26,n:"Fulgor",p:700,ap:0,ad:0,rm:0,rf:0,vm:250,mm:0,va:0,vp:0,req:[4],l:"Luz aprisionada em geometria perfeita."},
-    {id:27,n:"Zelo",p:1050,ap:0,ad:0,rm:0,rf:0,vm:0,mm:5,va:0,vp:15,req:[9,8],l:"Movimento é vida."},
-    {id:28,n:"Espada Avaricenta",p:800,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[9],l:"Brilha mais quando perto do ouro."},
-    {id:29,n:"Capuz do Espectro",p:1200,ap:0,ad:0,rm:25,rf:250,vm:0,mm:0,va:0,vp:0,req:[3,14],l:"Visões de morte acompanham quem veste."},
-    {id:30,n:"Carapaça do Vigia",p:1000,ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:40,vp:0,req:[15,15],l:"Resiste a investidas impiedosas."},
-    {id:31,n:"Força da Trindade",p:3333,ap:30,ad:30,rm:0,rf:250,vm:250,mm:5,va:0,vp:30,req:[25,26,27],l:"Dano, mobilidade e magia unidos no ápice."},
-    {id:32,n:"Gume do Infinito",p:3400,ap:0,ad:70,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[16,11,9],l:"Corta até a própria realidade."},
-    {id:33,n:"Sedenta por Sangue",p:3400,ap:0,ad:80,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[16,18],l:"Sempre tem sede. Sempre."},
-    {id:34,n:"Rabadon",p:3600,ap:120,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[12,23],l:"O chapéu do arquimago mais louco da história."},
-    {id:35,n:"Cajado do Vazio",p:2800,ap:65,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[23,2],l:"Anula a resistência da realidade."},
-    {id:36,n:"Ampulheta de Zhonya",p:2900,ap:70,ad:0,rm:0,rf:0,vm:0,mm:0,va:45,vp:0,req:[12,30],l:"O tempo congela para os dignos."},
-    {id:37,n:"Armadura de Warmog",p:3000,ap:0,ad:0,rm:0,rf:800,vm:0,mm:0,va:0,vp:0,req:[13,3,3],l:"Feita com a pele de um titã caído."},
-    {id:38,n:"Coração Congelado",p:2500,ap:0,ad:0,rm:0,rf:0,vm:400,mm:0,va:80,vp:0,req:[30,4],l:"Diminui o ritmo cardíaco de todos ao redor."},
-    {id:39,n:"Semblante Espiritual",p:2900,ap:0,ad:0,rm:50,rf:450,vm:0,mm:0,va:0,vp:0,req:[29,3],l:"Aumenta a conexão com as forças vitais."},
-    {id:40,n:"Força da Natureza",p:2900,ap:0,ad:0,rm:70,rf:350,vm:0,mm:5,va:0,vp:0,req:[29,6],l:"Tempestades rugem na armadura."},
-    {id:41,n:"Dançarina Fantasma",p:2600,ap:0,ad:0,rm:0,rf:0,vm:0,mm:7,va:0,vp:40,req:[27,8,8],l:"Mova-se como o vento, ataque como a tempestade."},
-    {id:42,n:"Lâmina Fantasma de Youmuu",p:3000,ap:0,ad:55,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[24,1],l:"A lâmina de cerejeira ensanguentada."},
-    {id:43,n:"Cutelo Negro",p:3100,ap:0,ad:40,rm:0,rf:400,vm:0,mm:0,va:0,vp:0,req:[25,11],l:"Quebra ossos e armaduras igualmente."},
-    {id:44,n:"Rylai",p:2600,ap:75,ad:0,rm:0,rf:350,vm:0,mm:0,va:0,vp:0,req:[12,13],l:"O cetro cristalino da rainha do gelo."},
-    {id:45,n:"Tormento de Liandry",p:3000,ap:70,ad:0,rm:0,rf:250,vm:0,mm:0,va:0,vp:0,req:[22,3,2],l:"Queima a alma dos indignos."},
-    {id:46,n:"Máscara Abissal",p:2700,ap:0,ad:0,rm:60,rf:300,vm:300,mm:0,va:0,vp:0,req:[6,4,3],l:"Sussurra segredos obscuros aos inimigos."},
-    {id:47,n:"Cajado do Arcanjo",p:3000,ap:60,ad:0,rm:0,rf:0,vm:500,mm:0,va:0,vp:0,req:[19,23],l:"O receptáculo divino de energia mística."},
-    {id:48,n:"Manamune",p:2900,ap:0,ad:35,rm:0,rf:0,vm:500,mm:0,va:0,vp:0,req:[19,11],l:"Lâmina que canaliza a mente."},
-    {id:49,n:"Lâmina da Fúria de Guinsoo",p:2600,ap:40,ad:40,rm:0,rf:0,vm:0,mm:0,va:0,vp:25,req:[11,23],l:"O frenesi da destruição absoluta."},
-    {id:50,n:"Furacão de Runaan",p:2600,ap:0,ad:0,rm:0,rf:0,vm:0,mm:7,va:0,vp:45,req:[27,17],l:"Dispara contra todos ao mesmo tempo."},
-    {id:51,n:"Canhão Fumegante",p:2500,ap:0,ad:0,rm:0,rf:0,vm:0,mm:7,va:0,vp:35,req:[27,8],l:"Alcancem os inalcançáveis."},
-    {id:52,n:"Anjo Guardião",p:2800,ap:0,ad:40,rm:0,rf:0,vm:0,mm:0,va:40,vp:0,req:[16,5],l:"Sua hora ainda não chegou."},
-    {id:53,n:"Placa Gargolítica",p:3200,ap:0,ad:0,rm:60,rf:0,vm:0,mm:0,va:60,vp:0,req:[6,5,3],l:"Torne-se pedra, inquebrável."},
-    {id:54,n:"Ruptor Divino",p:3300,ap:0,ad:40,rm:0,rf:300,vm:0,mm:0,va:0,vp:0,req:[25,26],l:"Esmaga a fundação dos deuses."},
-    {id:55,n:"Eclipsar",p:3200,ap:0,ad:55,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[24,18],l:"Sombra letal sob o sol negro."},
-    {id:56,n:"Criafendas",p:3200,ap:70,ad:0,rm:0,rf:250,vm:0,mm:0,va:0,vp:0,req:[22,3,2],l:"Despedaça a tessitura do espaço."},
-    {id:57,n:"Colhedor Noturno",p:3200,ap:85,ad:0,rm:0,rf:250,vm:0,mm:0,va:0,vp:0,req:[21,22],l:"A foice da meia-noite."},
-    {id:58,n:"Explocinturão Hextec",p:3200,ap:80,ad:0,rm:0,rf:250,vm:0,mm:0,va:0,vp:0,req:[21,3],l:"Propulsão arcana agressiva."},
-    {id:59,n:"Lâmina do Rei Destruído",p:3200,ap:0,ad:40,rm:0,rf:0,vm:0,mm:0,va:0,vp:25,req:[18,17],l:"A tristeza de um rei transformado em aço."},
-    {id:60,n:"Mandato Imperial",p:2500,ap:40,ad:0,rm:0,rf:200,vm:0,mm:0,va:0,vp:0,req:[22,3],l:"Ordene e destrua."},
-    {id:61,n:"Redenção",p:2300,ap:0,ad:0,rm:0,rf:200,vm:0,mm:0,va:0,vp:0,req:[20,3],l:"Luz pura sobre o campo de batalha."},
-    {id:62,n:"Juramento do Cavaleiro",p:2200,ap:0,ad:0,rm:0,rf:400,vm:0,mm:0,va:0,vp:0,req:[13,3],l:"Minha vida pela sua."},
-    {id:63,n:"Convergência de Zeke",p:2400,ap:0,ad:0,rm:25,rf:250,vm:250,mm:0,va:25,vp:0,req:[3,15,14,4],l:"Tempestade forjada em conjunto."},
-    {id:64,n:"Medalhão dos Solari",p:2500,ap:0,ad:0,rm:30,rf:200,vm:0,mm:0,va:30,vp:0,req:[14,15,3],l:"Protege os fiéis ao sol."},
-    {id:65,n:"Quimiotanque Turbo",p:2800,ap:0,ad:0,rm:50,rf:350,vm:0,mm:0,va:0,vp:0,req:[29,3],l:"Química tóxica impulsionando carne morta."},
-    {id:66,n:"Manopla dos Glacinatas",p:2800,ap:0,ad:0,rm:0,rf:350,vm:0,mm:0,va:50,vp:0,req:[26,5],l:"Frio paralisante em cada golpe."},
-    {id:67,n:"Égide de Fogo Solar",p:3200,ap:0,ad:0,rm:30,rf:350,vm:0,mm:0,va:30,vp:0,req:[5,14,3],l:"Ande como um sol incandescente."},
-    {id:68,n:"Coroa da Rainha Despedaçada",p:2800,ap:70,ad:0,rm:0,rf:250,vm:0,mm:0,va:0,vp:0,req:[22,3],l:"Defesa espectral de um reinado antigo."},
-    {id:69,n:"Lúden",p:3200,ap:80,ad:0,rm:0,rf:0,vm:600,mm:0,va:0,vp:0,req:[23,22,4],l:"Explosões sonoras de pura magia."},
-    {id:70,n:"Glaive Sombria",p:2600,ap:0,ad:50,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[24,1],l:"Corta a luz, espalha a escuridão."},
-    {id:71,n:"Crepúsculo de Draktharr",p:3100,ap:0,ad:60,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[24,11],l:"Caçador invisível da noite sem estrelas."},
-    {id:72,n:"Arco-escudo Imortal",p:3400,ap:0,ad:50,rm:0,rf:0,vm:0,mm:0,va:0,vp:20,req:[18,27],l:"Sobrevivência cravada em flechas."},
-    {id:73,n:"Força do Vendaval",p:3400,ap:0,ad:60,rm:0,rf:0,vm:0,mm:7,va:0,vp:20,req:[16,27],l:"O vento obedece ao portador."},
-    {id:74,n:"Mata-Cráquenes",p:3400,ap:0,ad:65,rm:0,rf:0,vm:0,mm:0,va:0,vp:25,req:[16,17],l:"Matador de leviatãs, um golpe por vez."},
-    {id:75,n:"Rancor de Serylda",p:3200,ap:0,ad:45,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[24,11],l:"O frio do ressentimento eterno."},
-    {id:76,n:"Lembranças do Lorde Dominik",p:3000,ap:0,ad:30,rm:0,rf:0,vm:0,mm:0,va:0,vp:20,req:[11,27],l:"Tomba reis gigantes."},
-    {id:77,n:"Anjo Caído",p:3100,ap:40,ad:40,rm:20,rf:20,vm:0,mm:0,va:20,vp:20,req:[52,22],l:"Pureza corrompida pelo ódio."},
-    {id:78,n:"Devorador de Almas",p:3400,ap:100,ad:0,rm:0,rf:200,vm:0,mm:0,va:0,vp:0,req:[12,23,3],l:"Alimenta-se do medo mágico."},
-    {id:79,n:"Abraço de Seraph",p:3200,ap:80,ad:0,rm:0,rf:250,vm:860,mm:0,va:0,vp:0,req:[47],l:"Transformado pelo sofrimento."},
-    {id:80,n:"Muramana",p:3000,ap:0,ad:35,rm:0,rf:0,vm:860,mm:0,va:0,vp:0,req:[48],l:"Lâmina que chora e dilacera."},
-    {id:81,n:"Dente de Na'Shor",p:3000,ap:100,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:50,req:[22,17],l:"Presa de um horror cósmico."},
-    {id:82,n:"Perdição de Lich",p:3000,ap:75,ad:0,rm:0,rf:0,vm:0,mm:8,va:0,vp:0,req:[26,23],l:"Golpes banhados em magia letal."},
-    {id:83,n:"Foco do Horizonte",p:3000,ap:115,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[12,2],l:"O alvo não pode se esconder."},
-    {id:84,n:"Chama Sombria",p:3000,ap:100,ad:0,rm:0,rf:200,vm:0,mm:0,va:0,vp:0,req:[23,3],l:"Fogo que não aquece, apenas queima."},
-    {id:85,n:"Banshee",p:2600,ap:80,ad:0,rm:45,rf:0,vm:0,mm:0,va:0,vp:0,req:[22,6],l:"O lamento do véu protege da morte."},
-    {id:86,n:"Putrificador Quimtec",p:2300,ap:60,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[22,10],l:"Espalha feridas irrecuperáveis."},
-    {id:87,n:"Turíbulo Ardente",p:2300,ap:60,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[20,2],l:"Incenso que acelera o pulso dos aliados."},
-    {id:88,n:"Limiar da Noite",p:2900,ap:0,ad:50,rm:0,rf:325,vm:0,mm:0,va:0,vp:0,req:[24,3],l:"A proteção letal nas sombras."},
-    {id:89,n:"Dança da Morte",p:3300,ap:0,ad:55,rm:0,rf:0,vm:0,mm:0,va:45,vp:0,req:[11,5],l:"Transmuta o dano em pura adrenalina."},
-    {id:90,n:"Hexdrinker",p:1300,ap:0,ad:20,rm:35,rf:0,vm:0,mm:0,va:0,vp:0,req:[1,14],l:"Bebe magia como água."},
-    {id:91,n:"Fauce de Malmortius",p:2900,ap:0,ad:50,rm:50,rf:0,vm:0,mm:0,va:0,vp:0,req:[90,11],l:"Devora o fim de quem depende de feitiços."},
-    {id:92,n:"Sinal de Sterak",p:3100,ap:0,ad:50,rm:0,rf:400,vm:0,mm:0,va:0,vp:0,req:[11,13],l:"A fúria primal despertada."},
-    {id:93,n:"Titânica",p:3300,ap:0,ad:30,rm:0,rf:500,vm:0,mm:0,va:0,vp:0,req:[13,11],l:"Cada golpe treme a própria fundação da terra."},
-    {id:94,n:"Raivosa",p:3300,ap:0,ad:65,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[16,18],l:"Sede de sangue insaciável em área."},
-    {id:95,n:"O Cutelo",p:3000,ap:0,ad:50,rm:0,rf:300,vm:0,mm:0,va:0,vp:0,req:[43],l:"Corta tudo."},
-    {id:96,n:"Gume do Destino",p:3800,ap:0,ad:90,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[32,16],l:"Último suspiro do universo."},
-    {id:97,n:"Coroa de Sangue",p:3800,ap:150,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,req:[34,12],l:"Poder absoluto, custo absoluto."},
-    {id:98,n:"Égide Eterna",p:3800,ap:0,ad:0,rm:80,rf:1000,vm:0,mm:0,va:80,vp:0,req:[37,53],l:"Nem estrelas podem penetrar."},
-    {id:99,n:"Lâmina do Templo",p:4000,ap:80,ad:80,rm:0,rf:300,vm:300,mm:10,va:0,vp:40,req:[31,49],l:"Arma dos deuses esquecidos."},
-    {id:100,n:"Olho de Templo",p:4000,ap:120,ad:0,rm:50,rf:500,vm:0,mm:0,va:50,vp:0,req:[36,44,22],l:"Tudo vê. Tudo acaba."}
+    { id: 1, name: "Espada Longa", cost: 350, stats: { AD: 10, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 2, name: "Tomo Amplificador", cost: 435, stats: { AD: 0, AP: 20, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 3, name: "Cristal de Rubi", cost: 400, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 150, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 4, name: "Cristal de Safira", cost: 350, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 250, VA: 0, VP: 0 }, recipe: [] },
+    { id: 5, name: "Couraça de Pano", cost: 300, stats: { AD: 0, AP: 0, RM: 0, RF: 15, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 6, name: "Manto Anula-Magia", cost: 450, stats: { AD: 0, AP: 0, RM: 25, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 7, name: "Adaga", cost: 300, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 12, VP: 0 }, recipe: [] },
+    { id: 8, name: "Botas Iniciais", cost: 300, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 25 }, recipe: [] },
+    { id: 9, name: "Colar de Pérolas", cost: 250, stats: { AD: 0, AP: 5, RM: 0, RF: 0, VM: 0, MM: 50, VA: 0, VP: 0 }, recipe: [] },
+    { id: 10, name: "Anel de Doran", cost: 400, stats: { AD: 0, AP: 15, RM: 0, RF: 0, VM: 70, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 11, name: "Lâmina de Doran", cost: 450, stats: { AD: 8, AP: 0, RM: 0, RF: 0, VM: 80, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 12, name: "Escudo de Doran", cost: 450, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 110, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 13, name: "Lacre Sombrio", cost: 350, stats: { AD: 0, AP: 15, RM: 0, RF: 0, VM: 40, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 14, name: "Cinto do Gigante", cost: 900, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 350, MM: 0, VA: 0, VP: 0 }, recipe: [3] },
+    { id: 15, name: "Picareta", cost: 875, stats: { AD: 25, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 16, name: "Espada B.F.", cost: 1300, stats: { AD: 40, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 17, name: "Bastão Desnecessariamente Grande", cost: 1250, stats: { AD: 0, AP: 60, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 18, name: "Capa de Agilidade", cost: 600, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 19, name: "Arco Recurvo", cost: 700, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 15, VP: 0 }, recipe: [7] },
+    { id: 20, name: "Ídolo Proibido", cost: 800, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 50, VA: 0, VP: 0 }, recipe: [] },
+    { id: 21, name: "Varinha Explosiva", cost: 850, stats: { AD: 0, AP: 40, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [2] },
+    { id: 22, name: "Codex Diabólico", cost: 900, stats: { AD: 0, AP: 35, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [2] },
+    { id: 23, name: "Proteção Glacial", cost: 900, stats: { AD: 0, AP: 0, RM: 0, RF: 40, VM: 0, MM: 250, VA: 0, VP: 0 }, recipe: [4, 5] },
+    { id: 24, name: "Gema Ardente", cost: 800, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 200, MM: 0, VA: 0, VP: 0 }, recipe: [3] },
+    { id: 25, name: "Martelo de Guerra", cost: 1100, stats: { AD: 25, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [1, 1] },
+    { id: 26, name: "Fago", cost: 1100, stats: { AD: 15, AP: 0, RM: 0, RF: 0, VM: 200, MM: 0, VA: 0, VP: 0 }, recipe: [1, 3] },
+    { id: 27, name: "Fulgor", cost: 700, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 28, name: "Tiamat", cost: 1200, stats: { AD: 25, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [1, 1] },
+    { id: 29, name: "Colete Espinhoso", cost: 800, stats: { AD: 0, AP: 0, RM: 0, RF: 30, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [5, 5] },
+    { id: 30, name: "Capuz do Espectro", cost: 1250, stats: { AD: 0, AP: 0, RM: 25, RF: 0, VM: 250, MM: 0, VA: 0, VP: 0 }, recipe: [3, 6] },
+    { id: 31, name: "Carapaça do Vigia", cost: 1000, stats: { AD: 0, AP: 0, RM: 0, RF: 40, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [5, 5] },
+    { id: 32, name: "Cota de Malha", cost: 800, stats: { AD: 0, AP: 0, RM: 0, RF: 40, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [5] },
+    { id: 33, name: "Capa Negatron", cost: 900, stats: { AD: 0, AP: 0, RM: 50, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [6] },
+    { id: 34, name: "Zelo", cost: 1050, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 18, VP: 5 }, recipe: [7, 18] },
+    { id: 35, name: "Estilhaço de Kircheis", cost: 700, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 15, VP: 0 }, recipe: [7] },
+    { id: 36, name: "Aljava de Aço", cost: 1300, stats: { AD: 30, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 15, VP: 0 }, recipe: [1, 7] },
+    { id: 37, name: "Bandana de Mercúrio", cost: 1300, stats: { AD: 0, AP: 0, RM: 30, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [6] },
+    { id: 38, name: "Chamado do Carrasco", cost: 800, stats: { AD: 15, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [1] },
+    { id: 39, name: "Orbe do Esquecimento", cost: 800, stats: { AD: 0, AP: 30, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [2] },
+    { id: 40, name: "Alternador Hextec", cost: 1050, stats: { AD: 0, AP: 40, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [2, 2] },
+    { id: 41, name: "Cinturão de Mercúrio", cost: 1300, stats: { AD: 0, AP: 0, RM: 30, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [] },
+    { id: 42, name: "Ampulheta Quebrada", cost: 1000, stats: { AD: 0, AP: 20, RM: 0, RF: 15, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [2, 5] },
+    { id: 43, name: "Capítulo Perdido", cost: 1300, stats: { AD: 0, AP: 40, RM: 0, RF: 0, VM: 0, MM: 300, VA: 0, VP: 0 }, recipe: [2, 4] },
+    { id: 44, name: "Lágrima da Deusa", cost: 400, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 240, VA: 0, VP: 0 }, recipe: [] },
+    { id: 45, name: "Máscara Abissal", cost: 2400, stats: { AD: 0, AP: 0, RM: 60, RF: 0, VM: 300, MM: 0, VA: 0, VP: 0 }, recipe: [33, 24] },
+    { id: 46, name: "Egide da Legião", cost: 1200, stats: { AD: 0, AP: 0, RM: 30, RF: 30, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [6, 5] },
+    { id: 47, name: "Pingente Cristalino", cost: 1000, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 200, MM: 0, VA: 0, VP: 0 }, recipe: [3] },
+    { id: 48, name: "Placa Lunar", cost: 800, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 150, MM: 0, VA: 0, VP: 5 }, recipe: [3] },
+    { id: 49, name: "Brasa de Bami", cost: 1000, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 300, MM: 0, VA: 0, VP: 0 }, recipe: [3, 3] },
+    { id: 50, name: "Lâmina da Fúria", cost: 2600, stats: { AD: 30, AP: 30, RM: 0, RF: 0, VM: 0, MM: 0, VA: 25, VP: 0 }, recipe: [15, 21, 7] },
+    { id: 51, name: "Gume do Infinito", cost: 3400, stats: { AD: 65, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [16, 15, 18] },
+    { id: 52, name: "Sedenta por Sangue", cost: 3400, stats: { AD: 55, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [16, 18] },
+    { id: 53, name: "Força da Trindade", cost: 3333, stats: { AD: 45, AP: 0, RM: 0, RF: 0, VM: 300, MM: 0, VA: 33, VP: 20 }, recipe: [26, 27, 19] },
+    { id: 54, name: "Coração Congelado", cost: 2300, stats: { AD: 0, AP: 0, RM: 0, RF: 70, VM: 0, MM: 400, VA: 0, VP: 0 }, recipe: [31, 23] },
+    { id: 55, name: "Armadura de Warmog", cost: 3100, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 1000, MM: 0, VA: 0, VP: 0 }, recipe: [14, 24, 3] },
+    { id: 56, name: "Rabadon", cost: 3600, stats: { AD: 0, AP: 120, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [17, 17] },
+    { id: 57, name: "Ampulheta de Zhonya", cost: 3200, stats: { AD: 0, AP: 120, RM: 0, RF: 50, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [17, 42] },
+    { id: 58, name: "Cajado do Vazio", cost: 3000, stats: { AD: 0, AP: 80, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [21, 21] },
+    { id: 59, name: "Lâmina Fantasma de Youmuu", cost: 2700, stats: { AD: 60, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 18 }, recipe: [25, 1] },
+    { id: 60, name: "Crepúsculo de Draktharr", cost: 2900, stats: { AD: 60, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [25, 1] },
+    { id: 61, name: "Eclipse", cost: 2800, stats: { AD: 70, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [25, 15] },
+    { id: 62, name: "Mata-Cráquens", cost: 3100, stats: { AD: 40, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 20, VP: 0 }, recipe: [36, 18] },
+    { id: 63, name: "Força do Vendaval", cost: 3100, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 20, VP: 7 }, recipe: [36, 34] },
+    { id: 64, name: "Arco-Escudo Imortal", cost: 3000, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 20, VP: 0 }, recipe: [36, 11] },
+    { id: 65, name: "Tormenta de Luden", cost: 3000, stats: { AD: 0, AP: 90, RM: 0, RF: 0, VM: 0, MM: 600, VA: 0, VP: 0 }, recipe: [43, 21] },
+    { id: 66, name: "Angústia de Liandry", cost: 3000, stats: { AD: 0, AP: 90, RM: 0, RF: 0, VM: 0, MM: 600, VA: 0, VP: 0 }, recipe: [43, 22] },
+    { id: 67, name: "Geada Perpétua", cost: 2800, stats: { AD: 0, AP: 70, RM: 0, RF: 0, VM: 250, MM: 600, VA: 0, VP: 0 }, recipe: [43, 24] },
+    { id: 68, name: "Explocinturão Hextec", cost: 3200, stats: { AD: 0, AP: 90, RM: 0, RF: 0, VM: 250, MM: 0, VA: 0, VP: 0 }, recipe: [40, 21] },
+    { id: 69, name: "Colhedor Noturno", cost: 3200, stats: { AD: 0, AP: 90, RM: 0, RF: 0, VM: 300, MM: 0, VA: 0, VP: 0 }, recipe: [40, 21] },
+    { id: 70, name: "Criafendas", cost: 3200, stats: { AD: 0, AP: 80, RM: 0, RF: 0, VM: 300, MM: 0, VA: 0, VP: 0 }, recipe: [40, 22] },
+    { id: 71, name: "Ruptor Divino", cost: 3300, stats: { AD: 40, AP: 0, RM: 0, RF: 0, VM: 300, MM: 0, VA: 0, VP: 0 }, recipe: [26, 27] },
+    { id: 72, name: "Hemodrenário", cost: 3300, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 400, MM: 0, VA: 0, VP: 0 }, recipe: [28, 26] },
+    { id: 73, name: "Quebrapassos", cost: 3300, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 300, MM: 0, VA: 20, VP: 0 }, recipe: [28, 26] },
+    { id: 74, name: "Manopla dos Glacinatas", cost: 3000, stats: { AD: 0, AP: 0, RM: 0, RF: 50, VM: 400, MM: 0, VA: 0, VP: 0 }, recipe: [49, 23] },
+    { id: 75, name: "Quimiotanque Turbo", cost: 2800, stats: { AD: 0, AP: 0, RM: 50, RF: 50, VM: 350, MM: 0, VA: 0, VP: 0 }, recipe: [49, 46] },
+    { id: 76, name: "Égide de Fogo Solar", cost: 2700, stats: { AD: 0, AP: 0, RM: 0, RF: 50, VM: 500, MM: 0, VA: 0, VP: 0 }, recipe: [49, 32] },
+    { id: 77, name: "Placa Gargolítica", cost: 3200, stats: { AD: 0, AP: 0, RM: 60, RF: 60, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [46, 32, 33] },
+    { id: 78, name: "Armadura de Espinhos", cost: 2700, stats: { AD: 0, AP: 0, RM: 0, RF: 70, VM: 350, MM: 0, VA: 0, VP: 0 }, recipe: [29, 14] },
+    { id: 79, name: "Força da Natureza", cost: 2900, stats: { AD: 0, AP: 0, RM: 70, RF: 0, VM: 400, MM: 0, VA: 0, VP: 5 }, recipe: [33, 24] },
+    { id: 80, name: "Semblante Espiritual", cost: 2900, stats: { AD: 0, AP: 0, RM: 50, RF: 0, VM: 450, MM: 0, VA: 0, VP: 0 }, recipe: [30, 24] },
+    { id: 81, name: "Lâmina do Rei Destruído", cost: 3300, stats: { AD: 40, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 25, VP: 0 }, recipe: [38, 19] },
+    { id: 82, name: "Faca de Statikk", cost: 3000, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 30, VP: 0 }, recipe: [36, 35] },
+    { id: 83, name: "Canhão Fumegante", cost: 3000, stats: { AD: 30, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 20, VP: 7 }, recipe: [34, 35] },
+    { id: 84, name: "Dançarina Fantasma", cost: 2800, stats: { AD: 20, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 30, VP: 10 }, recipe: [34, 1, 1] },
+    { id: 85, name: "Furacão de Runaan", cost: 2800, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 40, VP: 7 }, recipe: [34, 19] },
+    { id: 86, name: "Lembrete Mortal", cost: 3000, stats: { AD: 40, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [38, 34] },
+    { id: 87, name: "Lembranças do Lorde Dominik", cost: 3000, stats: { AD: 45, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [15, 18] },
+    { id: 88, name: "Foco do Horizonte", cost: 2700, stats: { AD: 0, AP: 90, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [21, 40] },
+    { id: 89, name: "Chama Sombria", cost: 3200, stats: { AD: 0, AP: 120, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [17, 40] },
+    { id: 90, name: "Abraço de Seraph", cost: 3000, stats: { AD: 0, AP: 80, RM: 0, RF: 0, VM: 250, MM: 860, VA: 0, VP: 0 }, recipe: [44, 43] },
+    { id: 91, name: "Aproximação Invernal", cost: 2600, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 400, MM: 860, VA: 0, VP: 0 }, recipe: [44, 24] },
+    { id: 92, name: "Muramana", cost: 2900, stats: { AD: 35, AP: 0, RM: 0, RF: 0, VM: 0, MM: 860, VA: 0, VP: 0 }, recipe: [44, 25] },
+    { id: 93, name: "Glaive Sombria", cost: 2300, stats: { AD: 50, AP: 0, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [25, 1] },
+    { id: 94, name: "Cajado das Águas", cost: 2300, stats: { AD: 0, AP: 35, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 0 }, recipe: [20, 2] },
+    { id: 95, name: "Turíbulo Ardente", cost: 2300, stats: { AD: 0, AP: 35, RM: 0, RF: 0, VM: 0, MM: 0, VA: 0, VP: 8 }, recipe: [20, 2] },
+    { id: 96, name: "Redenção", cost: 2300, stats: { AD: 0, AP: 0, RM: 0, RF: 0, VM: 250, MM: 0, VA: 0, VP: 0 }, recipe: [24, 20] },
+    { id: 97, name: "Juramento do Cavaleiro", cost: 2200, stats: { AD: 0, AP: 0, RM: 0, RF: 40, VM: 250, MM: 0, VA: 0, VP: 0 }, recipe: [47, 31] },
+    { id: 98, name: "Convergência de Zeke", cost: 2200, stats: { AD: 0, AP: 0, RM: 0, RF: 30, VM: 200, MM: 250, VA: 0, VP: 0 }, recipe: [23, 24] },
+    { id: 99, name: "Medalhão dos Solari", cost: 2200, stats: { AD: 0, AP: 0, RM: 30, RF: 30, VM: 200, MM: 0, VA: 0, VP: 0 }, recipe: [46, 24] },
+    { id: 100, name: "Coroa da Rainha", cost: 2800, stats: { AD: 0, AP: 70, RM: 0, RF: 0, VM: 250, MM: 600, VA: 0, VP: 0 }, recipe: [43, 24] }
 ];
 
 let currentUser = null;
-let currentRune = null;
-let friendSnapshot = null;
-let chatSnapshot = null;
-let gameSessionId = null;
+let bgm = document.getElementById('bgm');
 
-const state = {
-    turnPhase: 0,
-    mana: 0,
-    maxMana: 0,
-    hp: 4000,
-    enemyHp: 4000,
-    comboBuffer: [],
-    comboTimer: null,
-    jungleIndex: 0,
-    jungleMonsters: [
-        {name:"Fantasma", hp:1000, atk:50, mhp:1000},
-        {name:"Gordão da X9", hp:2500, atk:120, mhp:2500},
-        {name:"Twink", hp:1500, atk:300, mhp:1500},
-        {name:"Saqueleto", hp:4000, atk:80, mhp:4000},
-        {name:"Dragão Bafo Colgate", hp:8000, atk:400, mhp:8000},
-        {name:"Seu Zé", hp:15000, atk:999, mhp:15000}
-    ]
-};
-
-const dom = {
-    authContainer: document.getElementById('auth-container'),
-    appContainer: document.getElementById('app-container'),
-    loginForm: document.getElementById('login-form'),
-    registerForm: document.getElementById('register-form'),
-    authToggle: document.getElementById('auth-toggle'),
-    tabs: document.querySelectorAll('.tab-btn'),
-    tabContents: document.querySelectorAll('.tab-content'),
-    btnLogout: document.getElementById('btn-logout'),
-    playerName: document.getElementById('player-name-display'),
-    bgm: document.getElementById('bgm'),
-    volControl: document.getElementById('vol-control'),
-    chatMessages: document.getElementById('chat-messages'),
-    chatInput: document.getElementById('chat-input'),
-    btnSendChat: document.getElementById('btn-send-chat'),
-    friendsUl: document.getElementById('friends-ul'),
-    friendInput: document.getElementById('friend-input'),
-    btnAddFriend: document.getElementById('btn-add-friend'),
-    shopGrid: document.getElementById('shop-grid'),
-    shopSearch: document.getElementById('shop-search'),
-    shopSort: document.getElementById('shop-sort'),
-    btnCalcBuild: document.getElementById('btn-calc-build'),
-    buildResult: document.getElementById('build-result'),
-    btnFindMatch: document.getElementById('btn-find-match'),
-    matchStatus: document.getElementById('match-status'),
-    matchmakingPanel: document.getElementById('matchmaking-panel'),
-    gameBoard: document.getElementById('game-board'),
-    runeCards: document.querySelectorAll('.rune-card'),
-    canvas: document.getElementById('spell-canvas'),
-    playerHpFill: document.getElementById('player-hp-fill'),
-    playerHpText: document.getElementById('player-hp-text'),
-    enemyHpFill: document.getElementById('enemy-hp-fill'),
-    enemyHpText: document.getElementById('enemy-hp-text'),
-    monsterName: document.getElementById('monster-name'),
-    monsterHp: document.getElementById('monster-hp'),
-    monsterAtk: document.getElementById('monster-atk'),
-    playerMana: document.getElementById('player-mana'),
-    playerMaxMana: document.getElementById('player-max-mana'),
-    turnIndicator: document.getElementById('turn-indicator'),
-    btnEndPhase: document.getElementById('btn-end-phase'),
-    playerHand: document.getElementById('player-hand'),
-    comboDisplay: document.getElementById('combo-display')
-};
-
-dom.authToggle.addEventListener('click', () => {
-    const isLogin = dom.loginForm.style.display !== 'none';
-    dom.loginForm.style.display = isLogin ? 'none' : 'block';
-    dom.registerForm.style.display = isLogin ? 'block' : 'none';
-    dom.authToggle.innerText = isLogin ? 'Já tenho uma conta' : 'Criar nova conta';
+document.getElementById('volume-control').addEventListener('input', (e) => {
+    bgm.volume = e.target.value;
 });
 
-dom.loginForm.addEventListener('submit', async (e) => {
+const tabLogin = document.getElementById('tab-login');
+const tabRegister = document.getElementById('tab-register');
+const formLogin = document.getElementById('login-form');
+const formRegister = document.getElementById('register-form');
+const authError = document.getElementById('auth-error');
+
+tabLogin.addEventListener('click', () => {
+    tabLogin.classList.add('active');
+    tabRegister.classList.remove('active');
+    formLogin.classList.add('active');
+    formRegister.classList.remove('active');
+    authError.textContent = "";
+});
+
+tabRegister.addEventListener('click', () => {
+    tabRegister.classList.add('active');
+    tabLogin.classList.remove('active');
+    formRegister.classList.add('active');
+    formLogin.classList.remove('active');
+    authError.textContent = "";
+});
+
+formLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
     try {
-        await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
-    } catch(err) {}
+        await signInWithEmailAndPassword(auth, email, pass);
+    } catch (err) {
+        authError.textContent = err.message;
+    }
 });
 
-dom.registerForm.addEventListener('submit', async (e) => {
+formRegister.addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-        const res = await createUserWithEmailAndPassword(auth, document.getElementById('register-email').value, document.getElementById('register-password').value);
-        await updateProfile(res.user, { displayName: document.getElementById('register-name').value });
-        await setDoc(doc(db, "users", res.user.uid), {
-            name: document.getElementById('register-name').value,
-            online: true,
-            friends: []
-        });
-    } catch(err) {}
-});
-
-dom.btnLogout.addEventListener('click', () => {
-    if(currentUser) setDoc(doc(db, "users", currentUser.uid), { online: false }, { merge: true });
-    signOut(auth);
-});
-
-onAuthStateChanged(auth, user => {
-    if(user) {
-        currentUser = user;
-        dom.authContainer.style.display = 'none';
-        dom.appContainer.style.display = 'flex';
-        dom.playerName.innerText = user.displayName || user.email;
-        dom.bgm.volume = dom.volControl.value;
-        dom.bgm.play().catch(()=>{});
-        initApp();
-        setDoc(doc(db, "users", user.uid), { online: true }, { merge: true });
-    } else {
-        currentUser = null;
-        dom.authContainer.style.display = 'flex';
-        dom.appContainer.style.display = 'none';
-        dom.bgm.pause();
-        if(chatSnapshot) chatSnapshot();
-        if(friendSnapshot) friendSnapshot();
-    }
-});
-
-dom.volControl.addEventListener('input', e => dom.bgm.volume = e.target.value);
-
-dom.tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        dom.tabs.forEach(t => t.classList.remove('active'));
-        dom.tabContents.forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.target).classList.add('active');
-    });
-});
-
-function initApp() {
-    renderShop(items);
-    initChat();
-    initFriends();
-    setupRunes();
-}
-
-function initChat() {
-    const q = query(collection(db, "globalChat"), orderBy("ts", "desc"), limit(100));
-    chatSnapshot = onSnapshot(q, snap => {
-        dom.chatMessages.innerHTML = '';
-        const msgs = [];
-        snap.forEach(d => msgs.push(d.data()));
-        msgs.reverse().forEach(m => {
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            const date = new Date(m.ts);
-            div.innerHTML = `<span class="time">[${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}]</span><span class="author">${m.name}:</span>${m.txt}`;
-            dom.chatMessages.appendChild(div);
-        });
-        dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-    });
-}
-
-dom.btnSendChat.addEventListener('click', sendChat);
-dom.chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendChat(); });
-
-async function sendChat() {
-    const txt = dom.chatInput.value.trim();
-    if(!txt) return;
-    dom.chatInput.value = '';
-    await addDoc(collection(db, "globalChat"), {
-        uid: currentUser.uid,
-        name: currentUser.displayName,
-        txt: txt,
-        ts: Date.now()
-    });
-}
-
-function initFriends() {
-    friendSnapshot = onSnapshot(doc(db, "users", currentUser.uid), async snap => {
-        dom.friendsUl.innerHTML = '';
-        if(!snap.exists()) return;
-        const data = snap.data();
-        if(!data.friends) return;
-        for(let uid of data.friends) {
-            const fdoc = await getDoc(doc(db, "users", uid));
-            if(fdoc.exists()) {
-                const fd = fdoc.data();
-                const li = document.createElement('li');
-                li.innerHTML = `<span>${fd.name}</span> <span class="${fd.online?'status-online':'status-offline'}">${fd.online?'Online':'Offline'}</span>`;
-                dom.friendsUl.appendChild(li);
-            }
-        }
-    });
-}
-
-dom.btnAddFriend.addEventListener('click', async () => {
-    const input = dom.friendInput.value.trim();
-    if(!input) return;
-    dom.friendInput.value = '';
-    const ref = doc(db, "users", currentUser.uid);
-    const snap = await getDoc(ref);
-    let fr = snap.data().friends || [];
-    if(!fr.includes(input)) {
-        fr.push(input);
-        await updateDoc(ref, { friends: fr });
-    }
-});
-
-function renderShop(list) {
-    dom.shopGrid.innerHTML = '';
-    list.forEach(i => {
-        const div = document.createElement('div');
-        div.className = 'shop-item';
-        div.innerHTML = `
-            <h4>${i.n}</h4>
-            <span class="price">${i.p} G</span>
-            <div class="stats">
-                ${i.ap ? `<span>AP: ${i.ap}</span>` : ''}
-                ${i.ad ? `<span>AD: ${i.ad}</span>` : ''}
-                ${i.rm ? `<span>RM: ${i.rm}</span>` : ''}
-                ${i.rf ? `<span>HP: ${i.rf}</span>` : ''}
-                ${i.vm ? `<span>Mana: ${i.vm}</span>` : ''}
-                ${i.mm ? `<span>MS: ${i.mm}%</span>` : ''}
-                ${i.va ? `<span>Armor: ${i.va}</span>` : ''}
-                ${i.vp ? `<span>AS: ${i.vp}%</span>` : ''}
-            </div>
-            <div class="lore">${i.l}</div>
-        `;
-        dom.shopGrid.appendChild(div);
-    });
-}
-
-function filterShop() {
-    const q = dom.shopSearch.value.toLowerCase();
-    const s = dom.shopSort.value;
-    let arr = items.filter(i => i.n.toLowerCase().includes(q));
-    arr.sort((a,b) => {
-        if(s === 'price') return a.p - b.p;
-        if(s === 'name') return a.n.localeCompare(b.n);
-        if(s === 'ap') return b.ap - a.ap;
-        if(s === 'ad') return b.ad - a.ad;
-        return 0;
-    });
-    renderShop(arr);
-}
-
-dom.shopSearch.addEventListener('input', filterShop);
-dom.shopSort.addEventListener('change', filterShop);
-
-dom.btnCalcBuild.addEventListener('click', () => {
-    const t = {
-        ap: parseInt(document.getElementById('t-ap').value)||0,
-        ad: parseInt(document.getElementById('t-ad').value)||0,
-        rm: parseInt(document.getElementById('t-rm').value)||0,
-        rf: parseInt(document.getElementById('t-rf').value)||0,
-        vm: parseInt(document.getElementById('t-vm').value)||0,
-        mm: parseInt(document.getElementById('t-mm').value)||0,
-        va: parseInt(document.getElementById('t-va').value)||0,
-        vp: parseInt(document.getElementById('t-vp').value)||0
-    };
-    
-    let best = null;
-    let minPrice = Infinity;
-
-    for(let i=0; i<3000; i++) {
-        let current = {ap:0,ad:0,rm:0,rf:0,vm:0,mm:0,va:0,vp:0,p:0};
-        let selection = [];
-        for(let j=0; j<6; j++) {
-            const r = items[Math.floor(Math.random()*items.length)];
-            current.ap += r.ap; current.ad += r.ad; current.rm += r.rm;
-            current.rf += r.rf; current.vm += r.vm; current.mm += r.mm;
-            current.va += r.va; current.vp += r.vp; current.p += r.p;
-            selection.push(r.n);
-        }
-        if(current.ap >= t.ap && current.ad >= t.ad && current.rm >= t.rm &&
-           current.rf >= t.rf && current.vm >= t.vm && current.mm >= t.mm &&
-           current.va >= t.va && current.vp >= t.vp) {
-            if(current.p < minPrice) {
-                minPrice = current.p;
-                best = selection;
-            }
-        }
-    }
-
-    if(best) {
-        dom.buildResult.innerHTML = `<strong>Custo Mínimo Estimado: ${minPrice}G</strong><br><br>${best.join('<br>')}`;
-    } else {
-        dom.buildResult.innerHTML = `<span style="color:#aa3a3a">Nenhuma build de 6 itens atinge esses atributos.</span>`;
-    }
-});
-
-function setupRunes() {
-    dom.runeCards.forEach(c => {
-        c.addEventListener('click', () => {
-            dom.runeCards.forEach(rc => rc.classList.remove('selected'));
-            c.classList.add('selected');
-            currentRune = c.dataset.rune;
-        });
-    });
-}
-
-dom.btnFindMatch.addEventListener('click', () => {
-    if(!currentRune) {
-        dom.matchStatus.innerText = "Selecione uma runa primeiro!";
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-password').value;
+    const user = document.getElementById('reg-username').value;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        authError.textContent = "E-mail inválido";
         return;
     }
-    dom.matchStatus.innerText = "Buscando oponentes no Templo...";
-    setTimeout(() => {
-        dom.matchmakingPanel.style.display = 'none';
-        dom.gameBoard.style.display = 'flex';
-        startGame();
-    }, 2000);
+    if(pass.length < 6) {
+        authError.textContent = "Senha fraca (min 6)";
+        return;
+    }
+    try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        await setDoc(doc(db, "users", cred.user.uid), {
+            username: user,
+            email: email,
+            gold: 1500,
+            status: "online"
+        });
+    } catch (err) {
+        authError.textContent = err.message;
+    }
 });
 
-function startGame() {
-    state.hp = 4000;
-    state.enemyHp = 4000;
-    state.turnPhase = 0;
-    state.maxMana = 1;
-    state.mana = 1;
-    state.jungleIndex = 0;
-    updateUI();
-    generateHand();
-}
+document.getElementById('logout-btn').addEventListener('click', async () => {
+    if(currentUser) {
+        await setDoc(doc(db, "users", currentUser.uid), { status: "offline" }, { merge: true });
+    }
+    localStorage.clear();
+    await signOut(auth);
+});
 
-function updateUI() {
-    dom.playerHpText.innerText = `${Math.floor(state.hp)}/4000`;
-    dom.playerHpFill.style.width = `${Math.max(0, (state.hp/4000)*100)}%`;
-    dom.enemyHpText.innerText = `${Math.floor(state.enemyHp)}/4000`;
-    dom.enemyHpFill.style.width = `${Math.max(0, (state.enemyHp/4000)*100)}%`;
-    dom.playerMana.innerText = state.mana;
-    dom.playerMaxMana.innerText = state.maxMana;
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        document.getElementById('auth-screen').classList.remove('active');
+        document.getElementById('main-client').classList.add('active');
+        bgm.play().catch(()=>{});
+        
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if(userDoc.exists()) {
+            document.getElementById('player-name-display').textContent = userDoc.data().username;
+            document.getElementById('player-gold-display').textContent = userDoc.data().gold + " Ouro";
+            await setDoc(doc(db, "users", user.uid), { status: "online" }, { merge: true });
+        }
+        setupChat();
+    } else {
+        currentUser = null;
+        document.getElementById('auth-screen').classList.add('active');
+        document.getElementById('main-client').classList.remove('active');
+        bgm.pause();
+    }
+});
+
+const navBtns = document.querySelectorAll('.nav-btn');
+const sections = document.querySelectorAll('.content-section');
+
+navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        navBtns.forEach(b => b.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+    });
+});
+
+let selectedRunes = [];
+document.querySelectorAll('.rune-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const rune = card.getAttribute('data-rune');
+        if(selectedRunes.includes(rune)) {
+            selectedRunes = selectedRunes.filter(r => r !== rune);
+            card.classList.remove('selected');
+        } else {
+            if(selectedRunes.length < 3) {
+                selectedRunes.push(rune);
+                card.classList.add('selected');
+            }
+        }
+    });
+});
+
+document.getElementById('find-match-btn').addEventListener('click', () => {
+    document.querySelector('.play-setup').style.display = 'none';
+    document.getElementById('battlefield').classList.remove('hidden');
+    initGame();
+});
+
+let chatUnsubscribe = null;
+function setupChat() {
+    const chatMsg = document.getElementById('chat-messages');
+    const q = query(collection(db, "globalChat"), orderBy("timestamp", "desc"), limit(100));
     
-    const m = state.jungleMonsters[state.jungleIndex];
-    if(m) {
-        dom.monsterName.innerText = m.name;
-        dom.monsterHp.innerText = m.hp;
-        dom.monsterAtk.innerText = m.atk;
-    }
-
-    const phases = ["Fase de Compra", "Fase Principal", "Fase de Combate", "Fim de Turno"];
-    dom.turnIndicator.innerText = phases[state.turnPhase];
-
-    if(state.hp <= 0 && currentRune === 'morte') {
-        state.hp = 4000;
-        currentRune = null;
-        updateUI();
-    }
+    if(chatUnsubscribe) chatUnsubscribe();
+    
+    chatUnsubscribe = onSnapshot(q, (snapshot) => {
+        chatMsg.innerHTML = '';
+        const msgs = [];
+        snapshot.forEach(doc => msgs.push(doc.data()));
+        msgs.reverse().forEach(data => {
+            const div = document.createElement('div');
+            div.className = 'msg';
+            const t = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString() : '';
+            div.innerHTML = `<span class="time">[${t}]</span><span class="author">${data.user}:</span> ${data.text}`;
+            chatMsg.appendChild(div);
+        });
+        chatMsg.scrollTop = chatMsg.scrollHeight;
+    });
 }
 
-dom.btnEndPhase.addEventListener('click', () => {
-    state.turnPhase++;
-    if(state.turnPhase > 3) {
-        state.turnPhase = 0;
-        if(state.maxMana < 10) state.maxMana++;
-        state.mana = state.maxMana;
-        if(currentRune === 'anjo') state.mana = Math.min(10, state.mana + 2);
-        generateHand();
+document.getElementById('chat-send').addEventListener('click', async () => {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if(text && currentUser) {
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        await addDoc(collection(db, "globalChat"), {
+            uid: currentUser.uid,
+            user: userDoc.data().username,
+            text: text,
+            timestamp: serverTimestamp()
+        });
+        input.value = '';
     }
-    updateUI();
 });
 
-function generateHand() {
-    dom.playerHand.innerHTML = '';
-    for(let i=0; i<5; i++) {
-        const c = items[Math.floor(Math.random()*items.length)];
+function renderShop() {
+    const grid = document.getElementById('shop-grid');
+    grid.innerHTML = '';
+    const search = document.getElementById('shop-search').value.toLowerCase();
+    const sort = document.getElementById('shop-sort').value;
+    
+    let filtered = items.filter(i => i.name.toLowerCase().includes(search));
+    
+    if(sort === 'cost-asc') filtered.sort((a,b) => a.cost - b.cost);
+    if(sort === 'cost-desc') filtered.sort((a,b) => b.cost - a.cost);
+    if(sort === 'name-asc') filtered.sort((a,b) => a.name.localeCompare(b.name));
+    
+    filtered.forEach(item => {
         const div = document.createElement('div');
-        div.className = 'card-item';
-        div.draggable = true;
-        div.innerHTML = `<b>${c.n}</b><br>${c.p}G`;
-        div.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', c.id));
-        dom.playerHand.appendChild(div);
-    }
+        div.className = 'item-card';
+        
+        let statsStr = '';
+        for(let key in item.stats) {
+            if(item.stats[key] > 0) statsStr += `${key}: +${item.stats[key]}<br>`;
+        }
+        
+        div.innerHTML = `
+            <div class="item-name">${item.name}</div>
+            <div class="item-cost">${item.cost} G</div>
+            <div class="item-stats">${statsStr}</div>
+        `;
+        grid.appendChild(div);
+    });
 }
 
-document.getElementById('player-board').addEventListener('dragover', e => e.preventDefault());
-document.getElementById('player-board').addEventListener('drop', e => {
-    e.preventDefault();
-    const id = parseInt(e.dataTransfer.getData('text/plain'));
-    const item = items.find(i => i.id === id);
-    if(item && state.turnPhase === 1) {
-        const div = document.createElement('div');
-        div.className = 'card-item';
-        div.innerHTML = `<b>${item.n}</b><br>ATK: ${item.ad || item.ap}`;
-        document.getElementById('player-board').appendChild(div);
-        Array.from(dom.playerHand.children).forEach(c => {
-            if(c.innerHTML.includes(item.n)) c.remove();
+document.getElementById('shop-search').addEventListener('input', renderShop);
+document.getElementById('shop-sort').addEventListener('change', renderShop);
+renderShop();
+
+document.getElementById('calculate-build').addEventListener('click', () => {
+    const target = {
+        AP: parseInt(document.getElementById('target-ap').value) || 0,
+        AD: parseInt(document.getElementById('target-ad').value) || 0,
+        RM: parseInt(document.getElementById('target-rm').value) || 0,
+        RF: parseInt(document.getElementById('target-rf').value) || 0,
+        VM: parseInt(document.getElementById('target-vm').value) || 0,
+        MM: parseInt(document.getElementById('target-mm').value) || 0,
+        VA: parseInt(document.getElementById('target-va').value) || 0,
+        VP: parseInt(document.getElementById('target-vp').value) || 0
+    };
+
+    let bestCost = Infinity;
+    let bestBuild = [];
+    
+    function solve(currentIndex, currentStats, currentCost, currentItems) {
+        if(currentItems.length > 6) return;
+        
+        let met = true;
+        for(let key in target) {
+            if(currentStats[key] < target[key]) {
+                met = false;
+                break;
+            }
+        }
+        
+        if(met) {
+            if(currentCost < bestCost) {
+                bestCost = currentCost;
+                bestBuild = [...currentItems];
+            }
+            return;
+        }
+
+        if(currentCost >= bestCost) return;
+
+        for(let i = currentIndex; i < items.length; i++) {
+            const item = items[i];
+            if(item.cost === 0) continue; 
+            
+            let hasUsefulStat = false;
+            for(let key in target) {
+                if(target[key] > 0 && item.stats[key] > 0) {
+                    hasUsefulStat = true;
+                    break;
+                }
+            }
+            if(!hasUsefulStat) continue;
+
+            const nextStats = {...currentStats};
+            for(let key in target) nextStats[key] += item.stats[key];
+            
+            currentItems.push(item);
+            solve(i, nextStats, currentCost + item.cost, currentItems);
+            currentItems.pop();
+        }
+    }
+
+    solve(0, {AP:0, AD:0, RM:0, RF:0, VM:0, MM:0, VA:0, VP:0}, 0, []);
+
+    const resDiv = document.getElementById('build-results');
+    resDiv.innerHTML = '';
+    
+    if(bestBuild.length === 0) {
+        resDiv.innerHTML = '<div style="color:var(--gold-primary)">Nenhuma combinação de até 6 itens alcança esses atributos.</div>';
+    } else {
+        resDiv.innerHTML = `<h4 style="color:var(--gold-light); margin-bottom:15px;">Build Ideal (Custo Total: ${bestCost}G)</h4>`;
+        bestBuild.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'build-path-item';
+            
+            let s = '';
+            for(let k in item.stats) {
+                if(item.stats[k]>0) s+= `${k}:+${item.stats[k]} `;
+            }
+            
+            div.innerHTML = `
+                <div style="flex:1">
+                    <strong style="color:var(--gold-primary)">${item.name}</strong><br>
+                    <span style="font-size:0.8rem; color:#aaa">${s}</span>
+                </div>
+                <div style="color:#e6cc80">${item.cost} G</div>
+            `;
+            resDiv.appendChild(div);
         });
     }
 });
 
-let isDrawing = false;
-let points = [];
-const ctx = dom.canvas.getContext('2d');
+let myHP = 100, myMaxHP = 100, myMana = 10, myMaxMana = 10;
+let enemyHP = 100, enemyMaxHP = 100, enemyMana = 10, enemyMaxMana = 10;
+let turnPhase = 0; 
+const phases = ["Fase de Compra", "Fase Principal", "Fase de Combate", "Fim de Turno"];
+let turnCount = 1;
 
-window.addEventListener('keydown', e => {
-    if(dom.gameBoard.style.display === 'flex' && (e.key === 'q' || e.key === 'w' || e.key === 'e')) {
-        dom.canvas.classList.add('active');
-        dom.canvas.width = dom.gameBoard.offsetWidth;
-        dom.canvas.height = dom.gameBoard.offsetHeight;
-        ctx.strokeStyle = e.key === 'q' ? '#ff3300' : e.key === 'w' ? '#00ccff' : '#9900ff';
-        ctx.lineWidth = 5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+let jungleIndex = 0;
+const jungleMobs = ["Fantasma", "Gordão da X9", "Twink", "Saqueleto", "Dragão Bafo Colgate", "Seu Zé"];
+let mobHp = 0, mobMaxHp = 0;
+
+function spawnJungle() {
+    if(jungleIndex >= jungleMobs.length) return;
+    mobMaxHp = Math.floor(50 * Math.pow(1.5, jungleIndex));
+    mobHp = mobMaxHp;
+    updateJungleUI();
+}
+
+function updateJungleUI() {
+    const jg = document.getElementById('jungle-monster');
+    if(jungleIndex >= jungleMobs.length) {
+        jg.innerHTML = "Vazio";
+        return;
     }
+    jg.className = 'monster-entity';
+    jg.innerHTML = `
+        <div style="font-size:1.2rem; color:#fff">${jungleMobs[jungleIndex]}</div>
+        <div>HP: ${mobHp}/${mobMaxHp}</div>
+    `;
+}
+
+function updateAvatars() {
+    document.getElementById('my-hp').style.width = (myHP / myMaxHP * 100) + '%';
+    document.getElementById('my-mana').style.width = (myMana / myMaxMana * 100) + '%';
+    document.getElementById('enemy-hp').style.width = (enemyHP / enemyMaxHP * 100) + '%';
+    document.getElementById('enemy-mana').style.width = (enemyMana / enemyMaxMana * 100) + '%';
+}
+
+document.getElementById('btn-end-phase').addEventListener('click', () => {
+    turnPhase++;
+    if(turnPhase > 3) {
+        turnPhase = 0;
+        turnCount++;
+        myMaxMana = Math.min(100, myMaxMana + 10);
+        myMana = myMaxMana;
+        
+        if(selectedRunes.includes("AnjoDourado")) {
+            myMana = Math.min(myMaxMana, myMana + 5);
+            myHP = Math.min(myMaxHP, myHP + 5);
+        }
+        
+        if(selectedRunes.includes("Script") && turnCount % 3 === 0) {
+            myHP = Math.min(myMaxHP, myHP + 20);
+        }
+    }
+    
+    document.getElementById('turn-indicator').textContent = phases[turnPhase] + " (Turno " + turnCount + ")";
+    updateAvatars();
 });
 
-dom.canvas.addEventListener('mousedown', e => {
-    if(!dom.canvas.classList.contains('active')) return;
-    isDrawing = true;
-    points = [];
-    const rect = dom.canvas.getBoundingClientRect();
-    points.push({x: e.clientX - rect.left, y: e.clientY - rect.top});
+const canvas = document.getElementById('gesture-canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+let strokePoints = [];
+let comboBuffer = "";
+let comboTimer = null;
+
+document.getElementById('btn-cast-gesture').addEventListener('click', () => {
+    canvas.classList.add('active');
+    ctx.clearRect(0,0, canvas.width, canvas.height);
 });
 
-dom.canvas.addEventListener('mousemove', e => {
-    if(!isDrawing) return;
-    const rect = dom.canvas.getBoundingClientRect();
-    const pt = {x: e.clientX - rect.left, y: e.clientY - rect.top};
-    points.push(pt);
-    ctx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
+function resizeCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+canvas.addEventListener('mousedown', (e) => {
+    drawing = true;
+    strokePoints = [];
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    strokePoints.push({x, y});
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = var('--blue-glow');
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if(!drawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    strokePoints.push({x, y});
+    ctx.lineTo(x, y);
     ctx.stroke();
 });
 
-dom.canvas.addEventListener('mouseup', () => {
-    if(!isDrawing) return;
-    isDrawing = false;
-    dom.canvas.classList.remove('active');
-    ctx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
-    analyzeGesture();
+canvas.addEventListener('mouseup', () => {
+    if(!drawing) return;
+    drawing = false;
+    canvas.classList.remove('active');
+    const shape = recognizeShape(strokePoints);
+    executeShapeEffect(shape);
 });
 
-function analyzeGesture() {
-    if(points.length < 10) return;
+function recognizeShape(points) {
+    if(points.length < 10) return "none";
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let start = points[0], end = points[points.length-1];
+    
     points.forEach(p => {
-        if(p.x < minX) minX = p.x;
-        if(p.x > maxX) maxX = p.x;
-        if(p.y < minY) minY = p.y;
-        if(p.y > maxY) maxY = p.y;
+        if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
+        if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
     });
-
-    const w = maxX - minX;
-    const h = maxY - minY;
-    const start = points[0];
-    const end = points[points.length-1];
-    const dx = Math.abs(start.x - end.x);
-    const dy = Math.abs(start.y - end.y);
     
-    let spell = "";
-
-    if(w < 50 && h > 100) spell = "|";
-    else if(Math.hypot(start.x - end.x, start.y - end.y) < 50 && w > 50 && h > 50) spell = "0";
-    else if(w > 100 && points.some(p => p.x > start.x + 50 && p.x > end.x + 50)) spell = ">";
-
-    if(spell) {
-        state.comboBuffer.push(spell);
-        clearTimeout(state.comboTimer);
-        state.comboTimer = setTimeout(() => { state.comboBuffer = []; updateCombo(); }, 2000);
-        updateCombo();
-        processCombo();
-    }
-}
-
-function updateCombo() {
-    dom.comboDisplay.innerText = state.comboBuffer.join(" + ");
-}
-
-function processCombo() {
-    const c = state.comboBuffer.join("");
-    let limit = currentRune === 'pintor' ? 4 : 3;
-    if(state.comboBuffer.length === limit) {
-        if(c.includes("0") && c.includes("|")) applyDamage(500);
-        else if(c.includes(">")) applyDamage(800);
-        else applyDamage(300);
-        state.comboBuffer = [];
-        updateCombo();
-    }
-}
-
-function applyDamage(dmg) {
-    if(currentRune === 'ondas' && state.hp < 400) state.enemyHp -= dmg * 1.3;
-    else state.enemyHp -= dmg;
+    let dx = maxX - minX, dy = maxY - minY;
     
-    const m = state.jungleMonsters[state.jungleIndex];
-    if(m) {
-        m.hp -= dmg;
-        if(m.hp <= 0) {
-            state.jungleIndex++;
-            state.mana += 2;
+    if (Math.hypot(start.x - end.x, start.y - end.y) < (dx + dy) * 0.2 && dx > 30 && dy > 30) return "0";
+    if (dy > dx * 2.5 && dy > 50) return "|";
+    
+    let sharp = false;
+    for(let i = 5; i < points.length - 5; i+=5) {
+        let p1 = points[i-5], p2 = points[i], p3 = points[i+5];
+        let a = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+        let b = Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2);
+        let c = Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2);
+        let val = (a+b-c)/(2*Math.sqrt(a)*Math.sqrt(b));
+        if(val >= -1 && val <= 1) {
+            let angle = Math.acos(val) * (180/Math.PI);
+            if(angle < 90 && Math.abs(p2.x - p1.x) > 10 && Math.abs(p2.x - p3.x) > 10) sharp = true;
         }
     }
-
-    if(currentRune === 'clone' && Math.random() > 0.7) {
-        state.enemyHp -= dmg; 
-    }
-
-    updateUI();
+    
+    if(sharp) return ">";
+    return "none";
 }
 
-if(currentRune === 'script') {
-    setInterval(() => {
-        if(dom.gameBoard.style.display === 'flex' && state.turnPhase === 2) {
-            applyDamage(50);
+function executeShapeEffect(shape) {
+    let dmg = 0;
+    if(shape === ">") {
+        dmg = 15;
+        document.getElementById('turn-indicator').textContent = "Corte Flamígero!";
+    } else if(shape === "|") {
+        dmg = 10;
+        document.getElementById('turn-indicator').textContent = "Pilar de Gelo!";
+    } else if(shape === "0") {
+        myHP = Math.min(myMaxHP, myHP + 20);
+        document.getElementById('turn-indicator').textContent = "Escudo Circular!";
+        updateAvatars();
+        return;
+    }
+    
+    if(dmg > 0) {
+        if(mobHp > 0) {
+            mobHp -= dmg;
+            if(mobHp <= 0) {
+                jungleIndex++;
+                spawnJungle();
+                myMaxMana += 5;
+            }
+            updateJungleUI();
+        } else {
+            takeEnemyDamage(dmg);
         }
-    }, 1000);
+    }
+}
+
+function takeEnemyDamage(amount) {
+    if(selectedRunes.includes("CloneChato") && Math.random() > 0.7) {
+        return;
+    }
+    enemyHP -= amount;
+    if(enemyHP <= 0) {
+        enemyHP = 0;
+        document.getElementById('turn-indicator').textContent = "VITÓRIA!";
+    }
+    updateAvatars();
+}
+
+function takeMyDamage(amount) {
+    if(selectedRunes.includes("OndasDoMar") && myHP < myMaxHP * 0.1) {
+        amount = amount * 0.7; 
+        document.getElementById('my-hp').style.background = '#0ac8f9';
+    } else {
+        document.getElementById('my-hp').style.background = 'var(--red-hp)';
+    }
+
+    myHP -= amount;
+    if(myHP <= 0) {
+        if(selectedRunes.includes("AteAMorte")) {
+            myHP = myMaxHP;
+            selectedRunes = selectedRunes.filter(r => r !== "AteAMorte"); 
+            document.getElementById('turn-indicator').textContent = "Até a Morte ativada!";
+        } else {
+            myHP = 0;
+            document.getElementById('turn-indicator').textContent = "DERROTA!";
+        }
+    }
+    updateAvatars();
+}
+
+window.addEventListener('keydown', (e) => {
+    if(!document.getElementById('battlefield').classList.contains('hidden') && (e.key === 'q' || e.key === 'w' || e.key === 'e' || e.key === 'Q' || e.key === 'W' || e.key === 'E')) {
+        const k = e.key.toUpperCase();
+        
+        let maxLen = selectedRunes.includes("PintorMestre") ? 4 : 3;
+        
+        comboBuffer += k;
+        if(comboBuffer.length > maxLen) {
+            comboBuffer = comboBuffer.substring(comboBuffer.length - maxLen);
+        }
+        
+        const cd = document.getElementById('combo-display');
+        cd.textContent = comboBuffer;
+        cd.style.animation = 'none';
+        void cd.offsetWidth;
+        cd.style.animation = 'fadeIn 0.2s';
+        
+        clearTimeout(comboTimer);
+        comboTimer = setTimeout(() => {
+            executeCombo(comboBuffer);
+            comboBuffer = "";
+            cd.textContent = "";
+        }, 800);
+    }
+});
+
+function executeCombo(combo) {
+    if(combo === "QW") {
+        takeEnemyDamage(20);
+        document.getElementById('turn-indicator').textContent = "Combo: Explosão Sônica (20 dmg)";
+    } else if(combo === "WE") {
+        myHP = Math.min(myMaxHP, myHP + 25);
+        document.getElementById('turn-indicator').textContent = "Combo: Cura Torrencial (+25 HP)";
+        updateAvatars();
+    } else if(combo === "QQ") {
+        takeEnemyDamage(10);
+        document.getElementById('turn-indicator').textContent = "Combo: Dardo Duplo (10 dmg)";
+    } else if(combo === "QWE") {
+        takeEnemyDamage(40);
+        document.getElementById('turn-indicator').textContent = "Combo Mestre: Destruição Absoluta (40 dmg)";
+    } else if(combo.length === 4 && selectedRunes.includes("PintorMestre")) {
+        takeEnemyDamage(80);
+        myHP = Math.min(myMaxHP, myHP + 40);
+        document.getElementById('turn-indicator').textContent = "ARTE FINAL! (80 dmg, 40 heal)";
+        updateAvatars();
+    }
+}
+
+function initGame() {
+    myHP = 100; myMaxHP = 100; myMana = 10; myMaxMana = 10;
+    enemyHP = 100; enemyMaxHP = 100; enemyMana = 10; enemyMaxMana = 10;
+    turnPhase = 0; turnCount = 1;
+    jungleIndex = 0;
+    
+    document.getElementById('player-hand').innerHTML = '';
+    for(let i=0; i<5; i++) {
+        const cardItem = items[Math.floor(Math.random() * items.length)];
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.draggable = true;
+        div.innerHTML = `
+            <div class="card-title">${cardItem.name}</div>
+            <div style="flex:1; background:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzFhMWYyZSIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjMwIiBmaWxsPSIjYzhhYTZlIiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=') center/cover;"></div>
+            <div class="card-stats">
+                <span style="color:var(--red-hp)">${cardItem.stats.AD}</span>
+                <span style="color:var(--gold-primary)">${cardItem.cost}G</span>
+                <span style="color:var(--blue-mana)">${cardItem.stats.AP}</span>
+            </div>
+        `;
+        
+        div.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', JSON.stringify(cardItem));
+            setTimeout(() => div.style.opacity = '0.5', 0);
+        });
+        div.addEventListener('dragend', () => {
+            div.style.opacity = '1';
+        });
+
+        document.getElementById('player-hand').appendChild(div);
+    }
+    
+    document.getElementById('player-slots').innerHTML = '';
+    for(let i=0; i<4; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.addEventListener('dragover', e => e.preventDefault());
+        slot.addEventListener('drop', e => {
+            e.preventDefault();
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            if(myMana >= (data.cost / 100)) {
+                myMana -= Math.floor(data.cost / 100);
+                slot.innerHTML = `
+                    <div style="font-size:0.6rem; text-align:center; color:var(--gold-primary); margin-top:5px;">${data.name}</div>
+                    <div style="text-align:center; font-size:1.5rem; margin-top:20px; color:var(--red-hp)">${data.stats.AD || data.stats.AP}</div>
+                `;
+                slot.style.border = '1px solid var(--gold-primary)';
+                takeEnemyDamage(data.stats.AD || data.stats.AP);
+                updateAvatars();
+            } else {
+                document.getElementById('turn-indicator').textContent = "Mana Insuficiente!";
+            }
+        });
+        document.getElementById('player-slots').appendChild(slot);
+    }
+    
+    spawnJungle();
+    updateAvatars();
+    document.getElementById('turn-indicator').textContent = phases[turnPhase] + " (Turno " + turnCount + ")";
 }
