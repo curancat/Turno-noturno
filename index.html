@@ -1,296 +1,218 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hwei: Maestria Arcana - Card Game</title>
-    
-    <!-- Estilos e Fontes -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templo - Legacy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <!-- Script Principal -->
-    <script src="script.js" defer></script>
 </head>
 <body>
-
-    <!-- ÁUDIO DE FUNDO -->
-    <audio id="bg-music" loop preload="auto">
-        <source src="bg-music.mp3" type="audio/mpeg">
+    <audio id="bgm" loop>
+        <source src="https://cdn.pixabay.com/audio/2022/10/25/audio_4f09d84c31.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- NOTIFICAÇÕES TOAST -->
-    <div id="game-toast"></div>
-
-    <!-- ==========================================
-         CLIENT DO JOGO (Login, Registro, Lobby)
-         ========================================== -->
-    <div id="client-viewport" class="active">
-        
-        <!-- TELA DE LOGIN -->
-        <div id="view-login" class="client-screen active">
-            <div class="modal-card panel-glass">
-                <h1 class="modal-title">Entrar no Grimório</h1>
-                <form id="form-login" class="client-form">
-                    <div class="input-group">
-                        <label for="login-email">E-mail</label>
-                        <input type="email" id="login-email" required placeholder="seu@email.com">
-                    </div>
-                    <div class="input-group">
-                        <label for="login-password">Senha</label>
-                        <input type="password" id="login-password" required placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn-primary full-width mt-20">Entrar</button>
-                    <p class="text-center mt-20">Não tem uma conta? <a href="#" id="link-to-register">Criar conta</a></p>
-                </form>
+    <div id="auth-screen" class="screen active">
+        <div class="auth-box">
+            <h1 class="game-title">TEMPLO</h1>
+            <div id="login-form">
+                <input type="email" id="login-email" placeholder="E-mail" autocomplete="off">
+                <input type="password" id="login-pass" placeholder="Senha" autocomplete="off">
+                <button id="btn-login" class="gold-btn">ENTRAR</button>
+                <span class="toggle-auth" id="to-register">Criar nova conta</span>
             </div>
-        </div>
-
-        <!-- TELA DE CRIAR CONTA -->
-        <div id="view-register" class="client-screen hidden">
-            <div class="modal-card panel-glass">
-                <h1 class="modal-title">Criar Conta</h1>
-                <form id="form-register" class="client-form">
-                    <div class="input-group">
-                        <label for="reg-username">Nome de Usuário</label>
-                        <input type="text" id="reg-username" required placeholder="Como quer ser chamado?">
-                    </div>
-                    <div class="input-group">
-                        <label for="reg-email">E-mail</label>
-                        <input type="email" id="reg-email" required placeholder="seu@email.com">
-                    </div>
-                    <div class="input-group">
-                        <label for="reg-password">Senha</label>
-                        <input type="password" id="reg-password" required placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn-primary full-width mt-20">Registrar</button>
-                    <p class="text-center mt-20">Já tem uma conta? <a href="#" id="link-to-login">Fazer Login</a></p>
-                </form>
-            </div>
-        </div>
-
-        <!-- TELA DO LOBBY -->
-        <div id="view-lobby" class="client-screen hidden">
-            <div class="lobby-layout panel-glass">
-                <header class="lobby-header">
-                    <div class="user-profile">
-                        <div class="avatar-frame player-avatar"></div>
-                        <div>
-                            <h2 id="lobby-username">Nome do Jogador</h2>
-                            <span class="status-text">Nível <span id="player-level">1</span> (XP: <span id="player-xp">0</span>/100)</span>
-                        </div>
-                    </div>
-                    <button id="btn-logout" class="btn-secondary small">Sair da Conta</button>
-                </header>
-
-                <main class="lobby-main">
-                    <div class="lobby-menu">
-                        <button id="btn-play-match" class="btn-primary btn-huge">Jogar Partida</button>
-                        <button id="btn-open-collection" class="btn-secondary">Coleção & Grimório</button>
-                        <button class="btn-secondary">Histórico</button>
-                        <button class="btn-secondary">Configurações</button>
-                    </div>
-                    
-                    <div class="lobby-news panel-glass">
-                        <h3>O Grimório Aguarda</h3>
-                        <p>Mostre do que sua arte tem a oferecer</p>
-                    </div>
-                </main>
+            <div id="register-form" style="display: none;">
+                <input type="text" id="reg-name" placeholder="Nome de Invocador" autocomplete="off">
+                <input type="email" id="reg-email" placeholder="E-mail" autocomplete="off">
+                <input type="password" id="reg-pass" placeholder="Senha" autocomplete="off">
+                <button id="btn-register" class="gold-btn">REGISTRAR</button>
+                <span class="toggle-auth" id="to-login">Voltar ao Login</span>
             </div>
         </div>
     </div>
 
-    <!-- ==========================================
-         CAMADA DE MODAIS / OVERLAYS
-         ========================================== -->
-    <div id="modal-layer">
-        
-        <!-- TELA DE SELEÇÃO DE RUNAS -->
-        <div id="rune-modal" class="modal-overlay hidden">
-            <div class="modal-card panel-glass">
-                <h1 class="modal-title">Escolha sua Runa Primária</h1>
-                <p class="modal-subtitle">Seu traço inicial definirá o ritmo da partida</p>
-                
-                <div id="rune-selection-grid" class="rune-grid">
-                    <!-- Gerado dinamicamente via JS -->
-                </div>
-                
-                <button id="btn-confirm-runes" class="btn-primary full-width mt-20">Abrirpartida</button>
+    <div id="client-screen" class="screen">
+        <header class="client-header">
+            <div class="brand">TEMPLO</div>
+            <nav class="client-nav">
+                <button class="nav-tab active" data-target="tab-jogar">JOGAR</button>
+                <button class="nav-tab" data-target="tab-social">SOCIAL</button>
+                <button class="nav-tab" data-target="tab-forja">FORJA DE BUILDS</button>
+            </nav>
+            <div class="user-info">
+                <span id="display-username"></span>
+                <button id="btn-logout" class="gold-btn small-btn">DESLOGAR</button>
             </div>
-        </div>
-
-        <!-- TELA DA LOJA DE ITENS -->
-        <div id="shop-modal" class="modal-overlay hidden">
-            <div class="modal-card shop-card panel-glass">
-                <header class="shop-header">
-                    <div>
-                        <h2>Bazar de Itens</h2>
-                        <span class="gold-display">Seu Ouro: <strong id="shop-player-gold">0</strong> 🪙</span>
-                    </div>
-                    <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja">&times;</button>
-                </header>
-
-                <nav class="shop-tabs">
-                    <button class="tab-btn active" data-rarity="all">Todos</button>
-                    <button class="tab-btn rarity-trash" data-rarity="trash">Lixo</button>
-                    <button class="tab-btn rarity-common" data-rarity="common">Comum</button>
-                    <button class="tab-btn rarity-rare" data-rarity="rare">Raro</button>
-                    <button class="tab-btn rarity-epic" data-rarity="epic">Épico</button>
-                    <button class="tab-btn rarity-legendary" data-rarity="legendary">Lendário</button>
-                </nav>
-
-                <div id="shop-items-grid" class="shop-grid"></div>
-            </div>
-        </div>
-
-        <!-- TELA DE MORTE / VITÓRIA -->
-        <div id="death-modal" class="modal-overlay hidden">
-            <div class="modal-card death-card panel-glass text-center">
-                <div class="death-banner">
-                    <h1 id="endgame-status-title">Game Over</h1>
-                    <p id="endgame-status-subtitle">sua visao se apagou.</p>
-                </div>
-
-                <div class="game-stats-summary">
-                    <div class="stat-box">
-                        <span>Turnos Jogados</span>
-                        <strong id="stat-turns">0</strong>
-                    </div>
-                    <div class="stat-box">
-                        <span>Dano Causado</span>
-                        <strong id="stat-damage">0</strong>
-                    </div>
-                    <div class="stat-box">
-                        <span>Ouro Acumulado</span>
-                        <strong id="stat-gold">0</strong>
-                    </div>
-                </div>
-
-                <button id="btn-restart" class="btn-primary full-width mt-20">Retornar ao Lobby</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==========================================
-         TABULEIRO PRINCIPAL DE JOGO
-         ========================================== -->
-    <div id="game-viewport" class="hidden">
-        
-        <!-- ZONA DO ADVERSÁRIO -->
-        <header id="enemy-zone" class="player-zone">
-            <div class="player-hud">
-                <div class="avatar-container">
-                    <div class="avatar-frame enemy-avatar"></div>
-                    <span class="player-name" id="enemy-name">Oponente Sombrio</span>
-                </div>
-                <div class="vitals">
-                    <div class="hp-bar-container">
-                        <div id="enemy-hp-bar" class="hp-bar-fill" style="width: 100%;"></div>
-                        <span id="enemy-hp-text" class="hp-text">100 / 100</span>
-                    </div>
-                    <div class="hud-sub-info">
-                        <span class="gold-text">🪙 <span id="enemy-gold">0</span></span>
-                        <div id="enemy-active-runes" class="runes-badge-container"></div>
-                    </div>
-                </div>
-            </div>
-            <div id="enemy-board-cards" class="card-field-zone"></div>
         </header>
 
-        <!-- ZONA CENTRAL: O GRIMÓRIO DE DESENHO E COMBINAÇÕES HWEI -->
-        <main id="canvas-center-zone">
-            <div class="turn-banner" id="turn-indicator">Aguardando...</div>
-
-            <div class="grimoire-container">
-                <aside class="ink-palette">
-                    <h3>Assuntos de Hwei</h3>
-                    <div class="ink-wells">
-                        <button class="ink-btn disaster-ink" data-subject="Q" title="Assunto Q: Desastre (Dano)"><span class="key-badge-ink">Q</span></button>
-                        <button class="ink-btn serenity-ink" data-subject="W" title="Assunto W: Serenidade (Suporte)"><span class="key-badge-ink">W</span></button>
-                        <button class="ink-btn torment-ink" data-subject="E" title="Assunto E: Tormento (Controle)"><span class="key-badge-ink">E</span></button>
-                        <button class="ink-btn ultimate-ink" data-subject="R" title="Assunto R: Desespero Vertiginoso"><span class="key-badge-ink">R</span></button>
+        <main class="client-content">
+            <div id="tab-jogar" class="tab-pane active">
+                <div class="play-options">
+                    <div class="play-card" id="btn-host-match">
+                        <h3>PAREAMENTO / SALA (10 JOGADORES)</h3>
                     </div>
-
-                    <div class="ink-mixer">
-                        <p>Sequência de Tintas</p>
-                        <div id="active-mixture-display" class="mixture-orb"></div>
-                        <span id="mixture-name" class="mixture-label">Selecione Assuntos </span>
+                    <div class="play-card" id="btn-solo-bot">
+                        <h3>MODO SOLO VS IA</h3>
                     </div>
-
-                    <div class="brush-controls">
-                        <label for="brush-size">Espessura Pincel</label>
-                        <input type="range" id="brush-size" min="2" max="25" value="6">
-                        <button id="btn-clear-canvas" class="btn-secondary small">Limpar Canvas</button>
+                </div>
+                <div id="room-lobby" style="display: none;">
+                    <h2>SALA DE ESPERA</h2>
+                    <div class="slots-container">
+                        <div class="team-box">
+                            <h3>ALIADOS</h3>
+                            <ul id="ally-slots">
+                                <li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li>
+                            </ul>
+                        </div>
+                        <div class="team-box">
+                            <h3>INIMIGOS</h3>
+                            <ul id="enemy-slots">
+                                <li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li><li class="slot empty">Vazio</li>
+                            </ul>
+                        </div>
                     </div>
-                </aside>
+                    <button id="btn-start-match" class="gold-btn">INICIAR PARTIDA</button>
+                </div>
+            </div>
 
-                <section class="drawing-area">
-                    <canvas id="magic-canvas" width="400" height="250"></canvas>
-                    <p class="canvas-instruction">Desenhe livremente ou combine 2-3 tintas para evocar magias específicas!</p>
-                </section>
-
-                <aside class="grimoire-actions">
-                    <button id="btn-materialize-card" class="btn-magic block-action">
-                        Materializar Magia
-                    </button>
-                    <div id="spell-prediction" class="spell-preview">
-                        <span>Magia Pronta:</span>
-                        <strong id="detected-shape">Nenhuma</strong>
+            <div id="tab-social" class="tab-pane">
+                <div class="social-container">
+                    <div class="friends-list">
+                        <h3>AMIGOS</h3>
+                        <div class="add-friend">
+                            <input type="text" id="friend-name-input" placeholder="Nome do Amigo">
+                            <button id="btn-add-friend" class="gold-btn small-btn">+</button>
+                        </div>
+                        <ul id="friends-ul"></ul>
                     </div>
-                </aside>
+                    <div class="chat-area">
+                        <h3>CHAT GLOBAL</h3>
+                        <div id="chat-messages"></div>
+                        <div class="chat-input-box">
+                            <input type="text" id="chat-input" placeholder="Mensagem...">
+                            <button id="btn-send-chat" class="gold-btn small-btn">ENVIAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-forja" class="tab-pane">
+                <div class="forja-container">
+                    <div class="forja-inputs">
+                        <h3>CALCULADORA DE ATRIBUTOS</h3>
+                        <input type="number" id="target-AP" placeholder="Alvo AP">
+                        <input type="number" id="target-AD" placeholder="Alvo AD">
+                        <input type="number" id="target-RM" placeholder="Alvo RM">
+                        <input type="number" id="target-RF" placeholder="Alvo RF">
+                        <input type="number" id="target-VM" placeholder="Alvo VM">
+                        <input type="number" id="target-MM" placeholder="Alvo MM">
+                        <button id="btn-calc-build" class="gold-btn">CALCULAR BUILD IDEAL</button>
+                    </div>
+                    <div class="forja-results">
+                        <h3>CAMINHO RECOMENDADO</h3>
+                        <ul id="build-path-result"></ul>
+                    </div>
+                </div>
             </div>
         </main>
-
-        <!-- ZONA DO JOGADOR -->
-        <footer id="player-zone" class="player-zone">
-            
-            <div id="player-board-cards" class="card-field-zone"></div>
-
-            <div id="player-hand" class="hand-container">
-                <!-- Cartas materializadas aparecerão aqui -->
-            </div>
-
-            <div class="player-hud-bottom">
-                <div class="player-hud">
-                    <div class="avatar-container">
-                        <div class="avatar-frame player-avatar"></div>
-                        <span class="player-name" id="player-name">Hwei</span>
-                    </div>
-                    <div class="vitals">
-                        <div class="hp-bar-container">
-                            <div id="player-hp-bar" class="hp-bar-fill player-hp" style="width: 100%;"></div>
-                            <span id="player-hp-text" class="hp-text">100 / 100</span>
-                        </div>
-                        <div class="hud-sub-info">
-                            <span class="gold-text">🪙 <span id="player-gold">0</span></span>
-                            <div id="player-active-runes" class="runes-badge-container"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="inventory-slots" id="player-inventory">
-                    <div class="item-slot active-slot" title="Slot Ativo 1" data-slot="0"></div>
-                    <div class="item-slot active-slot" title="Slot Ativo 2" data-slot="1"></div>
-                    <div class="item-slot passive-slot" title="Passiva 1" data-slot="2"></div>
-                    <div class="item-slot passive-slot" title="Passiva 2" data-slot="3"></div>
-                </div>
-
-                <div class="action-bar">
-                    <button id="btn-open-shop" class="btn-action">
-                        <span class="key-badge">P</span> Loja
-                    </button>
-                    <button id="btn-end-turn" class="btn-action btn-end-turn">
-                        <span class="key-badge">Espaço</span> Passar Turno
-                    </button>
-                </div>
-            </div>
-        </footer>
     </div>
 
+    <div id="rune-screen" class="screen">
+        <h2 class="rune-title">ESCOLHA SUA RUNA ATIVA</h2>
+        <div class="rune-options">
+            <div class="rune-card" data-rune="morte">
+                <h4>Até a Morte</h4>
+                <p>Renasce instantaneamente na mesa com vida cheia e anula a recompensa em gold. (CD: 10m)</p>
+            </div>
+            <div class="rune-card" data-rune="anjo">
+                <h4>Anjo Dourado</h4>
+                <p>+5% de gold obtido e +10% de regeneração de mana passiva por turno.</p>
+            </div>
+            <div class="rune-card" data-rune="ondas">
+                <h4>Ondas do Mar</h4>
+                <p>Vida < 10% gera escudo que reflete 30% de dano recebido.</p>
+            </div>
+            <div class="rune-card" data-rune="clone">
+                <h4>Clone Chato</h4>
+                <p>Invoca cópia que repete ações e absorve 100% dano. (CD: 5m)</p>
+            </div>
+            <div class="rune-card" data-rune="script">
+                <h4>Script</h4>
+                <p>Ao atingir a 4ª rodada da jungle, libera execução automática a cada 5m.</p>
+            </div>
+            <div class="rune-card" data-rune="pintor">
+                <h4>Pintor Mestre</h4>
+                <p>Destrava a habilidade de combinar mesclas triplas e quádruplas de grimórios.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="flashlight"></div>
+        <div class="game-layout">
+            <nav class="game-nav">
+                <button class="game-tab active" data-target="game-mesa">MESA</button>
+                <button class="game-tab" data-target="game-jungle">JUNGLE</button>
+                <button class="game-tab" data-target="game-shop">LOJA</button>
+            </nav>
+            
+            <div id="game-mesa" class="game-pane active">
+                <div class="enemy-area">
+                    <div class="stats-bar enemy-stats">
+                        <span id="enemy-hp">HP: 1000/1000</span>
+                    </div>
+                    <div class="card-field" id="enemy-cards"></div>
+                </div>
+                <div class="player-area">
+                    <div class="card-field" id="player-cards"></div>
+                    <div class="stats-bar player-stats">
+                        <span id="player-hp">HP: 1000/1000</span>
+                        <span id="player-mana">Mana: 500/500</span>
+                        <span id="player-gold">Gold: 0</span>
+                        <span id="player-ap">AP: 0</span>
+                        <span id="player-ad">AD: 0</span>
+                    </div>
+                    <div id="player-hand" class="hand"></div>
+                </div>
+            </div>
+
+            <div id="game-jungle" class="game-pane">
+                <div class="jungle-arena">
+                    <h2 id="jungle-monster-name">Fantasma</h2>
+                    <div class="monster-hp-bar"><div id="jungle-hp-fill"></div></div>
+                    <span id="jungle-hp-text">100/100</span>
+                    <button id="btn-attack-jungle" class="gold-btn">ATACAR MONSTRO</button>
+                </div>
+            </div>
+
+            <div id="game-shop" class="game-pane">
+                <input type="text" id="shop-search" placeholder="Pesquisar item...">
+                <div class="shop-tabs">
+                    <button class="shop-cat active" data-cat="Lixo">Lixo</button>
+                    <button class="shop-cat" data-cat="Comum">Comum</button>
+                    <button class="shop-cat" data-cat="Raro">Raro</button>
+                    <button class="shop-cat" data-cat="Épico">Épico</button>
+                    <button class="shop-cat" data-cat="Lendário">Lendário</button>
+                </div>
+                <div id="shop-items-container"></div>
+                <div id="player-inventory" class="inventory"></div>
+            </div>
+        </div>
+
+        <div id="grimoire-overlay" style="display: none;">
+            <div class="grimoire-ui">
+                <h3 id="grimoire-title"></h3>
+                <canvas id="grimoire-canvas" width="400" height="400"></canvas>
+                <div class="grimoire-hints">
+                    <p>> : Habilidade 1</p>
+                    <p>| : Habilidade 2</p>
+                    <p>0 : Habilidade 3</p>
+                </div>
+                <div id="combo-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
