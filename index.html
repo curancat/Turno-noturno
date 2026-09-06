@@ -3,181 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Templo - O Jogo</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <title>cartas contra a humanidade/title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <audio id="bg-audio" loop>
-        <source src="epic_theme.mp3" type="audio/mpeg">
-    </audio>
 
-    <div id="auth-screen" class="screen active">
-        <div class="auth-panel">
-            <h1 class="logo-title">TEMPLO</h1>
-            <div id="login-form" class="auth-form active">
-                <input type="email" id="login-email" placeholder="E-mail">
-                <input type="password" id="login-password" placeholder="Senha">
-                <button id="btn-login" class="gold-btn">Entrar</button>
-                <span class="toggle-auth" id="go-register">Criar nova conta</span>
-            </div>
-            <div id="register-form" class="auth-form">
-                <input type="text" id="reg-name" placeholder="Nome de Invocador">
-                <input type="email" id="reg-email" placeholder="E-mail">
-                <input type="password" id="reg-password" placeholder="Senha Forte">
-                <button id="btn-register" class="gold-btn">Registrar</button>
-                <span class="toggle-auth" id="go-login">Já possuo conta</span>
-            </div>
-        </div>
+    <!-- NOTIFICAÇÕES -->
+    <div id="notificacao" class="escondido"></div>
+
+    <!-- TELA 1: LOGIN -->
+    <div id="tela-login" class="tela ativa">
+        <h1>Cartas contra a Humanidade</h1>
+        <p>Digite seu apelido para entrar na sala.</p>
+        <input type="text" id="input-nome" placeholder="Seu apelido...">
+        <button onclick="entrarNoJogo()">Entrar</button>
     </div>
 
-    <div id="main-client" class="screen">
-        <header class="top-bar">
-            <div class="user-info">
-                <div class="avatar"></div>
-                <div class="details">
-                    <span id="player-name">Invocador</span>
-                    <span id="player-level">Nível 30</span>
-                </div>
-            </div>
-            <nav class="main-nav">
-                <button class="nav-btn active" data-target="tab-play">JOGAR</button>
-                <button class="nav-btn" data-target="tab-social">SOCIAL</button>
-                <button class="nav-btn" data-target="tab-forge">FORJA</button>
-                <button class="nav-btn" data-target="tab-runes">RUNAS</button>
-            </nav>
-            <div class="system-controls">
-                <button id="btn-audio" class="sys-btn">🔊</button>
-                <button id="btn-logout" class="sys-btn">⏏</button>
-            </div>
+    <!-- TELA 2: LOBBY -->
+    <div id="tela-lobby" class="tela">
+        <h1>Lobby</h1>
+        <div class="box-jogadores">
+            <h3>Jogadores Online:</h3>
+            <ul id="lista-jogadores"></ul>
+        </div>
+        <button onclick="iniciarPartida()" id="btn-iniciar" style="display:none;">Iniciar Partida</button>
+        <p id="msg-aguardando">Aguardando o host iniciar o jogo...</p>
+    </div>
+
+    <!-- TELA 3: JOGO E LOJA -->
+    <div id="tela-jogo" class="tela">
+        <header>
+            <div id="status-pontos">🏆 Pontos: <span id="meus-pontos">0</span></div>
+            <div id="status-fase">Fase: <span id="texto-fase">Aguardando...</span></div>
+            <button onclick="abrirLoja()">Loja de Itens</button>
         </header>
 
-        <main class="content-area">
-            <section id="tab-play" class="tab-pane active">
-                <div class="matchmaking-panel">
-                    <h2 class="panel-title">SALAS DE BATALHA</h2>
-                    <div class="room-list" id="room-list"></div>
-                    <button id="btn-create-room" class="gold-btn huge-btn">CRIAR SALA</button>
-                </div>
-                <div class="active-match" id="active-match">
-                    <div class="board-top">
-                        <div class="enemy-profile">
-                            <span id="enemy-name">Oponente</span>
-                            <div class="health-bar"><div class="fill enemy-hp-fill" id="enemy-hp"></div></div>
-                        </div>
-                        <div class="enemy-board" id="enemy-board"></div>
-                    </div>
-                    
-                    <div class="jungle-area" id="jungle-area">
-                        <div id="jungle-monster" class="monster-card">
-                            <span id="monster-name">Fantasma</span>
-                            <span id="monster-hp">HP: 1000</span>
-                        </div>
-                    </div>
-
-                    <div class="board-bottom">
-                        <div class="player-board" id="player-board"></div>
-                        <div class="player-hand" id="player-hand"></div>
-                        <div class="player-profile">
-                            <div class="health-bar"><div class="fill player-hp-fill" id="player-hp"></div></div>
-                            <div class="mana-bar"><div class="fill player-mana-fill" id="player-mana"></div></div>
-                            <div class="action-panel">
-                                <span class="phase-indicator" id="phase-indicator">FASE PRINCIPAL</span>
-                                <button id="btn-end-turn" class="gold-btn">Passar Turno</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <canvas id="grimoire-canvas"></canvas>
-            </section>
-
-            <section id="tab-social" class="tab-pane">
-                <div class="social-layout">
-                    <div class="friends-list">
-                        <h3 class="panel-title">AMIGOS</h3>
-                        <div class="add-friend">
-                            <input type="text" id="add-friend-input" placeholder="Nome ou UID">
-                            <button id="btn-add-friend" class="gold-btn small-btn">+</button>
-                        </div>
-                        <ul id="friends-ul"></ul>
-                    </div>
-                    <div class="chat-area">
-                        <h3 class="panel-title">CHAT GLOBAL</h3>
-                        <div class="chat-messages" id="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="chat-input" placeholder="Pressione Enter para enviar...">
-                        </div>
-                    </div>
+        <main>
+            <!-- Mesa (Carta da Rodada e Efeitos) -->
+            <section class="mesa">
+                <div id="alertas-efeitos"></div>
+                <div class="carta carta-preta" id="carta-frase-atual">
+                    Aguardando sorteio...
                 </div>
             </section>
 
-            <section id="tab-forge" class="tab-pane">
-                <div class="forge-layout">
-                    <div class="calculator-panel">
-                        <h3 class="panel-title">METAS DE ATRIBUTO</h3>
-                        <div class="stat-inputs">
-                            <label>AP: <input type="number" id="t-ap" value="0"></label>
-                            <label>AD: <input type="number" id="t-ad" value="0"></label>
-                            <label>RM: <input type="number" id="t-rm" value="0"></label>
-                            <label>RF: <input type="number" id="t-rf" value="0"></label>
-                            <label>VM: <input type="number" id="t-vm" value="0"></label>
-                            <label>MM: <input type="number" id="t-mm" value="0"></label>
-                            <label>VA: <input type="number" id="t-va" value="0"></label>
-                            <label>VP: <input type="number" id="t-vp" value="0"></label>
-                        </div>
-                        <button id="btn-calculate-build" class="gold-btn">GERAR BUILD IDEAL</button>
-                    </div>
-                    <div class="build-result" id="build-result"></div>
-                    <div class="store-catalog" id="store-catalog">
-                        <div class="store-filters">
-                            <input type="text" id="store-search" placeholder="Procurar item...">
-                            <select id="store-sort">
-                                <option value="cost-asc">Custo Menor</option>
-                                <option value="cost-desc">Custo Maior</option>
-                                <option value="alpha">A-Z</option>
-                            </select>
-                        </div>
-                        <div class="store-grid" id="store-grid"></div>
-                    </div>
-                </div>
+            <!-- Área de Votação -->
+            <section id="area-votacao" class="escondido">
+                <h2>Vote na Pior Resposta!</h2>
+                <div id="cartas-jogadas" class="flex-container"></div>
             </section>
 
-            <section id="tab-runes" class="tab-pane">
-                <div class="runes-panel">
-                    <h2 class="panel-title">SELEÇÃO DE RUNAS ATIVAS</h2>
-                    <div class="runes-grid">
-                        <div class="rune-card" data-rune="morte">
-                            <h4>Até a Morte</h4>
-                            <p>Renasce com 100% HP. CD calculado perfeitamente.</p>
-                        </div>
-                        <div class="rune-card" data-rune="anjo">
-                            <h4>Anjo Dourado</h4>
-                            <p>Injeta gold e mana no fim de cada turno.</p>
-                        </div>
-                        <div class="rune-card" data-rune="ondas">
-                            <h4>Ondas do Mar</h4>
-                            <p>HP < 10% reflete 30% do dano.</p>
-                        </div>
-                        <div class="rune-card" data-rune="clone">
-                            <h4>Clone Chato</h4>
-                            <p>Injeta entidade falsa no oponente.</p>
-                        </div>
-                        <div class="rune-card" data-rune="script">
-                            <h4>Script</h4>
-                            <p>Automação de farm por turno.</p>
-                        </div>
-                        <div class="rune-card" data-rune="pintor">
-                            <h4>Pintor Mestre</h4>
-                            <p>Permite 4 posições no buffer do grimório.</p>
-                        </div>
-                    </div>
+            <!-- Mão do Jogador -->
+            <section class="mao-jogador" id="area-mao">
+                <div class="header-mao">
+                    <h2>Sua Mão</h2>
+                    <input type="text" id="filtro-cartas" placeholder="Pesquisar cartas..." onkeyup="filtrarCartas()">
                 </div>
+                <div id="minhas-cartas" class="flex-container"></div>
             </section>
         </main>
     </div>
+
+    <!-- MODAL DA LOJA -->
+    <div id="modal-loja" class="escondido">
+        <div class="conteudo-loja">
+            <h2>Loja de Trapaças</h2>
+            <button onclick="fecharLoja()" class="btn-fechar">Fechar</button>
+            <div id="lista-itens" class="grid-itens"></div>
+        </div>
+    </div>
+
+    <!-- Firebase App e Realtime Database -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
