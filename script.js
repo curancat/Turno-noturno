@@ -1,8 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ==========================================
+// CONFIGURAÇÃO FIREBASE
+// ==========================================
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBykDF5TNKQHejUJTp-ue7s5CKfpJp1HV0",
@@ -14,395 +12,394 @@ const firebaseConfig = {
   appId: "1:142996111628:web:c3785e54588632f468c929",
   measurementId: "G-XWSF04WNVW"
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUser = null;
-let currentRune = null;
-let gameLoopInterval = null;
-let globalTurnCounter = 0;
-let phase = 0; 
-let pHP = 100, pMana = 1, eHP = 100, eMana = 1;
-let pMaxMana = 1;
-let combatLog = [];
-
-const audio = document.getElementById("bg-audio");
-const btnAudio = document.getElementById("btn-audio");
-let audioPlaying = false;
-
-btnAudio.addEventListener("click", () => {
-    if (audioPlaying) { audio.pause(); audioPlaying = false; btnAudio.textContent = "🔈"; }
-    else { audio.play(); audioPlaying = true; btnAudio.textContent = "🔊"; }
-});
-
-const goReg = document.getElementById("go-register");
-const goLog = document.getElementById("go-login");
-const loginF = document.getElementById("login-form");
-const regF = document.getElementById("register-form");
-
-goReg.addEventListener("click", () => { loginF.classList.remove("active"); regF.classList.add("active"); });
-goLog.addEventListener("click", () => { regF.classList.remove("active"); loginF.classList.add("active"); });
-
-document.getElementById("btn-login").addEventListener("click", async () => {
-    const e = document.getElementById("login-email").value;
-    const p = document.getElementById("login-password").value;
-    if(e && p.length >= 6) {
-        try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert(err.message); }
-    }
-});
-
-document.getElementById("btn-register").addEventListener("click", async () => {
-    const e = document.getElementById("reg-email").value;
-    const p = document.getElementById("reg-password").value;
-    const n = document.getElementById("reg-name").value;
-    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && p.length >= 6 && n) {
-        try {
-            const cred = await createUserWithEmailAndPassword(auth, e, p);
-            await setDoc(doc(db, "users", cred.user.uid), { name: n, level: 1, gold: 0 });
-        } catch(err) { alert(err.message); }
-    }
-});
-
-document.getElementById("btn-logout").addEventListener("click", () => {
-    signOut(auth);
-    localStorage.clear();
-});
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        const udoc = await getDoc(doc(db, "users", user.uid));
-        document.getElementById("player-name").textContent = udoc.exists() ? udoc.data().name : user.email;
-        document.getElementById("auth-screen").classList.remove("active");
-        document.getElementById("main-client").classList.add("active");
-        initSocial();
-    } else {
-        currentUser = null;
-        document.getElementById("main-client").classList.remove("active");
-        document.getElementById("auth-screen").classList.add("active");
-    }
-});
-
-document.querySelectorAll(".nav-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-pane").forEach(t => t.classList.remove("active"));
-        e.target.classList.add("active");
-        document.getElementById(e.target.dataset.target).classList.add("active");
-    });
-});
-
-document.querySelectorAll(".rune-card").forEach(c => {
-    c.addEventListener("click", (e) => {
-        document.querySelectorAll(".rune-card").forEach(x => x.classList.remove("selected"));
-        const tg = e.currentTarget;
-        tg.classList.add("selected");
-        currentRune = tg.dataset.rune;
-    });
-});
-
-const chatInput = document.getElementById("chat-input");
-const chatMessages = document.getElementById("chat-messages");
-
-function initSocial() {
-    const q = query(collection(db, "global_chat"), orderBy("timestamp", "desc"), limit(100));
-    onSnapshot(q, (snapshot) => {
-        chatMessages.innerHTML = "";
-        const msgs = [];
-        snapshot.forEach(d => msgs.unshift(d.data()));
-        msgs.forEach(m => {
-            const d = document.createElement("div");
-            d.className = "msg";
-            const dt = new Date(m.timestamp);
-            d.innerHTML = `<span class="time">[${dt.getHours()}:${dt.getMinutes()}]</span> <span class="author">${m.name}:</span> ${m.text}`;
-            chatMessages.appendChild(d);
-        });
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    });
-}
-
-chatInput.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter" && chatInput.value.trim() !== "") {
-        const txt = chatInput.value.trim();
-        chatInput.value = "";
-        await addDoc(collection(db, "global_chat"), {
-            uid: currentUser.uid,
-            name: document.getElementById("player-name").textContent,
-            text: txt,
-            timestamp: Date.now()
-        });
-    }
-});
-
-const items = [];
-const statsKeys = ['AP', 'AD', 'RM', 'RF', 'VM', 'MM', 'VA', 'VP'];
-const adjectives = ["Sombrio", "Luminoso", "Frenético", "Imóvel", "Divino", "Profano", "Rápido", "Lento", "Oculto", "Visível"];
-const nouns = ["Espada", "Escudo", "Cajado", "Tomo", "Botas", "Anel", "Colar", "Armadura", "Manto", "Adaga"];
-
-for(let i=0; i<100; i++) {
-    let st = {};
-    let tCost = 0;
-    statsKeys.forEach(k => {
-        if(Math.random() > 0.6) {
-            let val = Math.floor(Math.random() * 50) + 1;
-            st[k] = val;
-            tCost += val * 10;
-        }
-    });
-    if(Object.keys(st).length === 0) { st['AD'] = 10; tCost = 100; }
-    items.push({
-        id: i,
-        name: `${nouns[i%10]} ${adjectives[Math.floor(i/10)]} do Tier ${Math.floor(i/33)+1}`,
-        cost: tCost,
-        stats: st,
-        recipe: i > 30 ? [Math.floor(Math.random()*30), Math.floor(Math.random()*30)] : [],
-        desc: `Poder selado número ${i}`
-    });
-}
-
-const storeGrid = document.getElementById("store-grid");
-function renderStore(data) {
-    storeGrid.innerHTML = "";
-    data.forEach(it => {
-        const d = document.createElement("div");
-        d.className = "item-card";
-        let sHtml = Object.entries(it.stats).map(([k,v]) => `${k}:${v}`).join(" | ");
-        d.innerHTML = `<div class="item-name">${it.name}</div><div class="item-stats">${sHtml}</div><div class="item-cost">G$ ${it.cost}</div>`;
-        storeGrid.appendChild(d);
-    });
-}
-renderStore(items);
-
-document.getElementById("store-search").addEventListener("input", (e) => {
-    const v = e.target.value.toLowerCase();
-    renderStore(items.filter(i => i.name.toLowerCase().includes(v)));
-});
-document.getElementById("store-sort").addEventListener("change", (e) => {
-    const v = e.target.value;
-    let s = [...items];
-    if(v === "cost-asc") s.sort((a,b)=>a.cost-b.cost);
-    if(v === "cost-desc") s.sort((a,b)=>b.cost-a.cost);
-    if(v === "alpha") s.sort((a,b)=>a.name.localeCompare(b.name));
-    renderStore(s);
-});
-
-document.getElementById("btn-calculate-build").addEventListener("click", () => {
-    let target = {
-        AP: parseInt(document.getElementById("t-ap").value),
-        AD: parseInt(document.getElementById("t-ad").value),
-        RM: parseInt(document.getElementById("t-rm").value),
-        RF: parseInt(document.getElementById("t-rf").value),
-        VM: parseInt(document.getElementById("t-vm").value),
-        MM: parseInt(document.getElementById("t-mm").value),
-        VA: parseInt(document.getElementById("t-va").value),
-        VP: parseInt(document.getElementById("t-vp").value)
-    };
-    
-    let current = {AP:0, AD:0, RM:0, RF:0, VM:0, MM:0, VA:0, VP:0};
-    let build = [];
-    let pool = [...items].sort((a,b) => (Object.values(b.stats).reduce((x,y)=>x+y,0)/b.cost) - (Object.values(a.stats).reduce((x,y)=>x+y,0)/a.cost));
-    
-    for(let it of pool) {
-        let useful = false;
-        for(let k of statsKeys) {
-            if(it.stats[k] && current[k] < target[k]) useful = true;
-        }
-        if(useful && build.length < 6) {
-            build.push(it);
-            for(let k of statsKeys) if(it.stats[k]) current[k] += it.stats[k];
-        }
-    }
-    
-    const res = document.getElementById("build-result");
-    res.innerHTML = `<h4 style="color:var(--gold-bright);text-align:center;margin-bottom:10px;">BUILD GERADA</h4>`;
-    build.forEach(b => {
-        res.innerHTML += `<div style="font-size:0.8rem; margin-bottom:5px;">[${b.cost}g] ${b.name}</div>`;
-    });
-});
-
-const jMonsters = [
-    {n:"Fantasma", hp:1000, m:1.1},
-    {n:"Gordão da X9", hp:2500, m:1.25},
-    {n:"Twink", hp:4000, m:1.4},
-    {n:"Saqueleto", hp:6500, m:1.6},
-    {n:"Dragão Bafo Colgate", hp:10000, m:2.0},
-    {n:"Seu Zé", hp:25000, m:3.0}
+// ==========================================
+// DADOS DO JOGO (Expanda o quanto quiser)
+// ==========================================
+const CARTAS_FRASE = [
+    "O que arruinou meu último encontro?",
+    "___ é a pior coisa do mundo, mas eu adoro.",
+    "A nova moda entre os jovens é ___.",
+    "Por que estou chorando no chuveiro?",
+    "O ingrediente secreto da minha avó é ___.",
+    "A cura para a depressão foi descoberta: ___."
 ];
-let jIndex = 0;
-let cMonsterHp = jMonsters[0].hp;
 
-document.getElementById("btn-create-room").addEventListener("click", () => {
-    document.querySelector(".matchmaking-panel").style.display = "none";
-    document.getElementById("active-match").style.display = "flex";
-    startGame();
-});
+const CARTAS_RESPOSTA = [
+    "Um pinguim agiota.", "Comer sopa de garfo.", "Meu histórico do navegador.", 
+    "Um anão de jardim explosivo.", "Imposto de renda.", "Chororô no Twitter.", 
+    "Uma galinha com crise de identidade.", "Falar de ex no primeiro encontro.",
+    "Falta de desodorante.", "Um ataque de pânico no mercado.", "Café frio."
+];
 
-function startGame() {
-    pHP = 100; eHP = 100; pMana = 1; pMaxMana = 1; eMana = 1; globalTurnCounter = 0; phase = 0;
-    updateBars();
-    renderBoard();
-    if(currentRune === "script") setInterval(scriptRuneFarm, 10000);
-}
+const ITENS_LOJA = [
+    { id: 1, nome: "Espião", preco: 2, desc: "Espia quem jogou qual carta (Console)." },
+    { id: 2, nome: "Ditador", preco: 5, desc: "Seu voto vale 100 pontos (Vitória garantida)." },
+    { id: 3, nome: "Veto", preco: 3, desc: "Imune a itens direcionados nesta rodada." },
+    { id: 4, nome: "Sabotador", preco: 4, desc: "Escolha um jogador para descartar a mão atual." },
+    { id: 5, nome: "Mestre de Obras", preco: 2, desc: "Compra 3 cartas brancas extras agora." },
+    { id: 6, nome: "Roubo", preco: 4, desc: "Rouba 1 ponto de um jogador escolhido." },
+    { id: 7, nome: "Censura", preco: 3, desc: "Impede um jogador de jogar nesta rodada." },
+    { id: 8, nome: "Bomba Relógio", preco: 3, desc: "Força o início imediato da votação." },
+    { id: 9, nome: "Reciclagem", preco: 1, desc: "Troca toda a sua mão por novas cartas." },
+    { id: 10, nome: "Segunda Chance", preco: 2, desc: "Permite retirar a carta que você jogou da mesa." },
+    { id: 11, nome: "Voto Duplo", preco: 3, desc: "Seu voto valerá 2 pontos." },
+    { id: 12, nome: "Inversão", preco: 5, desc: "A carta com MENOS votos ganha a rodada." },
+    { id: 13, nome: "Nova Frase", preco: 2, desc: "Troca a carta preta da mesa imediatamente." },
+    { id: 14, nome: "Caos", preco: 4, desc: "Embaralha a pontuação de todos na sala." },
+    { id: 15, nome: "Anarquia", preco: 3, desc: "Zera os votos computados até agora." },
+    { id: 16, nome: "Cegueira", preco: 3, desc: "Borra as cartas na mesa, forçando voto cego." },
+    { id: 17, nome: "Investidor", preco: 2, desc: "Se você ganhar esta rodada, ganha +2 pontos." },
+    { id: 18, nome: "Silêncio", preco: 3, desc: "Bloqueia a loja para todos até a próxima rodada." },
+    { id: 19, nome: "Comunismo", preco: 5, desc: "Divide os pontos de todos igualmente." },
+    { id: 20, nome: "Limpa Trilhos", preco: 2, desc: "Reinicia a rodada inteira imediatamente." }
+];
 
-function scriptRuneFarm() {
-    if(phase === 0) pMana += 0.5; updateBars();
-}
+// ==========================================
+// VARIÁVEIS DE ESTADO DO CLIENTE
+// ==========================================
+let me = ""; 
+let host = false; 
+let minhaMao = [];
+let salaState = {}; 
+let jogadoresData = {};
+let meusEfeitos = { ditador: false, duplo: false, investidor: false };
 
-function updateBars() {
-    document.getElementById("player-hp").style.width = `${Math.max(0, pHP)}%`;
-    document.getElementById("enemy-hp").style.width = `${Math.max(0, eHP)}%`;
-    document.getElementById("player-mana").style.width = `${Math.min(100, (pMana/10)*100)}%`;
-    if(pHP < 10 && currentRune === "ondas") document.getElementById("player-hp").style.background = "#00bcd4";
-}
-
-function renderBoard() {
-    const ph = document.getElementById("player-hand");
-    ph.innerHTML = "";
-    for(let i=0; i<4; i++) {
-        let cost = Math.floor(Math.random()*3)+1;
-        let c = document.createElement("div");
-        c.className = "playing-card";
-        c.draggable = true;
-        c.innerHTML = `
-            <div class="card-cost">${cost}</div>
-            <div class="card-name">Lacaio ${i}</div>
-            <div class="card-img"></div>
-            <div class="card-stats"><span class="card-atk">⚔ ${cost*2}</span><span class="card-hp">♥ ${cost*3}</span></div>
-        `;
-        c.addEventListener("dragstart", (e) => {
-            e.dataTransfer.setData("text/plain", JSON.stringify({atk:cost*2, hp:cost*3, cost:cost}));
-        });
-        ph.appendChild(c);
-    }
-}
-
-const pb = document.getElementById("player-board");
-pb.addEventListener("dragover", (e) => e.preventDefault());
-pb.addEventListener("drop", (e) => {
-    e.preventDefault();
-    let data = JSON.parse(e.dataTransfer.getData("text/plain"));
-    if(pMana >= data.cost) {
-        pMana -= data.cost;
-        let c = document.createElement("div");
-        c.className = "playing-card";
-        c.innerHTML = `
-            <div class="card-cost">${data.cost}</div>
-            <div class="card-name">Lacaio</div>
-            <div class="card-img"></div>
-            <div class="card-stats"><span class="card-atk">⚔ ${data.atk}</span><span class="card-hp">♥ ${data.hp}</span></div>
-        `;
-        pb.appendChild(c);
-        updateBars();
-    }
-});
-
-document.getElementById("btn-end-turn").addEventListener("click", () => {
-    phase = (phase + 1) % 4;
-    const pi = document.getElementById("phase-indicator");
-    if(phase===0) { pi.textContent = "FASE DE COMPRA"; pMaxMana = Math.min(10, pMaxMana+1); pMana = pMaxMana; globalTurnCounter++; }
-    if(phase===1) pi.textContent = "FASE PRINCIPAL";
-    if(phase===2) { pi.textContent = "FASE DE COMBATE"; doCombat(); }
-    if(phase===3) { 
-        pi.textContent = "FIM DE TURNO"; 
-        if(currentRune === "anjo") { pMana++; }
-        setTimeout(()=>document.getElementById("btn-end-turn").click(), 1500);
-    }
-    updateBars();
-});
-
-function doCombat() {
-    let dmg = pb.children.length * 5;
-    if(currentRune === "clone") dmg *= 1.5;
-    takeDamage(dmg, "enemy");
-    let eDmg = Math.floor(Math.random()*15);
-    takeDamage(eDmg, "player");
-}
-
-function takeDamage(amt, target) {
-    if(target === "player") {
-        if(currentRune === "ondas" && pHP < 10) {
-            eHP -= amt * 0.3;
-        }
-        pHP -= amt;
-        if(pHP <= 0 && currentRune === "morte") { pHP = 100; currentRune = null; }
-    } else {
-        eHP -= amt;
-    }
-    updateBars();
-}
-
-const canvas = document.getElementById("grimoire-canvas");
-const ctx = canvas.getContext("2d");
-let isDrawing = false;
-let pts = [];
-let comboBuffer = [];
-let comboTimer = null;
-
-window.addEventListener("resize", () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
-canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
-window.addEventListener("keydown", (e) => {
-    const valid = ["q","w","e"];
-    if(valid.includes(e.key.toLowerCase())) {
-        canvas.style.display = "block";
-        canvas.style.pointerEvents = "auto";
-        comboBuffer.push(e.key.toLowerCase());
-        let maxL = currentRune === "pintor" ? 4 : 3;
-        if(comboBuffer.length > maxL) comboBuffer.shift();
-        clearTimeout(comboTimer);
-        comboTimer = setTimeout(() => { comboBuffer = []; canvas.style.display="none"; canvas.style.pointerEvents="none"; }, 2000);
-    }
-});
-
-canvas.addEventListener("mousedown", (e) => { isDrawing = true; pts = [{x:e.clientX, y:e.clientY}]; });
-canvas.addEventListener("mousemove", (e) => {
-    if(!isDrawing) return;
-    pts.push({x:e.clientX, y:e.clientY});
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.beginPath();
-    ctx.strokeStyle = comboBuffer[comboBuffer.length-1]==='q'?"#e74c3c":comboBuffer[comboBuffer.length-1]==='w'?"#3498db":"#9b59b6";
-    ctx.lineWidth = 5;
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
-});
-canvas.addEventListener("mouseup", () => {
-    isDrawing = false;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    analyzeGesture();
-});
-
-function analyzeGesture() {
-    if(pts.length < 10) return;
-    let minX=9999, maxX=0, minY=9999, maxY=0;
-    pts.forEach(p => {
-        if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x;
-        if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y;
-    });
-    let dx = maxX-minX; let dy = maxY-minY;
-    let dist = Math.hypot(pts[0].x-pts[pts.length-1].x, pts[0].y-pts[pts.length-1].y);
+// ==========================================
+// CORE: LOGIN E PRESENÇA (ON-DISCONNECT)
+// ==========================================
+function entrarNoJogo() {
+    me = document.getElementById('input-nome').value.trim();
+    if (!me || me.length < 3) return mostrarNotificacao("Digite um nome com pelo menos 3 letras!");
     
-    if(dx < dy * 0.2) executeSpell("|");
-    else if(dist < Math.max(dx,dy)*0.3 && dx > 50 && dy > 50) executeSpell("0");
-    else executeSpell(">");
+    db.ref('lobby').once('value', snap => {
+        let players = snap.val() || {};
+        if (players[me]) return mostrarNotificacao("Este nome já está em uso na sala!");
+        
+        // Define presenca (remove do banco se fechar a aba)
+        const meuRef = db.ref('lobby/' + me);
+        meuRef.set({ online: true, pontos: 0, censurado: false, imune: false, sabotado: false });
+        meuRef.onDisconnect().remove(); // MÁGICA: Limpa o jogador se ele sair
+
+        if (Object.keys(players).length === 0) host = true; // Primeiro a entrar vira host
+        
+        if (host) {
+            document.getElementById('btn-iniciar').style.display = 'inline-block';
+            document.getElementById('msg-aguardando').style.display = 'none';
+        }
+
+        trocarTela('tela-lobby');
+        escutarServidor();
+    });
 }
 
-function executeSpell(shape) {
-    let cb = comboBuffer.join("");
-    if(shape === "|") takeDamage(15, "enemy");
-    if(shape === "0" && cb.includes("w")) { pHP = Math.min(100, pHP+20); updateBars(); }
-    if(shape === ">" && cb === "qqq") {
-        document.getElementById("enemy-board").innerHTML = "";
-        takeDamage(30, "enemy");
+function trocarTela(id) {
+    document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+    document.getElementById(id).classList.add('ativa');
+}
+
+function mostrarNotificacao(msg) {
+    const div = document.getElementById('notificacao');
+    div.innerText = msg;
+    div.classList.remove('escondido');
+    setTimeout(() => div.classList.add('escondido'), 3000);
+}
+
+// ==========================================
+// ESCUTA ATIVA DO FIREBASE
+// ==========================================
+function escutarServidor() {
+    // 1. Escuta o Lobby e Status dos Jogadores
+    db.ref('lobby').on('value', snap => {
+        jogadoresData = snap.val() || {};
+        const lista = document.getElementById('lista-jogadores');
+        lista.innerHTML = '';
+        
+        if (!jogadoresData[me]) return; // Fui expulso ou sai
+        
+        document.getElementById('meus-pontos').innerText = jogadoresData[me].pontos;
+
+        // Trata ataques sofridos
+        if (jogadoresData[me].sabotado) {
+            mostrarNotificacao("💣 Você foi sabotado! Perdeu sua mão.");
+            minhaMao = []; renderizarMao();
+            db.ref('lobby/'+me+'/sabotado').set(false);
+        }
+
+        Object.keys(jogadoresData).forEach(nome => {
+            const isMe = nome === me ? " (Você)" : "";
+            const hostTag = (host && nome === me) ? " 👑" : "";
+            lista.innerHTML += `<li>${nome}${isMe}${hostTag} <span>${jogadoresData[nome].pontos} pts</span></li>`;
+        });
+    });
+
+    // 2. Escuta o Estado do Jogo (Fases, Cartas na Mesa)
+    db.ref('sala').on('value', snap => {
+        salaState = snap.val() || {};
+        if (salaState.fase && document.getElementById('tela-lobby').classList.contains('ativa')) {
+            trocarTela('tela-jogo');
+            comprarCartas(5);
+            renderizarLoja();
+        }
+        if (salaState.fase) atualizarInterfaceJogo();
+    });
+}
+
+// ==========================================
+// FLUXO DO JOGO
+// ==========================================
+function iniciarPartida() {
+    db.ref('sala').set({
+        fase: 'jogando',
+        cartaPreta: CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)],
+        jogadas: {},
+        votos: {},
+        efeitosGlobais: { inversao: false, cegueira: false, silencio: false }
+    });
+    // Limpa efeitos dos jogadores
+    Object.keys(jogadoresData).forEach(j => db.ref(`lobby/${j}/censurado`).set(false));
+}
+
+function atualizarInterfaceJogo() {
+    document.getElementById('carta-frase-atual').innerText = salaState.cartaPreta || "Sorteando...";
+    document.getElementById('texto-fase').innerText = salaState.fase === 'jogando' ? "Envie sua carta!" : "Votação!";
+    
+    // Avisos de Loja
+    const divEfeitos = document.getElementById('alertas-efeitos');
+    divEfeitos.innerHTML = '';
+    if(salaState.efeitosGlobais?.inversao) divEfeitos.innerHTML += "⚠️ INVERSÃO: Pior voto ganha!<br>";
+    if(salaState.efeitosGlobais?.cegueira) divEfeitos.innerHTML += "👁️ CEGUEIRA: Vote às cegas!<br>";
+    if(salaState.efeitosGlobais?.silencio) divEfeitos.innerHTML += "🤫 SILÊNCIO: Loja fechada.<br>";
+
+    // FASE 1: JOGAR CARTAS
+    if (salaState.fase === 'jogando') {
+        document.getElementById('area-votacao').classList.add('escondido');
+        document.getElementById('area-mao').classList.remove('escondido');
+        
+        const numJogadores = Object.keys(jogadoresData).length;
+        const numJogadas = Object.keys(salaState.jogadas || {}).length;
+
+        if (host && numJogadas >= numJogadores && numJogadores > 1) {
+            db.ref('sala/fase').set('votacao'); // Auto-avança
+        }
+    } 
+    // FASE 2: VOTAÇÃO
+    else if (salaState.fase === 'votacao') {
+        document.getElementById('area-mao').classList.add('escondido');
+        document.getElementById('area-votacao').classList.remove('escondido');
+        
+        const divCartas = document.getElementById('cartas-jogadas');
+        divCartas.innerHTML = '';
+        
+        Object.entries(salaState.jogadas || {}).forEach(([jogador, cartaTexto]) => {
+            const cssCego = (salaState.efeitosGlobais?.cegueira && jogador !== me) ? 'cegueira' : '';
+            divCartas.innerHTML += `
+                <div class="carta carta-branca ${cssCego}" onclick="votar('${jogador}', this)">
+                    ${cartaTexto}
+                </div>`;
+        });
+
+        const numJogadores = Object.keys(jogadoresData).length;
+        const totalVotos = Object.keys(salaState.votos || {}).length;
+        if (host && totalVotos >= numJogadores && numJogadores > 1) {
+            apurarVotos(); // Auto-avança
+        }
     }
-    if(shape === ">" && cb === "qwe" && currentRune === "pintor") {
-        document.body.style.filter = "invert(100%)";
-        setTimeout(()=>document.body.style.filter="none", 500);
-        takeDamage(50, "enemy");
+}
+
+// ==========================================
+// AÇÕES DO JOGADOR (JOGAR E VOTAR)
+// ==========================================
+function jogarCarta(texto, indexNaMao) {
+    if (salaState.fase !== 'jogando') return mostrarNotificacao("Não é hora de jogar!");
+    if (salaState.jogadas && salaState.jogadas[me]) return mostrarNotificacao("Você já jogou nesta rodada!");
+    if (jogadoresData[me].censurado) return mostrarNotificacao("🚫 Você foi censurado e não pode jogar agora.");
+
+    db.ref('sala/jogadas/' + me).set(texto);
+    minhaMao.splice(indexNaMao, 1);
+    comprarCartas(1);
+    mostrarNotificacao("Carta enviada!");
+}
+
+function votar(jogadorAlvo, elementoCard) {
+    if (salaState.fase !== 'votacao') return;
+    if (jogadorAlvo === me) return mostrarNotificacao("Não pode votar na própria carta!");
+    if (salaState.votos && salaState.votos[me]) return mostrarNotificacao("Voto já registrado!");
+    
+    let peso = 1;
+    if (meusEfeitos.ditador) { peso = 100; meusEfeitos.ditador = false; }
+    else if (meusEfeitos.duplo) { peso = 2; meusEfeitos.duplo = false; }
+
+    db.ref('sala/votos/' + me).set({ para: jogadorAlvo, peso: peso });
+    elementoCard.classList.add('selecionada');
+    mostrarNotificacao("Voto computado!");
+}
+
+function apurarVotos() {
+    let contagem = {};
+    Object.values(salaState.votos || {}).forEach(v => {
+        contagem[v.para] = (contagem[v.para] || 0) + v.peso;
+    });
+
+    let ganhador = null;
+    let maxVotos = salaState.efeitosGlobais?.inversao ? Infinity : -1;
+
+    Object.entries(contagem).forEach(([jog, qtd]) => {
+        if (salaState.efeitosGlobais?.inversao) {
+            if (qtd < maxVotos) { maxVotos = qtd; ganhador = jog; }
+        } else {
+            if (qtd > maxVotos) { maxVotos = qtd; ganhador = jog; }
+        }
+    });
+
+    if (ganhador) {
+        let premio = meusEfeitos.investidor && ganhador === me ? 3 : 1;
+        db.ref('lobby/'+ganhador+'/pontos').transaction(p => (p || 0) + premio);
+        mostrarNotificacao(`🏆 ${ganhador} ganhou a rodada com ${maxVotos} votos!`);
+    } else {
+        mostrarNotificacao("Ninguém ganhou essa rodada.");
     }
-    comboBuffer = [];
-    canvas.style.display="none"; 
-    canvas.style.pointerEvents="none";
+    
+    meusEfeitos.investidor = false;
+    db.ref('lobby/'+me+'/imune').set(false); // Reseta imunidade
+    setTimeout(() => iniciarPartida(), 5000); // Nova rodada após 5s
+}
+
+// ==========================================
+// GERENCIAMENTO DA MÃO
+// ==========================================
+function comprarCartas(qtd) {
+    for(let i=0; i<qtd; i++) {
+        minhaMao.push(CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)]);
+    }
+    renderizarMao();
+}
+
+function renderizarMao() {
+    const div = document.getElementById('minhas-cartas');
+    div.innerHTML = '';
+    minhaMao.forEach((texto, idx) => {
+        div.innerHTML += `<div class="carta carta-branca" onclick="jogarCarta('${texto}', ${idx})">${texto}</div>`;
+    });
+}
+
+function filtrarCartas() {
+    const termo = document.getElementById('filtro-cartas').value.toLowerCase();
+    document.querySelectorAll('#minhas-cartas .carta-branca').forEach(c => {
+        c.style.display = c.innerText.toLowerCase().includes(termo) ? 'flex' : 'none';
+    });
+}
+
+// ==========================================
+// LOJA E MODAIS CUSTOMIZADOS (SEM PROMPTS)
+// ==========================================
+function abrirLoja() { 
+    if(salaState.efeitosGlobais?.silencio) return mostrarNotificacao("🤫 O Silêncio está ativo! Loja fechada.");
+    document.getElementById('modal-loja').classList.remove('escondido'); 
+}
+function fecharLoja() { document.getElementById('modal-loja').classList.add('escondido'); }
+
+function renderizarLoja() {
+    const lista = document.getElementById('lista-itens');
+    lista.innerHTML = '';
+    ITENS_LOJA.forEach(item => {
+        lista.innerHTML += `
+            <div class="item-loja">
+                <div><h3>${item.nome}</h3><p>${item.desc}</p></div>
+                <button onclick="comprarItem(${item.id}, ${item.preco})">${item.preco} pts</button>
+            </div>`;
+    });
+}
+
+function comprarItem(id, preco) {
+    let ptsAtuais = jogadoresData[me].pontos;
+    if (ptsAtuais >= preco) {
+        db.ref('lobby/'+me+'/pontos').set(ptsAtuais - preco);
+        aplicarEfeito(id);
+        fecharLoja();
+    } else {
+        mostrarNotificacao("❌ Pontos insuficientes!");
+    }
+}
+
+// Cria um modal dinâmico no HTML para escolher um jogador
+function solicitarAlvo(titulo, callback) {
+    fecharLoja();
+    const modalHtml = `
+        <div id="modal-alvo" class="modal-overlay">
+            <div class="conteudo-modal" style="max-width: 400px; text-align: center;">
+                <h3>${titulo}</h3>
+                <div class="lista-alvos">
+                    ${Object.keys(jogadoresData).filter(j => j !== me).map(j => 
+                        `<button class="btn-alvo" onclick="window.escolherAlvo('${j}')">${j}</button>`
+                    ).join('')}
+                </div>
+                <button class="btn-fechar" onclick="fecharModalAlvo()">Cancelar</button>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    window.escolherAlvo = function(alvoSelecionado) {
+        fecharModalAlvo();
+        // Checa se o alvo tem o item VETO ativado
+        if(jogadoresData[alvoSelecionado].imune) {
+            mostrarNotificacao(`🛡️ O ataque falhou! ${alvoSelecionado} usou um Veto!`);
+        } else {
+            callback(alvoSelecionado);
+        }
+    };
+}
+function fecharModalAlvo() { const m = document.getElementById('modal-alvo'); if(m) m.remove(); }
+
+// ==========================================
+// EFEITOS ATIVOS DOS 20 ITENS
+// ==========================================
+function aplicarEfeito(id) {
+    switch(id) {
+        case 1: // Espião
+            console.log("ESPIÃO: ", salaState.jogadas);
+            mostrarNotificacao("🕵️ Abra o Console do Navegador (F12) para ver as cartas jogadas!"); 
+            break;
+        case 2: meusEfeitos.ditador = true; mostrarNotificacao("👑 Modo Ditador ativo!"); break;
+        case 3: db.ref('lobby/'+me+'/imune').set(true); mostrarNotificacao("🛡️ Você está imune nesta rodada."); break;
+        case 4: 
+            solicitarAlvo("Quem você quer Sabotar?", (alvo) => {
+                db.ref('lobby/'+alvo+'/sabotado').set(true);
+                mostrarNotificacao(`💣 ${alvo} foi sabotado!`);
+            }); break;
+        case 5: comprarCartas(3); mostrarNotificacao("🃏 +3 Cartas compradas!"); break;
+        case 6: 
+            solicitarAlvo("De quem você quer Roubar 1 ponto?", (alvo) => {
+                db.ref('lobby/'+alvo+'/pontos').transaction(p => (p>0 ? p-1 : 0));
+                db.ref('lobby/'+me+'/pontos').transaction(p => p+1);
+                mostrarNotificacao(`💰 Ponto roubado de ${alvo}!`);
+            }); break;
+        case 7: 
+            solicitarAlvo("Quem você quer Censurar?", (alvo) => {
+                db.ref('lobby/'+alvo+'/censurado').set(true); 
+                mostrarNotificacao(`🚫 ${alvo} censurado!`);
+            }); break;
+        case 8: db.ref('sala/fase').set('votacao'); mostrarNotificacao("⏰ Votação forçada iniciada!"); break;
+        case 9: minhaMao = []; comprarCartas(5); mostrarNotificacao("♻️ Mão totalmente renovada!"); break;
+        case 10: db.ref('sala/jogadas/'+me).remove(); mostrarNotificacao("↩️ Carta retirada. Jogue outra!"); break;
+        case 11: meusEfeitos.duplo = true; mostrarNotificacao("✌️ Voto Duplo ativado!"); break;
+        case 12: db.ref('sala/efeitosGlobais/inversao').set(true); break;
+        case 13: db.ref('sala/cartaPreta').set(CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)]); mostrarNotificacao("🔄 Frase alterada!"); break;
+        case 14: // Caos - Embaralha pontos
+            let pontosArr = Object.values(jogadoresData).map(j => j.pontos).sort(() => Math.random() - 0.5);
+            Object.keys(jogadoresData).forEach((nome, i) => db.ref('lobby/'+nome+'/pontos').set(pontosArr[i]));
+            mostrarNotificacao("🌪️ Caos instalado! Os pontos foram embaralhados."); break;
+        case 15: db.ref('sala/votos').remove(); mostrarNotificacao("🔥 Anarquia! Todos os votos zerados."); break;
+        case 16: db.ref('sala/efeitosGlobais/cegueira').set(true); break;
+        case 17: meusEfeitos.investidor = true; mostrarNotificacao("📈 Ações compradas!"); break;
+        case 18: db.ref('sala/efeitosGlobais/silencio').set(true); break;
+        case 19: // Comunismo
+            let soma = Object.values(jogadoresData).reduce((acc, j) => acc + j.pontos, 0);
+            let divisao = Math.floor(soma / Object.keys(jogadoresData).length);
+            Object.keys(jogadoresData).forEach(nome => db.ref('lobby/'+nome+'/pontos').set(divisao));
+            mostrarNotificacao("☭ Comunismo! Pontos igualados."); break;
+        case 20: iniciarPartida(); mostrarNotificacao("🚂 Limpa Trilhos! Rodada reiniciada."); break;
+    }
 }
