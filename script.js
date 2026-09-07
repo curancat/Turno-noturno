@@ -1245,9 +1245,9 @@ function processarEfeitoDoItem(identificadorDoItem) {
 }
 let cartasSelecionadasRodada = [];
 
-// Função única que lida com a seleção e já atualiza o visual automaticamente
 function clicarCartaBranca(idCarta) {
-    let textoCartaAtual = document.getElementById("carta-pergunta").innerText;
+    let elementoFrase = document.getElementById("carta-frase-atual");
+    let textoCartaAtual = elementoFrase ? elementoFrase.innerText : "";
     let lacunas = (textoCartaAtual.match(/___/g) || []).length;
     
     let limitePermitido = 1;
@@ -1269,7 +1269,6 @@ function clicarCartaBranca(idCarta) {
         }
     }
 
-    // Atualização visual integrada
     document.querySelectorAll('.carta-branca').forEach(el => {
         el.style.border = "2px solid #444";
         el.style.backgroundColor = "#2e2e2e";
@@ -1283,9 +1282,9 @@ function clicarCartaBranca(idCarta) {
     });
 }
 
-// Função única para validar e avançar o turno
 function confirmarEnvioCartas() {
-    let textoCartaAtual = document.getElementById("carta-pergunta").innerText;
+    let elementoFrase = document.getElementById("carta-frase-atual");
+    let textoCartaAtual = elementoFrase ? elementoFrase.innerText : "";
     let lacunas = (textoCartaAtual.match(/___/g) || []).length;
     
     let limitePermitido = 1;
@@ -1301,26 +1300,24 @@ function confirmarEnvioCartas() {
     }
 
     cartasSelecionadasRodada = [];
-    avancarTurno();
 }
-// Adicione esta função ao seu script para sortear uma nova carta de frase e reiniciar o tempo da rodada
-function trocarCarta() {
-    if (typeof CARTAS_RESPOSTA === 'undefined' || typeof maoJogador === 'undefined') {
-        console.error("As variáveis 'CARTAS_RESPOSTA' ou 'maoJogador' não foram encontradas.");
+
+function trocarCartaPreta() {
+    const indiceAleatorio = Math.floor(Math.random() * CARTAS_FRASE.length);
+    const novaFrase = CARTAS_FRASE[indiceAleatorio];
+    bancoDados.ref('sala/cartaPreta').set(novaFrase);
+}
+
+function trocarCartasMao() {
+    if (typeof CARTAS_RESPOSTA === 'undefined' || typeof cartasNaMao === 'undefined') {
+        console.error("As variáveis 'CARTAS_RESPOSTA' ou 'cartasNaMao' não foram encontradas.");
         return;
     }
 
-    // Substitui cada carta da mão atual por uma nova carta aleatória do deck de respostas
-    maoJogador = maoJogador.map(() => {
+    cartasNaMao = cartasNaMao.map(() => {
         return CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)];
     });
 
-    console.log("Mão de cartas brancas atualizada:", maoJogador);
-
-    // Atualiza a interface gráfica se você tiver uma função de renderização da mão
-    if (typeof renderizarMao === 'function') {
-        renderizarMao();
-    } else {
-        alert("Cartas trocadas! (Atualize a exibição visual da sua mão se necessário)");
-    }
+    atualizarExibicaoDaMao();
+    exibirNotificacao("Suas cartas brancas foram trocadas!");
 }
