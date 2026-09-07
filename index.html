@@ -3,80 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cartas contra a humanidade</title>
+    <title>Cartas Contra a Humanidade</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- NOTIFICAÇÕES -->
-    <div id="notificacao" class="escondido"></div>
+    <div id="notificacao" class="escondido">
+        <span id="texto-notificacao"></span>
+    </div>
 
-    <!-- TELA 1: LOGIN -->
     <div id="tela-login" class="tela ativa">
-        <h1>Cartas contra a Humanidade</h1>
-        <p>Digite seu apelido para entrar na sala.</p>
-        <input type="text" id="input-nome" placeholder="Seu apelido...">
-        <button onclick="entrarNoJogo()">Entrar</button>
-    </div>
-
-    <!-- TELA 2: LOBBY -->
-    <div id="tela-lobby" class="tela">
-        <h1>Lobby</h1>
-        <div class="box-jogadores">
-            <h3>Jogadores Online:</h3>
-            <ul id="lista-jogadores"></ul>
+        <div class="caixa-centralizada">
+            <h1>Cartas Contra a Humanidade</h1>
+            <p>Digite seu apelido para conectar</p>
+            <input type="text" id="input-nome" placeholder="Apelido">
+            <button onclick="entrarNoJogo()">Conectar</button>
         </div>
-        <button onclick="iniciarPartida()" id="btn-iniciar" style="display:none;">Iniciar Partida</button>
-        <p id="msg-aguardando">Aguardando o host iniciar o jogo...</p>
     </div>
 
-    <!-- TELA 3: JOGO E LOJA -->
+    <div id="tela-lobby" class="tela">
+        <div class="caixa-centralizada">
+            <h1>Lobby da Sala</h1>
+            <div class="box-jogadores">
+                <h3>Jogadores Conectados</h3>
+                <ul id="lista-jogadores"></ul>
+            </div>
+            <button onclick="iniciarPartida()" id="btn-iniciar" class="escondido">Iniciar Partida</button>
+            <p id="msg-aguardando">Aguardando o anfitrião iniciar...</p>
+        </div>
+    </div>
+
     <div id="tela-jogo" class="tela">
         <header>
-            <div id="status-pontos">🏆 Pontos: <span id="meus-pontos">0</span></div>
-            <div id="status-fase">Fase: <span id="texto-fase">Aguardando...</span></div>
-            <button onclick="abrirLoja()">Loja de Itens</button>
+            <div class="status-bloco">
+                <span class="icone">🏆</span>
+                <span>Pontos: <span id="meus-pontos">0</span></span>
+            </div>
+            <div class="status-bloco central">
+                <span id="texto-fase">Aguardando</span>
+                <span id="cronometro">00:00</span>
+            </div>
+            <button onclick="abrirLoja()">Acessar Loja</button>
         </header>
 
         <main>
-            <!-- Mesa (Carta da Rodada e Efeitos) -->
             <section class="mesa">
                 <div id="alertas-efeitos"></div>
                 <div class="carta carta-preta" id="carta-frase-atual">
-                    Aguardando sorteio...
+                    Carregando...
                 </div>
             </section>
 
-            <!-- Área de Votação -->
             <section id="area-votacao" class="escondido">
-                <h2>Vote na Pior Resposta!</h2>
+                <h2>Selecione a carta mais absurda</h2>
                 <div id="cartas-jogadas" class="flex-container"></div>
             </section>
 
-            <!-- Mão do Jogador -->
             <section class="mao-jogador" id="area-mao">
                 <div class="header-mao">
-                    <h2>Sua Mão</h2>
-                    <input type="text" id="filtro-cartas" placeholder="Pesquisar cartas..." onkeyup="filtrarCartas()">
+                    <h2>Suas Cartas</h2>
+                    <input type="text" id="filtro-cartas" placeholder="Pesquisar carta" onkeyup="filtrarCartas()">
                 </div>
                 <div id="minhas-cartas" class="flex-container"></div>
             </section>
         </main>
     </div>
 
-    <!-- MODAL DA LOJA -->
-    <div id="modal-loja" class="escondido">
-        <div class="conteudo-loja">
-            <h2>Loja de Trapaças</h2>
-            <button onclick="fecharLoja()" class="btn-fechar">Fechar</button>
+    <div id="modal-loja" class="modal-overlay escondido">
+        <div class="conteudo-modal">
+            <h2>Loja de Itens</h2>
+            <button onclick="fecharLoja()" class="btn-fechar">Voltar</button>
             <div id="lista-itens" class="grid-itens"></div>
         </div>
     </div>
 
-    <!-- Firebase App e Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    
     <script src="script.js"></script>
 </body>
 </html>
