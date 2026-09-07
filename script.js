@@ -1305,24 +1305,22 @@ function confirmarEnvioCartas() {
 }
 // Adicione esta função ao seu script para sortear uma nova carta de frase e reiniciar o tempo da rodada
 function trocarCarta() {
-    console.log("Botão de trocar carta clicado!"); // Verifica se a função foi acionada
-    
-    if (CARTAS_FRASE.length === 0) {
-        console.error("A lista CARTAS_FRASE está vazia!");
+    if (typeof CARTAS_RESPOSTA === 'undefined' || typeof maoJogador === 'undefined') {
+        console.error("As variáveis 'CARTAS_RESPOSTA' ou 'maoJogador' não foram encontradas.");
         return;
     }
 
-    const cartaSorteada = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
-    const elementoCarta = document.getElementById("carta-pergunta");
-    
-    if (elementoCarta) {
-        elementoCarta.innerText = cartaSorteada;
-        console.log("Carta trocada com sucesso para:", cartaSorteada);
-        
-        if (typeof iniciarTemporizador === 'function') {
-            iniciarTemporizador();
-        }
+    // Substitui cada carta da mão atual por uma nova carta aleatória do deck de respostas
+    maoJogador = maoJogador.map(() => {
+        return CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)];
+    });
+
+    console.log("Mão de cartas brancas atualizada:", maoJogador);
+
+    // Atualiza a interface gráfica se você tiver uma função de renderização da mão
+    if (typeof renderizarMao === 'function') {
+        renderizarMao();
     } else {
-        console.error("Erro: O elemento com id 'carta-pergunta' não foi encontrado no HTML!");
+        alert("Cartas trocadas! (Atualize a exibição visual da sua mão se necessário)");
     }
 }
