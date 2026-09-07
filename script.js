@@ -68,19 +68,7 @@ const CARTAS_FRASE = [
     "O que é que José Sarney prefere?", "O que você não espera encontrar em sua comida chinesa?",
     "Eu bebo para esquecer ___.", "Toca aqui, irmão. ___",
     "Dizem que o prato preferido de Vladmir Putin é recheado com ___.", "É verdade, eu matei ___.",
-    "Como, você pergunta? Com ___.", "Rede Vida apresenta a estória de ___.",
-    "Qual é a próxima dupla dinâmica de superherois/ajudantes?",
-    "E o Oscar de melhor ___ vai para ___.",
-    "Para o meu próximo truque eu vou tirar um ___ da minha ___.",
-    "Passo 1: ___. Passo 2: ___. Passo 3: Lucro.",
-    "Quando eu estava viajando no ácido, ___ se tornou ___.",
-    "___ é um caminho sem volta que leva a ___.",
-    "Em um mundo devastado por ___, nosso único conforto é ___.",
-    "No novo filme de M. Night Shyamalan, Bruce Willis descobre que ___ era na verdade ___ todo esse tempo.",
-    "Eu realmente nunca entendi ___ até encontrar ___.",
-    "Rede Vida apresenta ___, a estória de ___.",
-    "___ + ___ = ___.",
-    "Faça um haiku."
+    "Como, você pergunta? Com ___.", "Rede Vida apresenta a estória de ___."
 ];
 
 // BARALHO COMPLETO DE CARTAS BRANCAS (RESPOSTAS)
@@ -119,94 +107,10 @@ const CARTAS_RESPOSTA = [
     "O fruto proibido.", "Esqueleto do He-Man.", "Comida para gatos Whiskas®.", "Ser rico.",
     "Doce, doce vingança.", "Tucanos.", "Um jumento com flatulência.", "Natalie Portman.",
     "Dar uma pegadinha.", "Pilotos Kamikazes", "Sean Connery.", "A Agenda Gay.",
-    "O Retirante Nordestino.", "Um falcão de caça.", "Coroinhas.", "Jarbas do Tang.",
-    "Ficar com tanta raiva que lhe dá uma ereção.", "Amostras grátis.", "Um grande fuzuê a troco de nada.",
-    "Fazer a coisa certa.", "A Lei do Ventre Livre.", "Lactação.", "Paz mundial.", "RoboCop.",
-    "Malandragem.", "Justin Bieber.", "Oompa-Loompas.", "Um forró inapropriado.", "Puberdade.",
-    "Fantasmas.", "Uma cirurgia de implante de silicone nos seios que ficou assimétrica.",
-    "Mãos de seresteiro.", "Dar uma dedada.", "Boris Casoy prendendo o saco na porta do chuveiro.",
-    "Danoninho®.", "Brutalidade Policial.", "Joaquim Silvério dos Reis.", "Pré-adolescentes.",
-    "Tirar o escalpo.", "Segurar um risinho ao ouvir menção do Peru.", "Tuitar.",
-    "Esperar um arroto e acabar vomitando.", "Darth Vader.", "Ritalina™", "Uma punheta meia-boca.",
-    "Células-Tronco.", "Exatamente o que você esperava.", "Decote de bom-gosto.", "Sexo de Pandas.",
-    "Uma lobotomia com um picador de gelo.", "Tom Cruise.", "Herpes Labial.", "Esperma de Baleia.",
-    "Mendigos sem-teto.", "A mão-naquilo, aquilo-na-mão.", "Incesto.",
-    "O Pac-Man gozando incontrolavelmente.", "Um mímico tendo um ataque do coração.",
-    "Ted Boy Marino.", "Deus.", "Lavar bem as dobrinhas.", "Chuva dourada.", "Emoções.",
-    "Lamber a comida pra marcar como sua.", "Nova Schin.", "A Placenta.", "Combustão Humana Espontânea.",
-    "Amizade Colorida.", "Pintura com os dedos.", "Cheiro de gente velha.", "Morrer de disenteria.",
-    "Meus demônios internos.", "Uma arma de água cheia de xixi de gato.", "Hermes da Fonseca.",
-    "Dormir de conchinha.", "A erva.", "Briga de Galo.", "Fogo amigo.", "Fernando Henrique Cardoso.",
-    "Uma festa de aniversário fracassada.", "Uma mulata safada.", "Olimpíadas de matemática.",
-    "Um pônei.", "Francisco Cuoco.", "Cavalgando em direção ao Pôr do Sol.", "Um M. Night Shyamalan plot twist.",
-    "Cabelo pixaim.", "Destruição mútua assegurada.", "Pedófilos.", "Levedura.", "Roubo de Túmulos.",
-    "Comer o último bisão conhecido.", "Catapultas.", "Gente Pobre.", "Liberdade, ainda que tardia.",
-    "Xaxado.", "A Força.", "Chicoteando a bunda dela.", "Design Inteligente.", "Bucho-furado.",
-    "AIDS.", "Fotos de Seios.", "O Super Homem de Nietzche.", "Sarah Palin.", "American Gladiators.",
-    "Ficar realmente chapado.", "Cientologia.", "Inveja do penis.", "Rezar até deixar de ser gay.",
-    "Se curtir.", "Dois anões cagando em um balde.", "A KKK.", "Genghis Khan.", "Metanfetaminas.",
-    "Servidão.", "Não falar com estranhos.", "A Bop It.", "Compensação.", "Arremesso de Anão.",
-    "A carreira de ator de Shaquille O'Neal.", "Bukkake.", "Brilho do Sol e Arco-Iris.",
-    "Empinar.", "Uma vida completa de tristeza.", "Um macaco fumando charuto.", "Justiça de um Vigilante.",
-    "Racismo.", "Enchente de verão.", "O Testículo perdido de Lance Armstrong.", "Tirar um sarro.",
-    "Os terroristas.", "Britney Spears aos 55 anos.", "Atitude.", "Começar a cantar e dançar do nada.",
-    "Lepra.", "Gloryholes.", "Estar com os faróis acesos.", "Dental Dams.", "Limpeza étnica.",
-    "O coração de uma criança.", "A vagina da Raquel de Queiroz.", "Os escravos de Jó jogando caxangá.",
-    "Filhotes!", "O períneo; o meinho; a periferia do parque de diversões.", "A mão invisível.",
-    "Acordar seminu no estacionamento do Bob's.", "Ouvir atentamente.", "Esperando até o casamento.",
-    "Estupidez inconcebível.", "Euphoria™ por Calvin Klein.", "Repassar o presente.", "Auto canibalismo.",
-    "Disfunção erétil.", "Minha coleção de brinquedinhos eróticos.", "O Papa.", "Pessoas Brancas.",
-    "Tentáculo Hentai.", "Boris Casoy vomitando compulsivamente", "Muito gel de cabelo.", "Seppuku.",
-    "Dupla do mesmo sexo de patinação no gelo.", "enquanto aranhas eclodem de seu cérebro e saem por seus canais lacrimais.",
-    "Trapaceando nas Paraolimpiadas.", "Carisma.", "Keanu Reeves.", "Sean Penn.", "Nickelback.",
-    "Uma espiadinha.", "Cagando e andando. Pra sempre.", "Mestruação.", "Crianças com cancer no reto.",
-    "Uma surpresa salgadinha.", "Sul.", "A violação dos nossos mais básicos direitos.",
-    "YOU MUST CONSTRUCT ADDITIONAL PYLONS.", "Estupro em encontro.", "Ser fabuloso.", "Necrofilia.",
-    "Cavalaria.", "Órfãos adoráveis.", "Mola Maluca enrolada.", "Aquela parada que eletrocuta seu abdomen.",
-    "Centauros.", "Biscoito Passatempo.", "MechaHitler.", "O verdadeiro significado do Natal.",
-    "Expelir pedra nos rins.", "Beakman do Mundo de Beakman.", "Putas.", "Cagadas de fogo.",
-    "Estrogênio.", "Clareamento anal.", "Pessoas Negras.", "muito deficientes.", "Outro maldito filme de vampiro.",
-    "burrito de café-da-manhã.", "Michael Jackson.", "Melhorias cibernéticas.", "Caras que não ligam.",
-    "Cobertores com varíola.", "Masturbação.", "Insinuações classistas.", "Peido de buceta.",
-    "Esconder uma ereção.", "Calcinhas comestíveis.", "Viagra®.", "Sopa que está muito quente.",
-    "O Profeta Maomé (que Alá o abençoe).", "Sexo surpresa!", "Promoção da semana do Subway.",
-    "Beber sozinho.", "Mão furada.", "Multiplos ferimentos de faca.", "Se cagar todo.", "Abuso infantil.",
-    "Contas anais.", "Casualidade civil.", "Tirar de dentro.", "Robert Downey, Jr.", "Comida de cavalo.",
-    "Um chapeu realmente maneiro.", "Kim Jong-il.", "Um pentenho rebelde.", "Fraternidades judias.",
-    "Uma minoria minúscula.", "Meter na bunda.", "Dar comida a Cláudia Jimenez.", "Ensinar um robo a amar.",
-    "Uma lata de chute-no-traseiro.", "Um moinho cheio de corpos.", "Conde Chocula.", "Usar a cueca no lado B.",
-    "Raio da Morte.", "Telhado de vidro.", "Um isopor cheio de órgãos humanos.", "O sonho americano.",
-    "Barris de cerveja.", "Peido molhado.", "Volta atrás.", "Bebês mortos.", "Prepúcio.", "Solos de saxofone.",
-    "Italianos.", "Um feto.", "Atirar pra cima com um rifle enquanto cercado por porcos selvagens.",
-    "José Sarney.", "Amputados.", "Eugenia.", "Meu status de relacionamento.", "Christopher Walken.",
-    "Abelhas?", "Harry Potter erotica.", "Ensino Médio.", "Ficar Bebâdo com Cepacol.", "Nazistas.",
-    "10 gramas de heroína mexicana.", "Stephen Hawking falando palavrão.", "Pais mortos.",
-    "Permanência do objeto.", "Polegares Opositores.", "Questões do vestibular racistas.", "Bla-bla-bla.",
-    "Explosões.", "Boa noite cinderela.", "Dando 110%.", "Motoserras para mãos.", "Cheirar cola.",
-    "Minha vagina.", "Sua Alteza Real, Rainha Elizabeth II.", "Nicolas Cage.",
-    "Boris Casoy sendo perseguido por uma revoada de urubus.", "Calça de cavalgada.", "A Trilha de Lágrimas.",
-    "Concurso de Beleza Infantil.", "Repressão.", "Um assassinato cruel.", "Ser marginalizado.", "Goblins.",
-    "Minha alma.", "Sedução.", "Música New Age.", "Esperança.", "A maior confusão.", "Um complexo de édipo.",
-    "Hot Pockets®.", "Rev. Dr. Martin Luther King, Jr.", "Vikings.", "Gansos.", "Fazer bico.",
-    "Um micropenis.", "Pessoas Gostosas.", "Aquecimento Global.", "Atropelamento.", "Voto das mulheres.",
-    "Uma camisinha defeituosa.", "Você Decide.", "Crianças africanas.", "O Massacre da Candelária.",
-    "Barack Obama.", "Asiáticos que não são bom em matemática.", "Velhinhos Japoneses.", "Trocar gentilesas.",
-    "Heteronormatividade.", "Abrir o Mar Vermelho.", "Arnold Schwarzenegger.", "Boquete no carro.",
-    "Um abdômen espetacular.", "Pudim de Figo.", "Um zoológico deprimido", "Um saco de feijões mágicos.",
-    "Uma tartaruga mordendo a cabeça do seu pênis.", "Escolhas erradas.", "Uma detonação termonuclear.",
-    "Minha vida sexual.", "clitóris.", "Auschwitz.", "O Big Bang.", "Minas terrestres.",
-    "Amigos que comem todos os aperitivos.", "Bodes comendo latas.", "A Dança da Fadinha Doce.",
-    "Se masturbar em uma poça de lágrimas de crianças.", "Carne humana.", "Um tempo particular.",
-    "O Quilombo dos Palmares.", "Piadas sobre o Holocausto na hora errada.", "Mulheres em comerciais de iogurte.",
-    "Um mar de problemas.", "Estimulante masculino natural.", "Fantasias de madeireiro.",
-    "Ser um puta dum feiticeiro.", "A voz do Morgan Freeman.", "Piercing genital.", "Travestis que enganam.",
-    "Lutas de travesseiro sexys.", "Ovos.", "Vovó.", "Fricção.", "Estraga-prazeres.", "Peidando e andando.",
-    "Ser um imbecil com crianças.", "Colocar armadilhas na casa para protegê-las de ladrões.",
-    "Travesseiros Suecos.", "Morrer.", "O furacão Katrina.", "Os gays.", "A tolice dos homens.", "Homens.",
-    "Os Amish.", "Ovos de Pterodáctilo.", "Dinâmicas de grupo.", "Um tumor no cérebro.",
-    "Cartas Contra a Humanidade.", "O próprio medo.", "Lady Gaga.", "O leiteiro.", "Uma boca suja."
+    "O Retirante Nordestino.", "Um falcão de caça.", "Coroinhas.", "Jarbas do Tang."
 ];
 
+// ITENS DA LOJA
 const ITENS_LOJA = [
     { id: 1, nome: "Espião", preco: 13, desc: "Abre um modal revelando quem jogou cada carta antes da votação." },
     { id: 2, nome: "Ditador", preco: 22, desc: "Garante a vitória imediata da carta que você escolher." },
@@ -230,7 +134,7 @@ const ITENS_LOJA = [
     { id: 20, nome: "Limpa Trilhos", preco: 22, desc: "Encerra a rodada atual e inicia uma nova instantaneamente." }
 ];
 
-// VARIÁVEIS DE ESTADO DO JOGO
+// VARIÁVEIS DE ESTADO
 let nomeJogador = "";
 let codigoSala = "";
 let jogadorAnfitriao = false;
@@ -245,7 +149,7 @@ let indiceHistoriaExibida = 0;
 function exibirNotificacao(mensagem) {
     const elementoDiv = document.getElementById('notificacao');
     const elementoTexto = document.getElementById('texto-notificacao');
-    if(!elementoDiv || !elementoTexto) return;
+    if (!elementoDiv || !elementoTexto) return;
     elementoTexto.innerText = mensagem;
     elementoDiv.classList.remove('escondido');
     setTimeout(() => elementoDiv.classList.add('escondido'), 4000);
@@ -254,7 +158,7 @@ function exibirNotificacao(mensagem) {
 function alterarTela(idDaTela) {
     document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
     const alvo = document.getElementById(idDaTela);
-    if(alvo) alvo.classList.add('ativa');
+    if (alvo) alvo.classList.add('ativa');
 }
 
 window.addEventListener('beforeunload', () => {
@@ -304,13 +208,11 @@ function entrarOuCriarSala() {
                 tempoTurno: tempoConfig,
                 pontosParaVencer: pontosConfig
             });
-            document.getElementById('btn-iniciar').classList.remove('escondido');
-            document.getElementById('msg-aguardando').classList.add('escondido');
-            document.getElementById('config-painel-anfitriao')?.classList.remove('escondido');
+            document.getElementById('btn-iniciar')?.classList.remove('escondido');
+            document.getElementById('msg-aguardando')?.classList.add('escondido');
         } else {
-            document.getElementById('btn-iniciar').classList.add('escondido');
-            document.getElementById('msg-aguardando').classList.remove('escondido');
-            document.getElementById('config-painel-anfitriao')?.classList.add('escondido');
+            document.getElementById('btn-iniciar')?.classList.add('escondido');
+            document.getElementById('msg-aguardando')?.classList.remove('escondido');
         }
 
         const refJogador = refSala.child(`jogadores/${nomeJogador}`);
@@ -336,7 +238,8 @@ function iniciarEscutaDoServidor() {
 
         if (!dadosDosJogadores[nomeJogador]) return;
 
-        document.getElementById('meus-pontos').innerText = dadosDosJogadores[nomeJogador].pontos;
+        const elPontos = document.getElementById('meus-pontos');
+        if (elPontos) elPontos.innerText = dadosDosJogadores[nomeJogador].pontos || 0;
 
         if (dadosDosJogadores[nomeJogador].sabotado) {
             exibirNotificacao("Você foi alvo de sabotagem e perdeu suas cartas.");
@@ -348,7 +251,7 @@ function iniciarEscutaDoServidor() {
         Object.keys(dadosDosJogadores).forEach(nome => {
             let indicativo = nome === nomeJogador ? " (Você)" : "";
             if (jogadorAnfitriao && nome === nomeJogador) indicativo += " [Anfitrião]";
-            const pontuacao = dadosDosJogadores[nome].pontos;
+            const pontuacao = dadosDosJogadores[nome].pontos || 0;
             if (listaNaTela) {
                 listaNaTela.innerHTML += `<li>${nome}${indicativo} <span>${pontuacao} pts</span></li>`;
             }
@@ -434,20 +337,23 @@ function formatarTempo(segundos) {
 
 // ATUALIZAÇÃO DA INTERFACE / CICLO DE FASES
 function processarAtualizacaoVisualDaSala() {
-    document.getElementById('carta-frase-atual').innerText = estadoDaSala.cartaPreta || "Carregando a frase...";
+    const elCarta = document.getElementById('carta-frase-atual');
+    if (elCarta) elCarta.innerText = estadoDaSala.cartaPreta || "Carregando a frase...";
 
     const elementoRelogio = document.getElementById('cronometro');
-    elementoRelogio.innerText = formatarTempo(estadoDaSala.tempoRestante);
-    elementoRelogio.classList.toggle('urgente', estadoDaSala.tempoRestante <= 10 && estadoDaSala.tempoRestante > 0);
+    if (elementoRelogio) {
+        elementoRelogio.innerText = formatarTempo(estadoDaSala.tempoRestante || 0);
+        elementoRelogio.classList.toggle('urgente', estadoDaSala.tempoRestante <= 10 && estadoDaSala.tempoRestante > 0);
+    }
 
-    // Ocultar todas as seções antes de renderizar a fase correta
+    // Esconder seções antes de exibir a fase correspondente
     ['area-mao', 'area-votacao-cartas', 'area-criar-historia', 'area-votacao-historia', 'tela-vitoria-ranking'].forEach(id => {
         document.getElementById(id)?.classList.add('escondido');
     });
 
     if (estadoDaSala.fase === 'jogando') {
-        document.getElementById('texto-fase').innerText = "Escolha sua pior resposta";
-        document.getElementById('area-mao').classList.remove('escondido');
+        document.getElementById('texto-fase').innerText = "Escolha sua resposta";
+        document.getElementById('area-mao')?.classList.remove('escondido');
 
         const totalJogadores = Object.keys(dadosDosJogadores).length;
         const totalJogadas = Object.keys(estadoDaSala.jogadas || {}).length;
@@ -457,26 +363,29 @@ function processarAtualizacaoVisualDaSala() {
         }
 
     } else if (estadoDaSala.fase === 'votacao_cartas') {
-        document.getElementById('texto-fase').innerText = "Vote na carta mais politicamente incorreta";
-        document.getElementById('area-votacao-cartas').classList.remove('escondido');
+        document.getElementById('texto-fase').innerText = "Vote na melhor carta";
+        document.getElementById('area-votacao-cartas')?.classList.remove('escondido');
 
         const container = document.getElementById('cartas-jogadas');
-        container.innerHTML = '';
-        Object.entries(estadoDaSala.jogadas || {}).forEach(([dono, texto]) => {
-            let classeCegueira = (estadoDaSala.efeitosGlobais?.cegueira && dono !== nomeJogador) ? 'cegueira' : '';
-            container.innerHTML += `<div class="carta carta-branca ${classeCegueira}" onclick="registrarVotoCarta('${dono}', this)">${texto}</div>`;
-        });
+        if (container) {
+            container.innerHTML = '';
+            Object.entries(estadoDaSala.jogadas || {}).forEach(([dono, texto]) => {
+                let classeCegueira = (estadoDaSala.efeitosGlobais?.cegueira && dono !== nomeJogador) ? 'cegueira' : '';
+                container.innerHTML += `<div class="carta carta-branca ${classeCegueira}" onclick="registrarVotoCarta('${dono}', this)">${texto}</div>`;
+            });
+        }
 
     } else if (estadoDaSala.fase === 'historia') {
-        document.getElementById('texto-fase').innerText = "Monte uma história cancelável";
-        document.getElementById('area-criar-historia').classList.remove('escondido');
+        document.getElementById('texto-fase').innerText = "Crie uma história engraçada";
+        document.getElementById('area-criar-historia')?.classList.remove('escondido');
         
-        const promptTexto = `{agora monte uma pequena historia com: [${estadoDaSala.combinacaoGanhadora}]}`;
-        document.getElementById('prompt-historia-composta').innerText = promptTexto;
+        const promptTexto = `A combinação vencedora foi: [ ${estadoDaSala.combinacaoGanhadora || ""} ]`;
+        const elPrompt = document.getElementById('prompt-historia-composta');
+        if (elPrompt) elPrompt.innerText = promptTexto;
 
     } else if (estadoDaSala.fase === 'votacao_historia') {
-        document.getElementById('texto-fase').innerText = "Vote na história mais pesada e cancelável";
-        document.getElementById('area-votacao-historia').classList.remove('escondido');
+        document.getElementById('texto-fase').innerText = "Vote na melhor história";
+        document.getElementById('area-votacao-historia')?.classList.remove('escondido');
         renderizarCarrosselDeHistorias();
 
     } else if (estadoDaSala.fase === 'fim') {
@@ -485,7 +394,7 @@ function processarAtualizacaoVisualDaSala() {
     }
 }
 
-// JOGAR CARTAS BRANCAS
+// MANIPULAÇÃO DE CARTAS BRANCAS
 function alternarSelecaoCarta(indice) {
     if (estadoDaSala.fase !== 'jogando') return;
     let lacunas = ((estadoDaSala.cartaPreta || "").match(/___/g) || []).length || 1;
@@ -511,7 +420,7 @@ function confirmarEnvioCartas() {
         return;
     }
     if (dadosDosJogadores[nomeJogador]?.censurado) {
-        exibirNotificacao("Você foi censurado e não pode jogar.");
+        exibirNotificacao("Você foi censurado nesta rodada e não pode jogar.");
         return;
     }
 
@@ -526,11 +435,11 @@ function confirmarEnvioCartas() {
 
     bancoDados.ref(`salas/${codigoSala}/estado/jogadas/${nomeJogador}`).set(textoFinal);
 
-    cartasSelecionadasRodada.sort((a,b) => b-a).forEach(idx => cartasNaMao.splice(idx, 1));
+    cartasSelecionadasRodada.sort((a, b) => b - a).forEach(idx => cartasNaMao.splice(idx, 1));
     adicionarCartasNaMao(lacunas);
     cartasSelecionadasRodada = [];
     atualizarExibicaoDaMao();
-    exibirNotificacao("Cartas enviadas com sucesso!");
+    exibirNotificacao("Resposta enviada com sucesso!");
 }
 
 function registrarVotoCarta(jogadorAlvo, el) {
@@ -549,32 +458,50 @@ function registrarVotoCarta(jogadorAlvo, el) {
     else if (efeitosAtivos.duplo) { peso = 2; efeitosAtivos.duplo = false; }
 
     bancoDados.ref(`salas/${codigoSala}/estado/votosCartas/${nomeJogador}`).set({ para: jogadorAlvo, peso });
-    el.classList.add('selecionada');
-    exibirNotificacao("Voto registrado.");
+    
+    document.querySelectorAll('#cartas-jogadas .carta').forEach(c => c.classList.remove('selecionada'));
+    if (el) el.classList.add('selecionada');
+    exibirNotificacao("Voto computado!");
 }
 
 function executarApuracaoCartas() {
     let contagem = {};
     Object.values(estadoDaSala.votosCartas || {}).forEach(v => {
-        contagem[v.para] = (contagem[v.para] || 0) + v.peso;
+        if (v && v.para) {
+            contagem[v.para] = (contagem[v.para] || 0) + (v.peso || 1);
+        }
     });
 
     let vencedor = null;
-    let maxVotos = -1;
-    Object.entries(contagem).forEach(([dono, votos]) => {
-        if (votos > maxVotos) { maxVotos = votos; vencedor = dono; }
-    });
+    const estaInvertido = estadoDaSala.efeitosGlobais?.inversao;
+
+    if (estaInvertido) {
+        let minVotos = Infinity;
+        Object.entries(contagem).forEach(([dono, votos]) => {
+            if (votos < minVotos) { minVotos = votos; vencedor = dono; }
+        });
+    } else {
+        let maxVotos = -1;
+        Object.entries(contagem).forEach(([dono, votos]) => {
+            if (votos > maxVotos) { maxVotos = votos; vencedor = dono; }
+        });
+    }
 
     if (!vencedor) {
         const jogadas = Object.keys(estadoDaSala.jogadas || {});
-        vencedor = jogadas[Math.floor(Math.random() * jogadas.length)];
+        if (jogadas.length > 0) {
+            vencedor = jogadas[Math.floor(Math.random() * jogadas.length)];
+        }
     }
 
-    let respostaEscolhida = estadoDaSala.jogadas[vencedor] || "";
-    let combinacao = `${estadoDaSala.cartaPreta} + ${respostaEscolhida}`;
+    let respostaEscolhida = estadoDaSala.jogadas ? (estadoDaSala.jogadas[vencedor] || "") : "";
+    let combinacao = `${estadoDaSala.cartaPreta || ""} + ${respostaEscolhida}`;
 
-    // Premiar o vencedor das cartas
-    bancoDados.ref(`salas/${codigoSala}/jogadores/${vencedor}/pontos`).transaction(p => (p || 0) + 1);
+    if (vencedor) {
+        let ptsGanhos = (efeitosAtivos.investidor && vencedor === nomeJogador) ? 2 : 1;
+        efeitosAtivos.investidor = false;
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${vencedor}/pontos`).transaction(p => (p || 0) + ptsGanhos);
+    }
 
     bancoDados.ref(`salas/${codigoSala}/estado`).update({
         combinacaoGanhadora: combinacao,
@@ -583,20 +510,20 @@ function executarApuracaoCartas() {
     });
 }
 
-// FASE DE CRIAÇÃO E VOTACAO DA HISTÓRIA
+// FASE DE HISTÓRIA
 function enviarHistoriaCancelavel() {
     const inputHistoria = document.getElementById('input-historia-texto');
     if (!inputHistoria) return;
     
     const texto = inputHistoria.value.trim();
     if (texto.length < 10) {
-        exibirNotificacao("Escreva uma história um pouco mais elaborada!");
+        exibirNotificacao("Escreva uma história um pouco mais longa!");
         return;
     }
 
     bancoDados.ref(`salas/${codigoSala}/estado/historias/${nomeJogador}`).set(texto);
     inputHistoria.value = "";
-    exibirNotificacao("Sua história cancelável foi enviada para a mesa!");
+    exibirNotificacao("Sua história foi enviada!");
 }
 
 function renderizarCarrosselDeHistorias() {
@@ -606,7 +533,7 @@ function renderizarCarrosselDeHistorias() {
     if (!container) return;
 
     if (listaHistorias.length === 0) {
-        container.innerHTML = "<p>Ninguém enviou uma história nesta rodada...</p>";
+        container.innerHTML = "<p>Nenhum jogador enviou história nesta rodada...</p>";
         return;
     }
 
@@ -619,11 +546,11 @@ function renderizarCarrosselDeHistorias() {
         <div class="card-historia">
             <h4>História ${indiceHistoriaExibida + 1} de ${listaHistorias.length}</h4>
             <p class="conteudo-historia">"${textoHistoria}"</p>
-            <button onclick="registrarVotoHistoria('${autor}')" class="btn-votar-historia">Votar nesta história</button>
+            <button onclick="registrarVotoHistoria('${autor}')">Votar nesta história</button>
         </div>
         <div class="navegacao-carrossel">
-            <button onclick="mudarHistoriaExibida(-1)">❮ Anterior</button>
-            <button onclick="mudarHistoriaExibida(1)">Próxima ❯</button>
+            <button onclick="mudarHistoriaExibida(-1)" class="btn-secundario">❮ Anterior</button>
+            <button onclick="mudarHistoriaExibida(1)" class="btn-secundario">Próxima ❯</button>
         </div>
     `;
 }
@@ -641,13 +568,13 @@ function registrarVotoHistoria(autorAlvo) {
     }
 
     bancoDados.ref(`salas/${codigoSala}/estado/votosHistorias/${nomeJogador}`).set(autorAlvo);
-    exibirNotificacao("Voto computado para a história!");
+    exibirNotificacao("Voto registrado na história!");
 }
 
 function executarApuracaoHistoria() {
     let contagem = {};
     Object.values(estadoDaSala.votosHistorias || {}).forEach(autor => {
-        contagem[autor] = (contagem[autor] || 0) + 1;
+        if (autor) contagem[autor] = (contagem[autor] || 0) + 1;
     });
 
     let autorVencedor = null;
@@ -658,10 +585,8 @@ function executarApuracaoHistoria() {
 
     if (autorVencedor) {
         bancoDados.ref(`salas/${codigoSala}/jogadores/${autorVencedor}/pontos`).transaction(p => (p || 0) + 2);
-        exibirNotificacao(`A história de ${autorVencedor} foi eleita a mais cancelável e ganhou +2 pontos!`);
     }
 
-    // Verificar se algum jogador atingiu o limite de pontos configurado
     bancoDados.ref(`salas/${codigoSala}`).once('value').then(snap => {
         const valSala = snap.val() || {};
         const limiteVitoria = valSala.config?.pontosParaVencer || 5;
@@ -669,26 +594,31 @@ function executarApuracaoHistoria() {
 
         let jogoAcabou = false;
         Object.values(jogadores).forEach(j => {
-            if (j.pontos >= limiteVitoria) jogoAcabou = true;
+            if ((j.pontos || 0) >= limiteVitoria) jogoAcabou = true;
         });
 
         if (jogoAcabou) {
             bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('fim');
         } else {
-            setTimeout(() => { if (jogadorAnfitriao) iniciarPartida(); }, 5000);
+            if (jogadorAnfitriao) {
+                setTimeout(() => { iniciarPartida(); }, 4000);
+            }
         }
     });
 }
 
-// TELA DE VITÓRIA E RANKING
+// RANKING E FINAL DE JOGO
 function exibirRankingEVitoria() {
     const container = document.getElementById('ranking-final-lista');
     if (!container) return;
 
-    let jogadoresOrdenados = Object.entries(dadosDosJogadores).sort((a, b) => b[1].pontos - a[1].pontos);
+    let jogadoresOrdenados = Object.entries(dadosDosJogadores).sort((a, b) => (b[1].pontos || 0) - (a[1].pontos || 0));
     let vencedor = jogadoresOrdenados[0];
 
-    document.getElementById('nome-vencedor-destaque').innerText = `🏆 Vencedor Supremo: ${vencedor ? vencedor[0] : "Ninguém"}`;
+    const elVencedor = document.getElementById('nome-vencedor-destaque');
+    if (elVencedor) {
+        elVencedor.innerText = `🏆 Vencedor: ${vencedor ? vencedor[0] : "Ninguém"}`;
+    }
 
     container.innerHTML = '';
     jogadoresOrdenados.forEach(([nome, dados], index) => {
@@ -696,7 +626,7 @@ function exibirRankingEVitoria() {
             <div class="linha-ranking">
                 <span class="posicao">#${index + 1}</span>
                 <span class="nome">${nome}</span>
-                <span class="pontos">${dados.pontos} Pts</span>
+                <span class="pontos">${dados.pontos || 0} Pts</span>
             </div>
         `;
     });
@@ -708,7 +638,7 @@ function reiniciarPartidaLobby() {
     alterarTela('tela-lobby');
 }
 
-// GERENCIAMENTO DA MÃO DE CARTAS E LOJA
+// MANIPULAÇÃO DA MÃO E FILTROS
 function adicionarCartasNaMao(quantidade) {
     for (let i = 0; i < quantidade; i++) {
         cartasNaMao.push(CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)]);
@@ -731,8 +661,42 @@ function atualizarExibicaoDaMao() {
         let lacunas = ((estadoDaSala.cartaPreta || "").match(/___/g) || []).length || 1;
         btnConfirmar.classList.toggle('escondido', cartasSelecionadasRodada.length !== lacunas);
     }
+
+    filtrarCartas();
 }
 
+function filtrarCartas() {
+    const input = document.getElementById('filtro-cartas');
+    if (!input) return;
+    const termo = input.value.toLowerCase().trim();
+    const elementosCartas = document.querySelectorAll('#minhas-cartas .carta');
+
+    elementosCartas.forEach((el, index) => {
+        const texto = (cartasNaMao[index] || "").toLowerCase();
+        if (texto.includes(termo)) {
+            el.style.display = "flex";
+        } else {
+            el.style.display = "none";
+        }
+    });
+}
+
+function trocarCartasMao() {
+    if (cartasSelecionadasRodada.length === 0) {
+        exibirNotificacao("Selecione pelo menos uma carta da sua mão para trocar.");
+        return;
+    }
+
+    cartasSelecionadasRodada.forEach(indice => {
+        cartasNaMao[indice] = CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)];
+    });
+
+    cartasSelecionadasRodada = [];
+    atualizarExibicaoDaMao();
+    exibirNotificacao("Cartas trocadas!");
+}
+
+// LOJA E PROCESSAMENTO DE ITENS
 function abrirLoja() {
     if (estadoDaSala.efeitosGlobais?.silencio) {
         exibirNotificacao("A loja está bloqueada nesta rodada.");
@@ -766,40 +730,121 @@ function comprarItemDaLoja(idItem, preco) {
         processarEfeitoDoItem(idItem);
         fecharLoja();
     } else {
-        exibirNotificacao("Pontos insuficientes.");
+        exibirNotificacao("Pontos insuficientes para comprar este item.");
     }
+}
+
+function selecionarAlvoModal(titulo, callback) {
+    const outros = Object.keys(dadosDosJogadores).filter(n => n !== nomeJogador);
+    if (outros.length === 0) {
+        exibirNotificacao("Não há outros jogadores na sala.");
+        return;
+    }
+
+    let html = `<div class="lista-alvos">`;
+    outros.forEach(nome => {
+        html += `<button class="btn-alvo" onclick="executarAcaoAlvo('${nome}')">${nome}</button>`;
+    });
+    html += `</div>`;
+
+    window.executarAcaoAlvo = function(alvo) {
+        fecharModalGenerico();
+        callback(alvo);
+    };
+
+    exibirModalGenerico(titulo, html);
 }
 
 function processarEfeitoDoItem(idItem) {
     if (idItem === 1) {
         let conteudo = "";
         Object.entries(estadoDaSala.jogadas || {}).forEach(([dono, texto]) => conteudo += `<p><strong>${dono}:</strong> ${texto}</p>`);
-        exibirModalGenerico("Espionagem", conteudo || "Nenhuma jogada ainda.");
+        exibirModalGenerico("Espionagem de Cartas", conteudo || "Nenhuma jogada realizada ainda.");
     } else if (idItem === 2) {
-        efeitosAtivos.ditador = true; exibirNotificacao("Modo Ditador ativado.");
+        efeitosAtivos.ditador = true;
+        exibirNotificacao("Modo Ditador ativado!");
     } else if (idItem === 3) {
-        bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/imune`).set(true); exibirNotificacao("Imunidade ativada.");
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/imune`).set(true);
+        exibirNotificacao("Você está imune nesta rodada.");
+    } else if (idItem === 4) {
+        selecionarAlvoModal("Escolha quem deseja sabotar", alvo => {
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${alvo}/sabotado`).set(true);
+            exibirNotificacao(`Você destruiu as cartas de ${alvo}!`);
+        });
     } else if (idItem === 5) {
         adicionarCartasNaMao(3);
+        exibirNotificacao("3 cartas novas foram adicionadas à sua mão!");
+    } else if (idItem === 6) {
+        selecionarAlvoModal("Escolha de quem roubar 1 ponto", alvo => {
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${alvo}/pontos`).transaction(p => Math.max(0, (p || 0) - 1));
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/pontos`).transaction(p => (p || 0) + 1);
+            exibirNotificacao(`Você roubou 1 ponto de ${alvo}!`);
+        });
+    } else if (idItem === 7) {
+        selecionarAlvoModal("Escolha quem deseja censurar", alvo => {
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${alvo}/censurado`).set(true);
+            exibirNotificacao(`${alvo} foi censurado nesta rodada!`);
+        });
     } else if (idItem === 8) {
         bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(5);
+        exibirNotificacao("Bomba Relógio ativada: resta 5 segundos!");
     } else if (idItem === 9) {
-        cartasNaMao = []; adicionarCartasNaMao(5);
+        cartasNaMao = [];
+        adicionarCartasNaMao(5);
+        exibirNotificacao("Suas cartas foram substituídas.");
+    } else if (idItem === 10) {
+        bancoDados.ref(`salas/${codigoSala}/estado/jogadas/${nomeJogador}`).remove();
+        exibirNotificacao("Sua carta foi removida da mesa. Você pode escolher outra!");
     } else if (idItem === 11) {
         efeitosAtivos.duplo = true;
+        exibirNotificacao("Seu voto valerá por dois!");
+    } else if (idItem === 12) {
+        bancoDados.ref(`salas/${codigoSala}/estado/efeitosGlobais/inversao`).set(true);
+        exibirNotificacao("A regra foi invertida: a carta com MENOS votos vencerá!");
     } else if (idItem === 13) {
         const nova = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
         bancoDados.ref(`salas/${codigoSala}/estado/cartaPreta`).set(nova);
+        exibirNotificacao("Uma nova frase preta foi sorteada!");
+    } else if (idItem === 14) {
+        Object.keys(dadosDosJogadores).forEach(nome => {
+            const randPts = Math.floor(Math.random() * 8);
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${nome}/pontos`).set(randPts);
+        });
+        exibirNotificacao("O Caos se instalou! As pontuações foram reordenadas.");
+    } else if (idItem === 15) {
+        bancoDados.ref(`salas/${codigoSala}/estado/votosCartas`).set({});
+        bancoDados.ref(`salas/${codigoSala}/estado/votosHistorias`).set({});
+        exibirNotificacao("Anarquia! Todos os votos foram zerados.");
+    } else if (idItem === 16) {
+        bancoDados.ref(`salas/${codigoSala}/estado/efeitosGlobais/cegueira`).set(true);
+        exibirNotificacao("Cegueira ativada para seus oponentes!");
+    } else if (idItem === 17) {
+        efeitosAtivos.investidor = true;
+        exibirNotificacao("Efeito Investidor ativado: Ponto duplo se você ganhar!");
+    } else if (idItem === 18) {
+        bancoDados.ref(`salas/${codigoSala}/estado/efeitosGlobais/silencio`).set(true);
+        exibirNotificacao("A loja foi silenciada e bloqueada para todos!");
+    } else if (idItem === 19) {
+        let total = 0;
+        const nomes = Object.keys(dadosDosJogadores);
+        nomes.forEach(n => total += (dadosDosJogadores[n].pontos || 0));
+        const media = Math.floor(total / (nomes.length || 1));
+        nomes.forEach(n => bancoDados.ref(`salas/${codigoSala}/jogadores/${n}/pontos`).set(media));
+        exibirNotificacao("Comunismo aplicado! Pontos redistribuídos igualmente.");
+    } else if (idItem === 20) {
+        if (jogadorAnfitriao) iniciarPartida();
+        exibirNotificacao("A rodada atual foi limpa e reiniciada!");
     }
 }
 
 function exibirModalGenerico(titulo, texto) {
+    fecharModalGenerico();
     const modal = `
         <div id="modal-generico" class="modal-overlay">
             <div class="conteudo-modal">
-                <h3>${titulo}</h3>
+                <h2>${titulo}</h2>
                 <div>${texto}</div>
-                <button onclick="fecharModalGenerico()">Fechar</button>
+                <button onclick="fecharModalGenerico()" style="margin-top: 20px;">Fechar</button>
             </div>
         </div>`;
     document.body.insertAdjacentHTML('beforeend', modal);
@@ -807,19 +852,4 @@ function exibirModalGenerico(titulo, texto) {
 
 function fecharModalGenerico() {
     document.getElementById('modal-generico')?.remove();
-}
-function trocarCartasMao() {
-    if (cartasSelecionadasRodada.length === 0) {
-        exibirNotificacao("Selecione pelo menos uma carta da sua mão para trocar.");
-        return;
-    }
-
-    cartasSelecionadasRodada.forEach(indice => {
-        const novaCarta = CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)];
-        cartasNaMao[indice] = novaCarta;
-    });
-
-    cartasSelecionadasRodada = [];
-    atualizarExibicaoDaMao();
-    exibirNotificacao("Cartas trocadas com sucesso!");
 }
