@@ -1306,10 +1306,16 @@ function confirmarEnvioCartas() {
 // Adicione esta função ao seu script para sortear uma nova carta de frase e reiniciar o tempo da rodada
 function trocarCarta() {
     const cartaSorteada = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
-    document.getElementById("carta-pergunta").innerText = cartaSorteada;
+    const elementoCarta = document.getElementById("carta-pergunta");
     
-    // Reseta o temporizador para dar o tempo completo com a nova carta
-    if (typeof iniciarTemporizador === 'function') {
-        iniciarTemporizador();
+    if (elementoCarta) {
+        elementoCarta.innerText = cartaSorteada;
+        
+        // Reseta o temporizador para dar o tempo completo com a nova carta
+        if (typeof iniciarTemporizador === 'function') {
+            iniciarTemporizador();
+        }
+    } else {
+        console.warn("O elemento 'carta-pergunta' não foi encontrado na tela ativa.");
     }
 }
