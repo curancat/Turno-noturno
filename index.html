@@ -8,25 +8,31 @@
 </head>
 <body>
 
+    <!-- Notificações Flutuantes -->
     <div id="notificacao" class="escondido">
         <span id="texto-notificacao"></span>
     </div>
-<div id="tela-login" class="tela ativa">
-    <div class="caixa-centralizada">
-        <h1>Cartas Contra a Humanidade</h1>
-        <p>Preencha os dados para conectar</p>
-        
-        <input type="text" id="input-nome" placeholder="Seu Apelido">
-        <input type="text" id="input-sala" placeholder="Código da Sala">
-        
-        <!-- Configurações do Anfitrião -->
-        <input type="number" id="input-tempo" placeholder="Tempo de turno (ex: 60)">
-        <input type="number" id="input-pontos-vitoria" placeholder="Pontos para vencer (ex: 5)">
-        
-        <button onclick="entrarOuCriarSala()">Conectar</button>
-    </div>
-</div>
 
+    <!-- TELA DE LOGIN E CONEXÃO -->
+    <div id="tela-login" class="tela ativa">
+        <div class="caixa-centralizada">
+            <h1>Cartas Contra a Humanidade</h1>
+            <p>Preencha os dados para se conectar</p>
+            
+            <input type="text" id="input-nome" placeholder="Seu Apelido">
+            <input type="text" id="input-sala" placeholder="Código da Sala">
+            
+            <div id="config-painel-anfitriao">
+                <p class="subtitulo-config">Configurações da Sala (se for Anfitrião):</p>
+                <input type="number" id="input-tempo" placeholder="Tempo por turno em seg (padrão: 60)">
+                <input type="number" id="input-pontos-vitoria" placeholder="Pontos para vencer (padrão: 5)">
+            </div>
+            
+            <button onclick="entrarOuCriarSala()">Conectar / Criar Sala</button>
+        </div>
+    </div>
+
+    <!-- TELA DE LOBBY DE ESPERA -->
     <div id="tela-lobby" class="tela">
         <div class="caixa-centralizada">
             <h1>Lobby da Sala</h1>
@@ -35,10 +41,11 @@
                 <ul id="lista-jogadores"></ul>
             </div>
             <button onclick="iniciarPartida()" id="btn-iniciar" class="escondido">Iniciar Partida</button>
-            <p id="msg-aguardando">Aguardando o anfitrião iniciar...</p>
+            <p id="msg-aguardando">Aguardando o anfitrião iniciar o jogo...</p>
         </div>
     </div>
 
+    <!-- TELA PRINCIPAL DO JOGO -->
     <div id="tela-jogo" class="tela">
         <header>
             <div class="status-bloco">
@@ -53,38 +60,69 @@
         </header>
 
         <main>
+            <!-- Mesa de Frases e Ações Gerais -->
             <section class="mesa">
                 <div id="alertas-efeitos"></div>
                 <div class="carta carta-preta" id="carta-frase-atual">
-                    Carregando...
+                    Carregando a frase...
                 </div>
-                <!-- Adicione este botão logo abaixo da caixa de pergunta no seu HTML (#jogo-tela) -->
-            <button onclick="trocarCartasMao()" style="background-color: #555; margin-top: 10px;">Trocar Carta</button>
+                <button onclick="trocarCartasMao()" class="btn-secundario">Trocar Carta Selecionada</button>
             </section>
         
-            <section id="area-votacao" class="escondido">
-                <h2>Selecione a carta mais absurda</h2>
+            <!-- FASE 1: Votação de Cartas Resposta -->
+            <section id="area-votacao-cartas" class="escondido">
+                <h2>Selecione a resposta mais absurda e engraçada</h2>
                 <div id="cartas-jogadas" class="flex-container"></div>
             </section>
 
+            <!-- FASE 2: Criação de História Cancelável -->
+            <section id="area-criar-historia" class="escondido">
+                <h2>Monte uma história cancelável</h2>
+                <div id="prompt-historia-composta" class="box-prompt-historia"></div>
+                <textarea id="input-historia-texto" rows="4" placeholder="Escreva aqui sua história politicamente incorreta..."></textarea>
+                <button onclick="enviarHistoriaCancelavel()">Enviar História</button>
+            </section>
+
+            <!-- FASE 3: Votação no Carrossel de Histórias -->
+            <section id="area-votacao-historia" class="escondido">
+                <h2>Vote na história mais pesada</h2>
+                <div id="carrossel-historias"></div>
+            </section>
+
+            <!-- Mão de Cartas do Jogador -->
             <section class="mao-jogador" id="area-mao">
                 <div class="header-mao">
                     <h2>Suas Cartas</h2>
-                    <input type="text" id="filtro-cartas" placeholder="Pesquisar carta" onkeyup="filtrarCartas()">
+                    <input type="text" id="filtro-cartas" placeholder="Pesquisar carta..." onkeyup="filtrarCartas()">
                 </div>
                 <div id="minhas-cartas" class="flex-container"></div>
+                <div class="caixa-confirmar">
+                    <button id="btn-confirmar" class="escondido" onclick="confirmarEnvioCartas()">Confirmar Envio</button>
+                </div>
             </section>
         </main>
     </div>
 
+    <!-- TELA DE RANKING E VITÓRIA FINAL -->
+    <div id="tela-vitoria-ranking" class="tela">
+        <div class="caixa-centralizada ranking-container">
+            <h1>Fim de Jogo!</h1>
+            <h2 id="nome-vencedor-destaque"></h2>
+            <div id="ranking-final-lista" class="lista-ranking-final"></div>
+            <button onclick="reiniciarPartidaLobby()" id="btn-reiniciar-lobby">Voltar ao Lobby</button>
+        </div>
+    </div>
+
+    <!-- MODAL DA LOJA DE ITENS -->
     <div id="modal-loja" class="modal-overlay escondido">
         <div class="conteudo-modal">
-            <h2>Loja de Itens</h2>
-            <button onclick="fecharLoja()" class="btn-fechar">Voltar</button>
+            <h2>Loja de Itens Especial</h2>
+            <button onclick="fecharLoja()" class="btn-fechar">Fechar</button>
             <div id="lista-itens" class="grid-itens"></div>
         </div>
     </div>
 
+    <!-- Scripts do Firebase e do Jogo -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="script.js"></script>
