@@ -808,3 +808,18 @@ function exibirModalGenerico(titulo, texto) {
 function fecharModalGenerico() {
     document.getElementById('modal-generico')?.remove();
 }
+function trocarCartasMao() {
+    if (cartasSelecionadasRodada.length === 0) {
+        exibirNotificacao("Selecione pelo menos uma carta da sua mão para trocar.");
+        return;
+    }
+
+    cartasSelecionadasRodada.forEach(indice => {
+        const novaCarta = CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)];
+        cartasNaMao[indice] = novaCarta;
+    });
+
+    cartasSelecionadasRodada = [];
+    atualizarExibicaoDaMao();
+    exibirNotificacao("Cartas trocadas com sucesso!");
+}
