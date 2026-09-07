@@ -1305,17 +1305,24 @@ function confirmarEnvioCartas() {
 }
 // Adicione esta função ao seu script para sortear uma nova carta de frase e reiniciar o tempo da rodada
 function trocarCarta() {
+    console.log("Botão de trocar carta clicado!"); // Verifica se a função foi acionada
+    
+    if (CARTAS_FRASE.length === 0) {
+        console.error("A lista CARTAS_FRASE está vazia!");
+        return;
+    }
+
     const cartaSorteada = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
     const elementoCarta = document.getElementById("carta-pergunta");
     
     if (elementoCarta) {
         elementoCarta.innerText = cartaSorteada;
+        console.log("Carta trocada com sucesso para:", cartaSorteada);
         
-        // Reseta o temporizador para dar o tempo completo com a nova carta
         if (typeof iniciarTemporizador === 'function') {
             iniciarTemporizador();
         }
     } else {
-        console.warn("O elemento 'carta-pergunta' não foi encontrado na tela ativa.");
+        console.error("Erro: O elemento com id 'carta-pergunta' não foi encontrado no HTML!");
     }
 }
