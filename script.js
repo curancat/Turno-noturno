@@ -285,11 +285,39 @@ function iniciarLoopTemporalDoAnfitriao() {
     if (loopDoAnfitriao !== null) clearInterval(loopDoAnfitriao);
 
     loopDoAnfitriao = setInterval(() => {
-        if (estadoDaSala.tempoRestante > 0) {
+        let todosTerminaram = false;
+        
+        // Conta apenas os jogadores que não estão censurados na rodada
+        const jogadoresAtivos = Object.values(dadosDosJogadores || {}).filter(j => !j.censurado).length;
+
+        // Verifica se todos os jogadores ativos já concluíram a ação da fase
+        if (jogadoresAtivos > 0) {
+            if (estadoDaSala.fase === 'jogando') {
+                const jogadas = Object.keys(estadoDaSala.jogadas || {}).length;
+                if (jogadas >= jogadoresAtivos) todosTerminaram = true;
+                
+            } else if (estadoDaSala.fase === 'votacao_cartas') {
+                const votos = Object.keys(estadoDaSala.votosCartas || {}).length;
+                // Exige pelo menos 2 jogadores para haver votação válida
+                if (votos >= jogadoresAtivos && jogadoresAtivos > 1) todosTerminaram = true;
+                
+            } else if (estadoDaSala.fase === 'historia') {
+                const historias = Object.keys(estadoDaSala.historias || {}).length;
+                if (historias >= jogadoresAtivos) todosTerminaram = true;
+                
+            } else if (estadoDaSala.fase === 'votacao_historia') {
+                const votosHist = Object.keys(estadoDaSala.votosHistorias || {}).length;
+                if (votosHist >= jogadoresAtivos && jogadoresAtivos > 1) todosTerminaram = true;
+            }
+        }
+
+        // Decrementa o tempo normalmente se ainda faltar alguém
+        if (!todosTerminaram && estadoDaSala.tempoRestante > 0) {
             bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(estadoDaSala.tempoRestante - 1);
         }
 
-        if (estadoDaSala.tempoRestante === 0) {
+        // Se todos terminaram OU o tempo esgotou, avança para a próxima fase imediatamente
+        if (estadoDaSala.tempoRestante === 0 || todosTerminaram) {
             if (estadoDaSala.fase === 'jogando') {
                 bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('votacao_cartas');
                 bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(30);
@@ -304,7 +332,6 @@ function iniciarLoopTemporalDoAnfitriao() {
         }
     }, 1000);
 }
-
 function iniciarPartida() {
     bancoDados.ref(`salas/${codigoSala}/config`).once('value').then(snapConfig => {
         const config = snapConfig.val() || { tempoTurno: 60 };
@@ -354,13 +381,6 @@ function processarAtualizacaoVisualDaSala() {
     if (estadoDaSala.fase === 'jogando') {
         document.getElementById('texto-fase').innerText = "Escolha sua resposta";
         document.getElementById('area-mao')?.classList.remove('escondido');
-
-        const totalJogadores = Object.keys(dadosDosJogadores).length;
-        const totalJogadas = Object.keys(estadoDaSala.jogadas || {}).length;
-        if (jogadorAnfitriao && totalJogadas >= totalJogadores && totalJogadores > 1) {
-            bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('votacao_cartas');
-            bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(30);
-        }
 
     } else if (estadoDaSala.fase === 'votacao_cartas') {
         document.getElementById('texto-fase').innerText = "Vote na melhor carta";
