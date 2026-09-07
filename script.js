@@ -1254,3 +1254,40 @@ function processarEfeitoDoItem(identificadorDoItem) {
         exibirNotificacao("Os trilhos foram limpos. A rodada será reiniciada imediatamente.");
     }
 }
+// Adicione esta função ao final do seu script para detectar e gerenciar cartas que exigem múltiplas escolhas (Pick 2 / Pick 3)
+function obterQuantidadeNecessaria(textoCarta) {
+    // Conta quantas lacunas (___) a frase possui
+    let lacunas = (textoCarta.match(/___/g) || []).length;
+    
+    // Verifica se há marcação explícita ou símbolos matemáticos/múltiplas lacunas
+    if (textoCarta.includes("PICK 3") || textoCarta.includes("+")) {
+        return 3;
+    } else if (textoCarta.includes("PICK 2") || lacunas > 1) {
+        return lacunas > 1 ? lacunas : 2;
+    }
+    
+    return 1; // Padrão para cartas normais
+}
+
+// Função auxiliar para controlar a seleção em ordem (a ordem importa para Pick 2/3)
+let cartasSelecionadasRodada = [];
+
+function lidarComSelecaoCarta(idCarta, textoCartaAtual) {
+    let limitePermitido = obterQuantidadeNecessaria(textoCartaAtual);
+    
+    // Se a carta já foi selecionada, removemos (permite trocar)
+    let index = cartasSelecionadasRodada.indexOf(idCarta);
+    if (index > -1) {
+        cartasSelecionadasRodada.splice(index, 1);
+        console.log("Carta removida. Seleção atual:", cartasSelecionadasRodada);
+        return;
+    }
+    
+    // Se ainda não atingiu o limite, adiciona respeitando a ordem de escolha
+    if (cartasSelecionadasRodada.length < limitePermitido) {
+        cartasSelecionadasRodada.push(idCarta);
+        console.log("Carta adicionada. Seleção atual:", cartasSelecionadasRodada);
+    } else {
+        alert(`Esta carta exige exatamente ${limitePermitido} escolhas! Desmarque alguma antes.`);
+    }
+}
