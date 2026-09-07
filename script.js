@@ -87,6 +87,13 @@ function alterarTela(idDaTela) {
     document.getElementById(idDaTela).classList.add('ativa');
 }
 
+// Limpa o usuário anterior ao carregar a página para evitar travar
+window.addEventListener('beforeunload', function() {
+    if (nomeJogador) {
+        bancoDados.ref('lobby/' + nomeJogador).remove();
+    }
+});
+
 function entrarNoJogo() {
     const campoDeTexto = document.getElementById('input-nome');
     nomeJogador = campoDeTexto.value.trim();
@@ -100,8 +107,15 @@ function entrarNoJogo() {
         const jogadoresAtuais = snapshot.val() || {};
         
         if (jogadoresAtuais[nomeJogador]) {
-            exibirNotificacao("Este apelido já está sendo usado.");
+            exibirNotificacao("Este apelido já está em uso na sala.");
             return;
+        }
+        
+        const quantidadeDeJogadores = Object.keys(jogadoresAtuais).length;
+        if (quantidadeDeJogadores === 0) {
+            jogadorAnfitriao = true;
+        } else {
+            jogadorAnfitriao = false;
         }
         
         const referenciaJogador = bancoDados.ref('lobby/' + nomeJogador);
@@ -115,21 +129,18 @@ function entrarNoJogo() {
         
         referenciaJogador.onDisconnect().remove();
         
-        const quantidadeDeJogadores = Object.keys(jogadoresAtuais).length;
-        if (quantidadeDeJogadores === 0) {
-            jogadorAnfitriao = true;
-        }
-        
         if (jogadorAnfitriao === true) {
             document.getElementById('btn-iniciar').classList.remove('escondido');
             document.getElementById('msg-aguardando').classList.add('escondido');
+        } else {
+            document.getElementById('btn-iniciar').classList.add('escondido');
+            document.getElementById('msg-aguardando').classList.remove('escondido');
         }
         
         alterarTela('tela-lobby');
         iniciarEscutaDoServidor();
     });
 }
-
 function iniciarEscutaDoServidor() {
     bancoDados.ref('lobby').on('value', function(snapshot) {
         dadosDosJogadores = snapshot.val() || {};
