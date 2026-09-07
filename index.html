@@ -11,15 +11,21 @@
     <div id="notificacao" class="escondido">
         <span id="texto-notificacao"></span>
     </div>
-
-    <div id="tela-login" class="tela ativa">
-        <div class="caixa-centralizada">
-            <h1>Cartas Contra a Humanidade</h1>
-            <p>Digite seu apelido para conectar</p>
-            <input type="text" id="input-nome" placeholder="Apelido">
-            <button onclick="entrarOuCriarSala()">Conectar</button>
-        </div>
+<div id="tela-login" class="tela ativa">
+    <div class="caixa-centralizada">
+        <h1>Cartas Contra a Humanidade</h1>
+        <p>Preencha os dados para conectar</p>
+        
+        <input type="text" id="input-nome" placeholder="Seu Apelido">
+        <input type="text" id="input-sala" placeholder="Código da Sala">
+        
+        <!-- Configurações do Anfitrião -->
+        <input type="number" id="input-tempo" placeholder="Tempo de turno (ex: 60)">
+        <input type="number" id="input-pontos-vitoria" placeholder="Pontos para vencer (ex: 5)">
+        
+        <button onclick="entrarOuCriarSala()">Conectar</button>
     </div>
+</div>
 
     <div id="tela-lobby" class="tela">
         <div class="caixa-centralizada">
