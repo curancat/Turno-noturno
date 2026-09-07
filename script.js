@@ -1255,39 +1255,52 @@ function processarEfeitoDoItem(identificadorDoItem) {
     }
 }
 // Adicione esta função ao final do seu script para detectar e gerenciar cartas que exigem múltiplas escolhas (Pick 2 / Pick 3)
+let cartasSelecionadasRodada = [];
+
 function obterQuantidadeNecessaria(textoCarta) {
-    // Conta quantas lacunas (___) a frase possui
     let lacunas = (textoCarta.match(/___/g) || []).length;
-    
-    // Verifica se há marcação explícita ou símbolos matemáticos/múltiplas lacunas
     if (textoCarta.includes("PICK 3") || textoCarta.includes("+")) {
         return 3;
     } else if (textoCarta.includes("PICK 2") || lacunas > 1) {
         return lacunas > 1 ? lacunas : 2;
     }
-    
-    return 1; // Padrão para cartas normais
+    return 1;
 }
 
-// Função auxiliar para controlar a seleção em ordem (a ordem importa para Pick 2/3)
-let cartasSelecionadasRodada = [];
+function selecionarCartaBranca(idCarta, textoCartaAtual) {
+    let limitePermitido = obterQuantidadeNecessaria(textoCartaAtual);
+    let index = cartasSelecionadasRodada.indexOf(idCarta);
+    
+    if (index > -1) {
+        // Se a carta já estiver selecionada, removemos da lista (permite trocar de ideia)
+        cartasSelecionadasRodada.splice(index, 1);
+    } else {
+        // Se ainda não atingiu o limite, adiciona
+        if (cartasSelecionadasRodada.length < limitePermitido) {
+            cartasSelecionadasRodada.push(idCarta);
+        } else {
+            alert(`Você só pode selecionar até ${limitePermitido} cartas para esta rodada.`);
+            return;
+        }
+    }
+    atualizarVisualSelecao();
+}
 
-function lidarComSelecaoCarta(idCarta, textoCartaAtual) {
+function enviarCartasRodada(textoCartaAtual) {
     let limitePermitido = obterQuantidadeNecessaria(textoCartaAtual);
     
-    // Se a carta já foi selecionada, removemos (permite trocar)
-    let index = cartasSelecionadasRodada.indexOf(idCarta);
-    if (index > -1) {
-        cartasSelecionadasRodada.splice(index, 1);
-        console.log("Carta removida. Seleção atual:", cartasSelecionadasRodada);
+    if (cartasSelecionadasRodada.length < limitePermitido) {
+        alert(`Atenção: Esta carta exige a escolha de ${limitePermitido} cartas! Você selecionou apenas ${cartasSelecionadasRodada.length}.`);
         return;
     }
     
-    // Se ainda não atingiu o limite, adiciona respeitando a ordem de escolha
-    if (cartasSelecionadasRodada.length < limitePermitido) {
-        cartasSelecionadasRodada.push(idCarta);
-        console.log("Carta adicionada. Seleção atual:", cartasSelecionadasRodada);
-    } else {
-        alert(`Esta carta exige exatamente ${limitePermitido} escolhas! Desmarque alguma antes.`);
-    }
+    // Armazena as cartas escolhidas e limpa o array para a próxima rodada
+    let cartasEnviadas = [...cartasSelecionadasRodada];
+    cartasSelecionadasRodada = [];
+    avancarTurno();
+}
+
+function atualizarVisualSelecao() {
+    // Insira aqui a manipulação visual do DOM para destacar as cartas selecionadas (ex: mudar a cor de fundo)
+    console.log("Cartas selecionadas atualmente:", cartasSelecionadasRodada);
 }
