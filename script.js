@@ -1,10 +1,14 @@
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
-    projectId: "SEU_PROJETO"
+  apiKey: "AIzaSyBykDF5TNKQHejUJTp-ue7s5CKfpJp1HV0",
+  authDomain: "mestre-471a0.firebaseapp.com",
+  databaseURL: "https://mestre-471a0-default-rtdb.firebaseio.com",
+  projectId: "mestre-471a0",
+  storageBucket: "mestre-471a0.firebasestorage.app",
+  messagingSenderId: "142996111628",
+  appId: "1:142996111628:web:c3785e54588632f468c929",
+  measurementId: "G-XWSF04WNVW"
 };
-
 firebase.initializeApp(firebaseConfig);
 const bancoDados = firebase.database();
 
