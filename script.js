@@ -96,20 +96,9 @@ const CARTAS_FRASE = [
     "Eu bebo para esquecer ___.",
     "Toca aqui, irmão. ___",
     "Dizem que o prato preferido de Vladmir Putin é recheado com ___.",
-    "Qual é a próxima dupla dinâmica de super-heróis/ajudantes?",
     "É verdade, eu matei ___.",
     "Como, você pergunta? Com ___.",
-    "E o Oscar de melhor ___ vai para ___.",
-    "Para o meu próximo truque eu vou tirar um ___ da minha ___.",
-    "Passo 1: ___ / Passo 2: ___ / Passo 3: Lucro.",
-    "Quando eu estava viajando no ácido, ___ se tornou ___.",
-    "___ é um caminho sem volta que leva a ___.",
-    "Em um mundo devastado por ___, nosso único conforto é ___.",
-    "No novo filme de M. Night Shyamalan, Bruce Willis descobre que ___ era na verdade ___ todo esse tempo.",
-    "Eu realmente nunca entendi ___ até encontrar ___.",
-    "Rede Vida apresenta a estória de ___.",
-    "___ + ___ = ___",
-    "Faça um haiku."
+    "Rede Vida apresenta a estória de ___."
 ];
 const CARTAS_RESPOSTA = [
     "Uma maldição cigana.",
@@ -1313,4 +1302,14 @@ function confirmarEnvioCartas() {
 
     cartasSelecionadasRodada = [];
     avancarTurno();
+}
+// Adicione esta função ao seu script para sortear uma nova carta de frase e reiniciar o tempo da rodada
+function trocarCarta() {
+    const cartaSorteada = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
+    document.getElementById("carta-pergunta").innerText = cartaSorteada;
+    
+    // Reseta o temporizador para dar o tempo completo com a nova carta
+    if (typeof iniciarTemporizador === 'function') {
+        iniciarTemporizador();
+    }
 }
