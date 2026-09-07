@@ -1,4 +1,4 @@
-// For Firebase JS SDK v7.20.0 and later
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBykDF5TNKQHejUJTp-ue7s5CKfpJp1HV0",
   authDomain: "mestre-471a0.firebaseapp.com",
@@ -13,6 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const bancoDados = firebase.database();
 
+// BARALHO COMPLETO DE CARTAS PRETAS (FRASES)
 const CARTAS_FRASE = [
     "O que arruinou meu último encontro?", "___ é a pior coisa do mundo, mas eu adoro.", 
     "A nova moda entre os jovens é ___.", "Por que estou chorando no chuveiro?",
@@ -67,9 +68,22 @@ const CARTAS_FRASE = [
     "O que é que José Sarney prefere?", "O que você não espera encontrar em sua comida chinesa?",
     "Eu bebo para esquecer ___.", "Toca aqui, irmão. ___",
     "Dizem que o prato preferido de Vladmir Putin é recheado com ___.", "É verdade, eu matei ___.",
-    "Como, você pergunta? Com ___.", "Rede Vida apresenta a estória de ___."
+    "Como, você pergunta? Com ___.", "Rede Vida apresenta a estória de ___.",
+    "Qual é a próxima dupla dinâmica de superherois/ajudantes?",
+    "E o Oscar de melhor ___ vai para ___.",
+    "Para o meu próximo truque eu vou tirar um ___ da minha ___.",
+    "Passo 1: ___. Passo 2: ___. Passo 3: Lucro.",
+    "Quando eu estava viajando no ácido, ___ se tornou ___.",
+    "___ é um caminho sem volta que leva a ___.",
+    "Em um mundo devastado por ___, nosso único conforto é ___.",
+    "No novo filme de M. Night Shyamalan, Bruce Willis descobre que ___ era na verdade ___ todo esse tempo.",
+    "Eu realmente nunca entendi ___ até encontrar ___.",
+    "Rede Vida apresenta ___, a estória de ___.",
+    "___ + ___ = ___.",
+    "Faça um haiku."
 ];
 
+// BARALHO COMPLETO DE CARTAS BRANCAS (RESPOSTAS)
 const CARTAS_RESPOSTA = [
     "Uma maldição cigana.", "Um momento de silêncio.", "Uma festa onde só tem macho.",
     "Um policial honesto sem nada a perder.", "A Fome.", "Uma bacteria comedora de carne.",
@@ -216,14 +230,17 @@ const ITENS_LOJA = [
     { id: 20, nome: "Limpa Trilhos", preco: 22, desc: "Encerra a rodada atual e inicia uma nova instantaneamente." }
 ];
 
+// VARIÁVEIS DE ESTADO DO JOGO
 let nomeJogador = "";
+let codigoSala = "";
 let jogadorAnfitriao = false;
 let cartasNaMao = [];
-let cartasSelecionadasRodada = []; // Controle de cartas clicadas
+let cartasSelecionadasRodada = [];
 let estadoDaSala = {};
 let dadosDosJogadores = {};
 let efeitosAtivos = { ditador: false, duplo: false, investidor: false };
 let loopDoAnfitriao = null;
+let indiceHistoriaExibida = 0;
 
 function exibirNotificacao(mensagem) {
     const elementoDiv = document.getElementById('notificacao');
@@ -231,115 +248,127 @@ function exibirNotificacao(mensagem) {
     if(!elementoDiv || !elementoTexto) return;
     elementoTexto.innerText = mensagem;
     elementoDiv.classList.remove('escondido');
-    setTimeout(function() {
-        elementoDiv.classList.add('escondido');
-    }, 4000);
+    setTimeout(() => elementoDiv.classList.add('escondido'), 4000);
 }
 
 function alterarTela(idDaTela) {
-    const todasAsTelas = document.querySelectorAll('.tela');
-    for (let index = 0; index < todasAsTelas.length; index++) {
-        todasAsTelas[index].classList.remove('ativa');
-    }
+    document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
     const alvo = document.getElementById(idDaTela);
     if(alvo) alvo.classList.add('ativa');
 }
 
-window.addEventListener('beforeunload', function() {
-    if (nomeJogador) {
-        bancoDados.ref('lobby/' + nomeJogador).remove();
+window.addEventListener('beforeunload', () => {
+    if (nomeJogador && codigoSala) {
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}`).remove();
     }
 });
 
-function entrarNoJogo() {
-    const campoDeTexto = document.getElementById('input-nome');
-    if(!campoDeTexto) return;
-    
-    nomeJogador = campoDeTexto.value.trim();
+// CRIAÇÃO E ENTRADA EM SALAS PERSONALIZADAS
+function entrarOuCriarSala() {
+    const inputNome = document.getElementById('input-nome');
+    const inputSala = document.getElementById('input-sala');
+    const inputTempo = document.getElementById('input-tempo');
+    const inputPontosVitoria = document.getElementById('input-pontos-vitoria');
+
+    if (!inputNome || !inputSala) return;
+
+    nomeJogador = inputNome.value.trim();
+    codigoSala = inputSala.value.trim().toUpperCase();
+    const tempoConfig = parseInt(inputTempo?.value) || 60;
+    const pontosConfig = parseInt(inputPontosVitoria?.value) || 5;
+
     if (nomeJogador.length < 3) {
-        exibirNotificacao("O apelido precisa ter no mínimo três letras.");
+        exibirNotificacao("O apelido precisa ter no mínimo 3 letras.");
         return;
     }
-    
-    bancoDados.ref('lobby').once('value').then(function(snapshot) {
-        const jogadoresAtuais = snapshot.val() || {};
-        
+    if (codigoSala.length < 3) {
+        exibirNotificacao("O código da sala precisa ter no mínimo 3 caracteres.");
+        return;
+    }
+
+    const refSala = bancoDados.ref(`salas/${codigoSala}`);
+    refSala.once('value').then(snapshot => {
+        const salaExiste = snapshot.exists();
+        const dadosSala = snapshot.val() || {};
+        const jogadoresAtuais = dadosSala.jogadores || {};
+
         if (jogadoresAtuais[nomeJogador]) {
-            exibirNotificacao("Este apelido já está em uso na sala.");
+            exibirNotificacao("Este apelido já está em uso nesta sala.");
             return;
         }
-        
-        jogadorAnfitriao = Object.keys(jogadoresAtuais).length === 0;
-        
-        const referenciaJogador = bancoDados.ref('lobby/' + nomeJogador);
-        referenciaJogador.set({
+
+        jogadorAnfitriao = !salaExiste || Object.keys(jogadoresAtuais).length === 0;
+
+        if (jogadorAnfitriao) {
+            refSala.child('config').set({
+                tempoTurno: tempoConfig,
+                pontosParaVencer: pontosConfig
+            });
+            document.getElementById('btn-iniciar').classList.remove('escondido');
+            document.getElementById('msg-aguardando').classList.add('escondido');
+            document.getElementById('config-painel-anfitriao')?.classList.remove('escondido');
+        } else {
+            document.getElementById('btn-iniciar').classList.add('escondido');
+            document.getElementById('msg-aguardando').classList.remove('escondido');
+            document.getElementById('config-painel-anfitriao')?.classList.add('escondido');
+        }
+
+        const refJogador = refSala.child(`jogadores/${nomeJogador}`);
+        refJogador.set({
             online: true,
             pontos: 0,
             censurado: false,
             imune: false,
             sabotado: false
         });
-        
-        referenciaJogador.onDisconnect().remove();
-        
-        if (jogadorAnfitriao) {
-            document.getElementById('btn-iniciar').classList.remove('escondido');
-            document.getElementById('msg-aguardando').classList.add('escondido');
-        } else {
-            document.getElementById('btn-iniciar').classList.add('escondido');
-            document.getElementById('msg-aguardando').classList.remove('escondido');
-        }
-        
+
+        refJogador.onDisconnect().remove();
         alterarTela('tela-lobby');
         iniciarEscutaDoServidor();
     });
 }
 
 function iniciarEscutaDoServidor() {
-    bancoDados.ref('lobby').on('value', function(snapshot) {
+    bancoDados.ref(`salas/${codigoSala}/jogadores`).on('value', snapshot => {
         dadosDosJogadores = snapshot.val() || {};
         const listaNaTela = document.getElementById('lista-jogadores');
-        if(listaNaTela) listaNaTela.innerHTML = '';
-        
+        if (listaNaTela) listaNaTela.innerHTML = '';
+
         if (!dadosDosJogadores[nomeJogador]) return;
-        
+
         document.getElementById('meus-pontos').innerText = dadosDosJogadores[nomeJogador].pontos;
-        
+
         if (dadosDosJogadores[nomeJogador].sabotado) {
             exibirNotificacao("Você foi alvo de sabotagem e perdeu suas cartas.");
             cartasNaMao = [];
             atualizarExibicaoDaMao();
-            bancoDados.ref('lobby/' + nomeJogador + '/sabotado').set(false);
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/sabotado`).set(false);
         }
-        
-        const chavesDosJogadores = Object.keys(dadosDosJogadores);
-        for (let index = 0; index < chavesDosJogadores.length; index++) {
-            const nomeCorrente = chavesDosJogadores[index];
-            let indicativo = "";
-            if (nomeCorrente === nomeJogador) indicativo = " (Você)";
-            if (jogadorAnfitriao && nomeCorrente === nomeJogador) indicativo += " [Anfitrião]";
-            
-            const pontuacao = dadosDosJogadores[nomeCorrente].pontos;
-            if(listaNaTela) {
-                listaNaTela.innerHTML += `<li>${nomeCorrente}${indicativo} <span>${pontuacao} pts</span></li>`;
+
+        Object.keys(dadosDosJogadores).forEach(nome => {
+            let indicativo = nome === nomeJogador ? " (Você)" : "";
+            if (jogadorAnfitriao && nome === nomeJogador) indicativo += " [Anfitrião]";
+            const pontuacao = dadosDosJogadores[nome].pontos;
+            if (listaNaTela) {
+                listaNaTela.innerHTML += `<li>${nome}${indicativo} <span>${pontuacao} pts</span></li>`;
             }
-        }
+        });
     });
-    
-    bancoDados.ref('sala').on('value', function(snapshot) {
+
+    bancoDados.ref(`salas/${codigoSala}/estado`).on('value', snapshot => {
         const estadoAnterior = estadoDaSala.fase;
         estadoDaSala = snapshot.val() || {};
-        
+
         const telaLobbyEstaAtiva = document.getElementById('tela-lobby').classList.contains('ativa');
-        if (estadoDaSala.fase && telaLobbyEstaAtiva) {
+        if (estadoDaSala.fase && telaLobbyEstaAtiva && estadoDaSala.fase !== 'fim') {
             alterarTela('tela-jogo');
-            if(cartasNaMao.length === 0) adicionarCartasNaMao(5);
+            if (cartasNaMao.length === 0) adicionarCartasNaMao(5);
             carregarItensDaLoja();
             iniciarLoopTemporalDoAnfitriao();
         }
-        
+
         if (estadoDaSala.fase) {
-            if(estadoDaSala.fase === 'jogando' && estadoAnterior !== 'jogando') {
+            if (estadoDaSala.fase === 'jogando' && estadoAnterior !== 'jogando') {
                 cartasSelecionadasRodada = [];
                 atualizarExibicaoDaMao();
             }
@@ -350,132 +379,125 @@ function iniciarEscutaDoServidor() {
 
 function iniciarLoopTemporalDoAnfitriao() {
     if (!jogadorAnfitriao) return;
-    
     if (loopDoAnfitriao !== null) clearInterval(loopDoAnfitriao);
-    
-    loopDoAnfitriao = setInterval(function() {
+
+    loopDoAnfitriao = setInterval(() => {
         if (estadoDaSala.tempoRestante > 0) {
-            bancoDados.ref('sala/tempoRestante').set(estadoDaSala.tempoRestante - 1);
+            bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(estadoDaSala.tempoRestante - 1);
         }
-        
+
         if (estadoDaSala.tempoRestante === 0) {
             if (estadoDaSala.fase === 'jogando') {
-                bancoDados.ref('sala/fase').set('votacao');
-                bancoDados.ref('sala/tempoRestante').set(30);
-            } else if (estadoDaSala.fase === 'votacao') {
-                bancoDados.ref('sala/tempoRestante').set(-1);
-                executarApuracaoDeVotos();
+                bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('votacao_cartas');
+                bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(30);
+            } else if (estadoDaSala.fase === 'votacao_cartas') {
+                executarApuracaoCartas();
+            } else if (estadoDaSala.fase === 'historia') {
+                bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('votacao_historia');
+                bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(45);
+            } else if (estadoDaSala.fase === 'votacao_historia') {
+                executarApuracaoHistoria();
             }
         }
     }, 1000);
 }
 
 function iniciarPartida() {
-    const indiceAleatorio = Math.floor(Math.random() * CARTAS_FRASE.length);
-    const cartaSorteada = CARTAS_FRASE[indiceAleatorio];
-    
-    bancoDados.ref('sala').set({
-        fase: 'jogando',
-        cartaPreta: cartaSorteada,
-        jogadas: {},
-        votos: {},
-        tempoRestante: 60,
-        efeitosGlobais: { inversao: false, cegueira: false, silencio: false }
+    bancoDados.ref(`salas/${codigoSala}/config`).once('value').then(snapConfig => {
+        const config = snapConfig.val() || { tempoTurno: 60 };
+        const indiceAleatorio = Math.floor(Math.random() * CARTAS_FRASE.length);
+        
+        bancoDados.ref(`salas/${codigoSala}/estado`).set({
+            fase: 'jogando',
+            cartaPreta: CARTAS_FRASE[indiceAleatorio],
+            jogadas: {},
+            votosCartas: {},
+            historias: {},
+            votosHistorias: {},
+            combinacaoGanhadora: "",
+            tempoRestante: config.tempoTurno,
+            efeitosGlobais: { inversao: false, cegueira: false, silencio: false }
+        });
+
+        Object.keys(dadosDosJogadores).forEach(nome => {
+            bancoDados.ref(`salas/${codigoSala}/jogadores/${nome}/censurado`).set(false);
+        });
     });
-    
-    const nomes = Object.keys(dadosDosJogadores);
-    for (let index = 0; index < nomes.length; index++) {
-        bancoDados.ref('lobby/' + nomes[index] + '/censurado').set(false);
-    }
 }
 
 function formatarTempo(segundos) {
     if (segundos < 0) return "00:00";
-    const minutos = Math.floor(segundos / 60);
-    const segundosRestantes = segundos % 60;
-    return (minutos < 10 ? "0" + minutos : minutos) + ":" + (segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes);
+    const min = Math.floor(segundos / 60);
+    const seg = segundos % 60;
+    return `${min < 10 ? "0" + min : min}:${seg < 10 ? "0" + seg : seg}`;
 }
 
+// ATUALIZAÇÃO DA INTERFACE / CICLO DE FASES
 function processarAtualizacaoVisualDaSala() {
     document.getElementById('carta-frase-atual').innerText = estadoDaSala.cartaPreta || "Carregando a frase...";
-    
-    let textoFase = estadoDaSala.fase === 'jogando' ? "Escolha sua resposta" : (estadoDaSala.fase === 'votacao' ? "Vote na melhor carta" : "Aguardando");
-    document.getElementById('texto-fase').innerText = textoFase;
-    
+
     const elementoRelogio = document.getElementById('cronometro');
     elementoRelogio.innerText = formatarTempo(estadoDaSala.tempoRestante);
-    
-    if (estadoDaSala.tempoRestante <= 10 && estadoDaSala.tempoRestante > 0) {
-        elementoRelogio.classList.add('urgente');
-    } else {
-        elementoRelogio.classList.remove('urgente');
-    }
-    
-    const caixaDeEfeitos = document.getElementById('alertas-efeitos');
-    caixaDeEfeitos.innerHTML = '';
-    
-    if (estadoDaSala.efeitosGlobais) {
-        if (estadoDaSala.efeitosGlobais.inversao) caixaDeEfeitos.innerHTML += "Alerta: Inversão ativada.<br>";
-        if (estadoDaSala.efeitosGlobais.cegueira) caixaDeEfeitos.innerHTML += "Alerta: Cegueira ativada.<br>";
-        if (estadoDaSala.efeitosGlobais.silencio) caixaDeEfeitos.innerHTML += "Alerta: Silêncio ativado.<br>";
-    }
+    elementoRelogio.classList.toggle('urgente', estadoDaSala.tempoRestante <= 10 && estadoDaSala.tempoRestante > 0);
+
+    // Ocultar todas as seções antes de renderizar a fase correta
+    ['area-mao', 'area-votacao-cartas', 'area-criar-historia', 'area-votacao-historia', 'tela-vitoria-ranking'].forEach(id => {
+        document.getElementById(id)?.classList.add('escondido');
+    });
 
     if (estadoDaSala.fase === 'jogando') {
-        document.getElementById('area-votacao').classList.add('escondido');
+        document.getElementById('texto-fase').innerText = "Escolha sua pior resposta";
         document.getElementById('area-mao').classList.remove('escondido');
-        
+
         const totalJogadores = Object.keys(dadosDosJogadores).length;
         const totalJogadas = Object.keys(estadoDaSala.jogadas || {}).length;
-        
         if (jogadorAnfitriao && totalJogadas >= totalJogadores && totalJogadores > 1) {
-            bancoDados.ref('sala/fase').set('votacao');
-            bancoDados.ref('sala/tempoRestante').set(30);
+            bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('votacao_cartas');
+            bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(30);
         }
-    } else if (estadoDaSala.fase === 'votacao') {
-        document.getElementById('area-mao').classList.add('escondido');
-        document.getElementById('area-votacao').classList.remove('escondido');
+
+    } else if (estadoDaSala.fase === 'votacao_cartas') {
+        document.getElementById('texto-fase').innerText = "Vote na carta mais politicamente incorreta";
+        document.getElementById('area-votacao-cartas').classList.remove('escondido');
+
+        const container = document.getElementById('cartas-jogadas');
+        container.innerHTML = '';
+        Object.entries(estadoDaSala.jogadas || {}).forEach(([dono, texto]) => {
+            let classeCegueira = (estadoDaSala.efeitosGlobais?.cegueira && dono !== nomeJogador) ? 'cegueira' : '';
+            container.innerHTML += `<div class="carta carta-branca ${classeCegueira}" onclick="registrarVotoCarta('${dono}', this)">${texto}</div>`;
+        });
+
+    } else if (estadoDaSala.fase === 'historia') {
+        document.getElementById('texto-fase').innerText = "Monte uma história cancelável";
+        document.getElementById('area-criar-historia').classList.remove('escondido');
         
-        const containerCartas = document.getElementById('cartas-jogadas');
-        containerCartas.innerHTML = '';
-        
-        const arrayJogadas = Object.entries(estadoDaSala.jogadas || {});
-        for (let index = 0; index < arrayJogadas.length; index++) {
-            const donoDaCarta = arrayJogadas[index][0];
-            const textoDaCarta = arrayJogadas[index][1];
-            let classeCegueira = (estadoDaSala.efeitosGlobais && estadoDaSala.efeitosGlobais.cegueira && donoDaCarta !== nomeJogador) ? 'cegueira' : '';
-            
-            const htmlDaCarta = `<div class="carta carta-branca ${classeCegueira}" onclick="registrarVoto('${donoDaCarta}', this)">${textoDaCarta}</div>`;
-            containerCartas.innerHTML += htmlDaCarta;
-        }
-        
-        const totalJogadoresVotacao = Object.keys(dadosDosJogadores).length;
-        const totalVotos = Object.keys(estadoDaSala.votos || {}).length;
-        
-        if (jogadorAnfitriao && totalVotos >= totalJogadoresVotacao && totalJogadoresVotacao > 1) {
-            bancoDados.ref('sala/tempoRestante').set(-1);
-            executarApuracaoDeVotos();
-        }
+        const promptTexto = `{agora monte uma pequena historia com: [${estadoDaSala.combinacaoGanhadora}]}`;
+        document.getElementById('prompt-historia-composta').innerText = promptTexto;
+
+    } else if (estadoDaSala.fase === 'votacao_historia') {
+        document.getElementById('texto-fase').innerText = "Vote na história mais pesada e cancelável";
+        document.getElementById('area-votacao-historia').classList.remove('escondido');
+        renderizarCarrosselDeHistorias();
+
+    } else if (estadoDaSala.fase === 'fim') {
+        alterarTela('tela-vitoria-ranking');
+        exibirRankingEVitoria();
     }
 }
 
-// ----------------------------------------------------------------------
-// NOVA LÓGICA DE SELEÇÃO E ENVIO DE CARTAS INTEGRADA
-// ----------------------------------------------------------------------
-function alternarSelecaoCarta(indiceDaCarta) {
+// JOGAR CARTAS BRANCAS
+function alternarSelecaoCarta(indice) {
     if (estadoDaSala.fase !== 'jogando') return;
-    
-    let textoCartaAtual = estadoDaSala.cartaPreta || "";
-    let lacunas = (textoCartaAtual.match(/___/g) || []).length;
-    let limitePermitido = lacunas > 1 ? lacunas : 1;
+    let lacunas = ((estadoDaSala.cartaPreta || "").match(/___/g) || []).length || 1;
 
-    let index = cartasSelecionadasRodada.indexOf(indiceDaCarta);
-    if (index > -1) {
-        cartasSelecionadasRodada.splice(index, 1); // Desmarca se já tiver
+    let idx = cartasSelecionadasRodada.indexOf(indice);
+    if (idx > -1) {
+        cartasSelecionadasRodada.splice(idx, 1);
     } else {
-        if (cartasSelecionadasRodada.length < limitePermitido) {
-            cartasSelecionadasRodada.push(indiceDaCarta);
+        if (cartasSelecionadasRodada.length < lacunas) {
+            cartasSelecionadasRodada.push(indice);
         } else {
-            exibirNotificacao(`Atenção: A frase exige exatamente ${limitePermitido} carta(s).`);
+            exibirNotificacao(`A frase exige exatamente ${lacunas} carta(s).`);
             return;
         }
     }
@@ -483,306 +505,306 @@ function alternarSelecaoCarta(indiceDaCarta) {
 }
 
 function confirmarEnvioCartas() {
-    if (estadoDaSala.fase !== 'jogando') {
-        exibirNotificacao("Este não é o momento de jogar cartas.");
-        return;
-    }
+    if (estadoDaSala.fase !== 'jogando') return;
     if (estadoDaSala.jogadas && estadoDaSala.jogadas[nomeJogador]) {
-        exibirNotificacao("Você já enviou sua jogada nesta rodada.");
+        exibirNotificacao("Você já enviou sua resposta nesta rodada.");
         return;
     }
-    if (dadosDosJogadores[nomeJogador].censurado) {
-        exibirNotificacao("Você foi censurado e não pode enviar cartas.");
-        return;
-    }
-    
-    let textoCartaAtual = estadoDaSala.cartaPreta || "";
-    let lacunas = (textoCartaAtual.match(/___/g) || []).length;
-    let limitePermitido = lacunas > 1 ? lacunas : 1;
-    
-    if (cartasSelecionadasRodada.length !== limitePermitido) {
-        exibirNotificacao(`Você precisa selecionar ${limitePermitido} carta(s) para confirmar!`);
+    if (dadosDosJogadores[nomeJogador]?.censurado) {
+        exibirNotificacao("Você foi censurado e não pode jogar.");
         return;
     }
 
-    // Junta as cartas selecionadas
-    let respostasJogadas = cartasSelecionadasRodada.map(idx => cartasNaMao[idx]);
-    let textoFinal = respostasJogadas.join(" | ");
+    let lacunas = ((estadoDaSala.cartaPreta || "").match(/___/g) || []).length || 1;
+    if (cartasSelecionadasRodada.length !== lacunas) {
+        exibirNotificacao(`Selecione ${lacunas} carta(s) para confirmar!`);
+        return;
+    }
 
-    bancoDados.ref('sala/jogadas/' + nomeJogador).set(textoFinal);
+    let respostas = cartasSelecionadasRodada.map(idx => cartasNaMao[idx]);
+    let textoFinal = respostas.join(" | ");
 
-    // Remove as cartas da mão (ordenando de trás pra frente para não bagunçar o array)
-    cartasSelecionadasRodada.sort((a,b) => b-a).forEach(idx => {
-        cartasNaMao.splice(idx, 1);
-    });
+    bancoDados.ref(`salas/${codigoSala}/estado/jogadas/${nomeJogador}`).set(textoFinal);
 
-    adicionarCartasNaMao(limitePermitido);
+    cartasSelecionadasRodada.sort((a,b) => b-a).forEach(idx => cartasNaMao.splice(idx, 1));
+    adicionarCartasNaMao(lacunas);
     cartasSelecionadasRodada = [];
     atualizarExibicaoDaMao();
-    exibirNotificacao("Jogada enviada com sucesso!");
+    exibirNotificacao("Cartas enviadas com sucesso!");
 }
-// ----------------------------------------------------------------------
 
-function registrarVoto(jogadorAlvo, elementoVisual) {
-    if (estadoDaSala.fase !== 'votacao') return;
-    
+function registrarVotoCarta(jogadorAlvo, el) {
+    if (estadoDaSala.fase !== 'votacao_cartas') return;
     if (jogadorAlvo === nomeJogador) {
         exibirNotificacao("Não é permitido votar na própria carta.");
         return;
     }
-    if (estadoDaSala.votos && estadoDaSala.votos[nomeJogador]) {
-        exibirNotificacao("Seu voto já foi registrado.");
+    if (estadoDaSala.votosCartas && estadoDaSala.votosCartas[nomeJogador]) {
+        exibirNotificacao("Você já votou nesta rodada.");
         return;
     }
-    
-    let pesoDoVoto = 1;
-    if (efeitosAtivos.ditador) {
-        pesoDoVoto = 100;
-        efeitosAtivos.ditador = false;
-    } else if (efeitosAtivos.duplo) {
-        pesoDoVoto = 2;
-        efeitosAtivos.duplo = false;
-    }
-    
-    bancoDados.ref('sala/votos/' + nomeJogador).set({ para: jogadorAlvo, peso: pesoDoVoto });
-    elementoVisual.classList.add('selecionada');
-    exibirNotificacao("Voto contabilizado.");
+
+    let peso = 1;
+    if (efeitosAtivos.ditador) { peso = 100; efeitosAtivos.ditador = false; }
+    else if (efeitosAtivos.duplo) { peso = 2; efeitosAtivos.duplo = false; }
+
+    bancoDados.ref(`salas/${codigoSala}/estado/votosCartas/${nomeJogador}`).set({ para: jogadorAlvo, peso });
+    el.classList.add('selecionada');
+    exibirNotificacao("Voto registrado.");
 }
 
-function executarApuracaoDeVotos() {
-    let tabelaDeContagem = {};
-    const arrayVotos = Object.values(estadoDaSala.votos || {});
-    
-    for (let index = 0; index < arrayVotos.length; index++) {
-        const destino = arrayVotos[index].para;
-        if (!tabelaDeContagem[destino]) tabelaDeContagem[destino] = 0;
-        tabelaDeContagem[destino] += arrayVotos[index].peso;
+function executarApuracaoCartas() {
+    let contagem = {};
+    Object.values(estadoDaSala.votosCartas || {}).forEach(v => {
+        contagem[v.para] = (contagem[v.para] || 0) + v.peso;
+    });
+
+    let vencedor = null;
+    let maxVotos = -1;
+    Object.entries(contagem).forEach(([dono, votos]) => {
+        if (votos > maxVotos) { maxVotos = votos; vencedor = dono; }
+    });
+
+    if (!vencedor) {
+        const jogadas = Object.keys(estadoDaSala.jogadas || {});
+        vencedor = jogadas[Math.floor(Math.random() * jogadas.length)];
     }
+
+    let respostaEscolhida = estadoDaSala.jogadas[vencedor] || "";
+    let combinacao = `${estadoDaSala.cartaPreta} + ${respostaEscolhida}`;
+
+    // Premiar o vencedor das cartas
+    bancoDados.ref(`salas/${codigoSala}/jogadores/${vencedor}/pontos`).transaction(p => (p || 0) + 1);
+
+    bancoDados.ref(`salas/${codigoSala}/estado`).update({
+        combinacaoGanhadora: combinacao,
+        fase: 'historia',
+        tempoRestante: 60
+    });
+}
+
+// FASE DE CRIAÇÃO E VOTACAO DA HISTÓRIA
+function enviarHistoriaCancelavel() {
+    const inputHistoria = document.getElementById('input-historia-texto');
+    if (!inputHistoria) return;
     
-    let nomeDoVencedor = null;
-    let quantidadeDeVotosGanhadora = estadoDaSala.efeitosGlobais?.inversao ? 999999 : -1;
-    
-    const arrayContagem = Object.entries(tabelaDeContagem);
-    for (let index = 0; index < arrayContagem.length; index++) {
-        const jogadorApurado = arrayContagem[index][0];
-        const votos = arrayContagem[index][1];
-        
-        if (estadoDaSala.efeitosGlobais?.inversao) {
-            if (votos < quantidadeDeVotosGanhadora) {
-                quantidadeDeVotosGanhadora = votos;
-                nomeDoVencedor = jogadorApurado;
-            }
-        } else {
-            if (votos > quantidadeDeVotosGanhadora) {
-                quantidadeDeVotosGanhadora = votos;
-                nomeDoVencedor = jogadorApurado;
-            }
-        }
+    const texto = inputHistoria.value.trim();
+    if (texto.length < 10) {
+        exibirNotificacao("Escreva uma história um pouco mais elaborada!");
+        return;
     }
-    
-    if (nomeDoVencedor !== null) {
-        let bonificacao = (efeitosAtivos.investidor && nomeDoVencedor === nomeJogador) ? 3 : 1;
-        bancoDados.ref('lobby/' + nomeDoVencedor + '/pontos').once('value').then(snapshot => {
-            bancoDados.ref('lobby/' + nomeDoVencedor + '/pontos').set((snapshot.val() || 0) + bonificacao);
+
+    bancoDados.ref(`salas/${codigoSala}/estado/historias/${nomeJogador}`).set(texto);
+    inputHistoria.value = "";
+    exibirNotificacao("Sua história cancelável foi enviada para a mesa!");
+}
+
+function renderizarCarrosselDeHistorias() {
+    const historiasObj = estadoDaSala.historias || {};
+    const listaHistorias = Object.entries(historiasObj);
+    const container = document.getElementById('carrossel-historias');
+    if (!container) return;
+
+    if (listaHistorias.length === 0) {
+        container.innerHTML = "<p>Ninguém enviou uma história nesta rodada...</p>";
+        return;
+    }
+
+    if (indiceHistoriaExibida >= listaHistorias.length) indiceHistoriaExibida = 0;
+    if (indiceHistoriaExibida < 0) indiceHistoriaExibida = listaHistorias.length - 1;
+
+    const [autor, textoHistoria] = listaHistorias[indiceHistoriaExibida];
+
+    container.innerHTML = `
+        <div class="card-historia">
+            <h4>História ${indiceHistoriaExibida + 1} de ${listaHistorias.length}</h4>
+            <p class="conteudo-historia">"${textoHistoria}"</p>
+            <button onclick="registrarVotoHistoria('${autor}')" class="btn-votar-historia">Votar nesta história</button>
+        </div>
+        <div class="navegacao-carrossel">
+            <button onclick="mudarHistoriaExibida(-1)">❮ Anterior</button>
+            <button onclick="mudarHistoriaExibida(1)">Próxima ❯</button>
+        </div>
+    `;
+}
+
+function mudarHistoriaExibida(delta) {
+    indiceHistoriaExibida += delta;
+    renderizarCarrosselDeHistorias();
+}
+
+function registrarVotoHistoria(autorAlvo) {
+    if (estadoDaSala.fase !== 'votacao_historia') return;
+    if (autorAlvo === nomeJogador) {
+        exibirNotificacao("Você não pode votar na sua própria história!");
+        return;
+    }
+
+    bancoDados.ref(`salas/${codigoSala}/estado/votosHistorias/${nomeJogador}`).set(autorAlvo);
+    exibirNotificacao("Voto computado para a história!");
+}
+
+function executarApuracaoHistoria() {
+    let contagem = {};
+    Object.values(estadoDaSala.votosHistorias || {}).forEach(autor => {
+        contagem[autor] = (contagem[autor] || 0) + 1;
+    });
+
+    let autorVencedor = null;
+    let maxVotos = -1;
+    Object.entries(contagem).forEach(([autor, votos]) => {
+        if (votos > maxVotos) { maxVotos = votos; autorVencedor = autor; }
+    });
+
+    if (autorVencedor) {
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${autorVencedor}/pontos`).transaction(p => (p || 0) + 2);
+        exibirNotificacao(`A história de ${autorVencedor} foi eleita a mais cancelável e ganhou +2 pontos!`);
+    }
+
+    // Verificar se algum jogador atingiu o limite de pontos configurado
+    bancoDados.ref(`salas/${codigoSala}`).once('value').then(snap => {
+        const valSala = snap.val() || {};
+        const limiteVitoria = valSala.config?.pontosParaVencer || 5;
+        const jogadores = valSala.jogadores || {};
+
+        let jogoAcabou = false;
+        Object.values(jogadores).forEach(j => {
+            if (j.pontos >= limiteVitoria) jogoAcabou = true;
         });
-        exibirNotificacao(`O vencedor foi ${nomeDoVencedor} com ${quantidadeDeVotosGanhadora} votos.`);
-    } else {
-        exibirNotificacao("A rodada terminou sem vencedores.");
-    }
-    
-    efeitosAtivos.investidor = false;
-    bancoDados.ref('lobby/' + nomeJogador + '/imune').set(false);
-    
-    setTimeout(() => { if (jogadorAnfitriao) iniciarPartida(); }, 6000);
+
+        if (jogoAcabou) {
+            bancoDados.ref(`salas/${codigoSala}/estado/fase`).set('fim');
+        } else {
+            setTimeout(() => { if (jogadorAnfitriao) iniciarPartida(); }, 5000);
+        }
+    });
 }
 
+// TELA DE VITÓRIA E RANKING
+function exibirRankingEVitoria() {
+    const container = document.getElementById('ranking-final-lista');
+    if (!container) return;
+
+    let jogadoresOrdenados = Object.entries(dadosDosJogadores).sort((a, b) => b[1].pontos - a[1].pontos);
+    let vencedor = jogadoresOrdenados[0];
+
+    document.getElementById('nome-vencedor-destaque').innerText = `🏆 Vencedor Supremo: ${vencedor ? vencedor[0] : "Ninguém"}`;
+
+    container.innerHTML = '';
+    jogadoresOrdenados.forEach(([nome, dados], index) => {
+        container.innerHTML += `
+            <div class="linha-ranking">
+                <span class="posicao">#${index + 1}</span>
+                <span class="nome">${nome}</span>
+                <span class="pontos">${dados.pontos} Pts</span>
+            </div>
+        `;
+    });
+}
+
+function reiniciarPartidaLobby() {
+    if (!jogadorAnfitriao) return;
+    bancoDados.ref(`salas/${codigoSala}/estado`).set({ fase: null });
+    alterarTela('tela-lobby');
+}
+
+// GERENCIAMENTO DA MÃO DE CARTAS E LOJA
 function adicionarCartasNaMao(quantidade) {
-    for (let index = 0; index < quantidade; index++) {
+    for (let i = 0; i < quantidade; i++) {
         cartasNaMao.push(CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)]);
     }
     atualizarExibicaoDaMao();
 }
 
 function atualizarExibicaoDaMao() {
-    const containerDaMao = document.getElementById('minhas-cartas');
-    if(!containerDaMao) return;
-    
-    containerDaMao.innerHTML = '';
-    for (let index = 0; index < cartasNaMao.length; index++) {
-        const isSelected = cartasSelecionadasRodada.includes(index);
-        const classeSelecionada = isSelected ? ' selecionada' : '';
-        
-        const html = `<div class="carta carta-branca${classeSelecionada}" onclick="alternarSelecaoCarta(${index})">${cartasNaMao[index]}</div>`;
-        containerDaMao.innerHTML += html;
-    }
-    
-    // Mostra o botão "Confirmar" se o usuário selecionou as cartas suficientes
+    const container = document.getElementById('minhas-cartas');
+    if (!container) return;
+
+    container.innerHTML = '';
+    cartasNaMao.forEach((cartaText, index) => {
+        const sel = cartasSelecionadasRodada.includes(index) ? ' selecionada' : '';
+        container.innerHTML += `<div class="carta carta-branca${sel}" onclick="alternarSelecaoCarta(${index})">${cartaText}</div>`;
+    });
+
     const btnConfirmar = document.getElementById('btn-confirmar');
     if (btnConfirmar) {
-        let textoCartaAtual = estadoDaSala.cartaPreta || "";
-        let lacunas = (textoCartaAtual.match(/___/g) || []).length;
-        let limitePermitido = lacunas > 1 ? lacunas : 1;
-        
-        if(cartasSelecionadasRodada.length === limitePermitido) {
-            btnConfirmar.classList.remove('escondido');
-        } else {
-            btnConfirmar.classList.add('escondido');
-        }
+        let lacunas = ((estadoDaSala.cartaPreta || "").match(/___/g) || []).length || 1;
+        btnConfirmar.classList.toggle('escondido', cartasSelecionadasRodada.length !== lacunas);
     }
-}
-
-function filtrarCartas() {
-    const termo = document.getElementById('filtro-cartas').value.toLowerCase();
-    const cartas = document.querySelectorAll('#minhas-cartas .carta-branca');
-    cartas.forEach(c => c.style.display = c.innerText.toLowerCase().includes(termo) ? 'flex' : 'none');
 }
 
 function abrirLoja() {
-    if (estadoDaSala.efeitosGlobais && estadoDaSala.efeitosGlobais.silencio) {
-        exibirNotificacao("A loja está fechada devido ao efeito de silêncio.");
+    if (estadoDaSala.efeitosGlobais?.silencio) {
+        exibirNotificacao("A loja está bloqueada nesta rodada.");
         return;
     }
-    document.getElementById('modal-loja').classList.remove('escondido');
+    document.getElementById('modal-loja')?.classList.remove('escondido');
 }
 
 function fecharLoja() {
-    document.getElementById('modal-loja').classList.add('escondido');
+    document.getElementById('modal-loja')?.classList.add('escondido');
 }
 
 function carregarItensDaLoja() {
     const container = document.getElementById('lista-itens');
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = '';
-    
+
     ITENS_LOJA.forEach(item => {
-        container.innerHTML += `<div class="item-loja"><div><h3>${item.nome}</h3><p>${item.desc}</p></div><button onclick="comprarItemDaLoja(${item.id}, ${item.preco})">Comprar por ${item.preco} pts</button></div>`;
+        container.innerHTML += `
+            <div class="item-loja">
+                <div><h3>${item.nome}</h3><p>${item.desc}</p></div>
+                <button onclick="comprarItemDaLoja(${item.id}, ${item.preco})">${item.preco} pts</button>
+            </div>`;
     });
 }
 
 function comprarItemDaLoja(idItem, preco) {
-    const pontos = dadosDosJogadores[nomeJogador].pontos;
+    const pontos = dadosDosJogadores[nomeJogador]?.pontos || 0;
     if (pontos >= preco) {
-        bancoDados.ref('lobby/' + nomeJogador + '/pontos').set(pontos - preco);
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/pontos`).set(pontos - preco);
         processarEfeitoDoItem(idItem);
         fecharLoja();
     } else {
-        exibirNotificacao("Seus pontos são insuficientes.");
+        exibirNotificacao("Pontos insuficientes.");
     }
-}
-
-function abrirModalDeSelecaoDeAlvo(titulo, callback) {
-    fecharLoja();
-    let htmlBotoes = '';
-    Object.keys(dadosDosJogadores).forEach(nome => {
-        if (nome !== nomeJogador) htmlBotoes += `<button class="btn-alvo" onclick="processarSelecaoDeAlvo('${nome}')">${nome}</button>`;
-    });
-    
-    const modal = `<div id="modal-alvo" class="modal-overlay"><div class="conteudo-modal" style="max-width: 500px; text-align: center;"><h3 style="margin-bottom: 20px; color: #ff3333;">${titulo}</h3><div class="lista-alvos">${htmlBotoes}</div><button class="btn-fechar" onclick="fecharModalDeSelecao()">Cancelar</button></div></div>`;
-    document.body.insertAdjacentHTML('beforeend', modal);
-    
-    window.processarSelecaoDeAlvo = function(nomeSelecionado) {
-        fecharModalDeSelecao();
-        if (dadosDosJogadores[nomeSelecionado].imune) {
-            exibirNotificacao("Ataque falhou. O jogador está protegido (Veto).");
-        } else {
-            callback(nomeSelecionado);
-        }
-    };
-}
-
-function fecharModalDeSelecao() {
-    const modal = document.getElementById('modal-alvo');
-    if (modal) modal.remove();
-}
-
-function exibirModalGenerico(titulo, texto) {
-    const modal = `<div id="modal-generico" class="modal-overlay"><div class="conteudo-modal" style="max-width: 600px;"><h3 style="margin-bottom: 20px; color: #ffcc00;">${titulo}</h3><div style="font-size: 16px; line-height: 1.6; margin-bottom: 30px;">${texto}</div><button class="btn-fechar" onclick="fecharModalGenerico()">Entendi</button></div></div>`;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function fecharModalGenerico() {
-    const modal = document.getElementById('modal-generico');
-    if (modal) modal.remove();
 }
 
 function processarEfeitoDoItem(idItem) {
     if (idItem === 1) {
         let conteudo = "";
         Object.entries(estadoDaSala.jogadas || {}).forEach(([dono, texto]) => conteudo += `<p><strong>${dono}:</strong> ${texto}</p>`);
-        exibirModalGenerico("Relatório de Espionagem", conteudo || "Nenhuma carta foi jogada ainda.");
+        exibirModalGenerico("Espionagem", conteudo || "Nenhuma jogada ainda.");
     } else if (idItem === 2) {
-        efeitosAtivos.ditador = true; exibirNotificacao("Modo ditador ativo.");
+        efeitosAtivos.ditador = true; exibirNotificacao("Modo Ditador ativado.");
     } else if (idItem === 3) {
-        bancoDados.ref('lobby/' + nomeJogador + '/imune').set(true); exibirNotificacao("Você está imune.");
-    } else if (idItem === 4) {
-        abrirModalDeSelecaoDeAlvo("Escolha o jogador para sabotar", (alvo) => {
-            bancoDados.ref('lobby/' + alvo + '/sabotado').set(true); exibirNotificacao(`Sabotagem contra ${alvo} feita.`);
-        });
+        bancoDados.ref(`salas/${codigoSala}/jogadores/${nomeJogador}/imune`).set(true); exibirNotificacao("Imunidade ativada.");
     } else if (idItem === 5) {
-        adicionarCartasNaMao(3); exibirNotificacao("Três cartas extras recebidas.");
-    } else if (idItem === 6) {
-        abrirModalDeSelecaoDeAlvo("Roubar de quem?", (alvo) => {
-            bancoDados.ref('lobby/' + alvo + '/pontos').once('value').then(snap => {
-                bancoDados.ref('lobby/' + alvo + '/pontos').set(Math.max(0, (snap.val() || 0) - 1));
-                bancoDados.ref('lobby/' + nomeJogador + '/pontos').once('value').then(mySnap => bancoDados.ref('lobby/' + nomeJogador + '/pontos').set((mySnap.val() || 0) + 1));
-                exibirNotificacao("Roubo efetuado.");
-            });
-        });
-    } else if (idItem === 7) {
-        abrirModalDeSelecaoDeAlvo("Censurar quem?", (alvo) => {
-            bancoDados.ref('lobby/' + alvo + '/censurado').set(true); exibirNotificacao(`${alvo} censurado.`);
-        });
+        adicionarCartasNaMao(3);
     } else if (idItem === 8) {
-        bancoDados.ref('sala/tempoRestante').set(5); exibirNotificacao("Bomba ativada. Tempo reduzido!");
+        bancoDados.ref(`salas/${codigoSala}/estado/tempoRestante`).set(5);
     } else if (idItem === 9) {
-        cartasNaMao = []; adicionarCartasNaMao(5); exibirNotificacao("Cartas renovadas.");
-    } else if (idItem === 10) {
-        bancoDados.ref('sala/jogadas/' + nomeJogador).remove(); adicionarCartasNaMao(1); exibirNotificacao("Carta removida da mesa. Jogue novamente.");
+        cartasNaMao = []; adicionarCartasNaMao(5);
     } else if (idItem === 11) {
-        efeitosAtivos.duplo = true; exibirNotificacao("Próximo voto tem peso duplo.");
-    } else if (idItem === 12) {
-        bancoDados.ref('sala/efeitosGlobais/inversao').set(true); exibirNotificacao("A carta menos votada vai ganhar.");
+        efeitosAtivos.duplo = true;
     } else if (idItem === 13) {
-        trocarCartaPreta(); exibirNotificacao("Frase substituída.");
-    } else if (idItem === 14) {
-        const chaves = Object.keys(dadosDosJogadores);
-        let pontos = chaves.map(c => dadosDosJogadores[c].pontos);
-        for (let i = pontos.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [pontos[i], pontos[j]] = [pontos[j], pontos[i]];
-        }
-        chaves.forEach((nome, i) => bancoDados.ref('lobby/' + nome + '/pontos').set(pontos[i]));
-        exibirNotificacao("Caos: Pontuações embaralhadas!");
-    } else if (idItem === 15) {
-        bancoDados.ref('sala/votos').remove(); exibirNotificacao("Anarquia: Todos os votos anulados.");
-    } else if (idItem === 16) {
-        bancoDados.ref('sala/efeitosGlobais/cegueira').set(true); exibirNotificacao("Cegueira: Cartas inimigas ocultas.");
-    } else if (idItem === 17) {
-        efeitosAtivos.investidor = true; exibirNotificacao("Investidor: Bônus de pontos se vencer a rodada.");
-    } else if (idItem === 18) {
-        bancoDados.ref('sala/efeitosGlobais/silencio').set(true); exibirNotificacao("Silêncio: Loja bloqueada para todos.");
-    } else if (idItem === 19) {
-        const chaves = Object.keys(dadosDosJogadores);
-        const soma = chaves.reduce((acc, nome) => acc + dadosDosJogadores[nome].pontos, 0);
-        const media = Math.floor(soma / chaves.length);
-        chaves.forEach(nome => bancoDados.ref('lobby/' + nome + '/pontos').set(media));
-        exibirNotificacao("Comunismo: Pontos divididos igualmente.");
-    } else if (idItem === 20) {
-        if (jogadorAnfitriao) iniciarPartida();
-        else bancoDados.ref('sala/tempoRestante').set(0);
-        exibirNotificacao("Rodada será reiniciada imediatamente.");
+        const nova = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
+        bancoDados.ref(`salas/${codigoSala}/estado/cartaPreta`).set(nova);
     }
 }
 
-function trocarCartaPreta() {
-    if(!jogadorAnfitriao) return;
-    const novaFrase = CARTAS_FRASE[Math.floor(Math.random() * CARTAS_FRASE.length)];
-    bancoDados.ref('sala/cartaPreta').set(novaFrase);
+function exibirModalGenerico(titulo, texto) {
+    const modal = `
+        <div id="modal-generico" class="modal-overlay">
+            <div class="conteudo-modal">
+                <h3>${titulo}</h3>
+                <div>${texto}</div>
+                <button onclick="fecharModalGenerico()">Fechar</button>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modal);
 }
 
-function trocarCartasMao() {
-    cartasNaMao = cartasNaMao.map(() => CARTAS_RESPOSTA[Math.floor(Math.random() * CARTAS_RESPOSTA.length)]);
-    cartasSelecionadasRodada = [];
-    atualizarExibicaoDaMao();
-    exibirNotificacao("Suas cartas foram trocadas!");
+function fecharModalGenerico() {
+    document.getElementById('modal-generico')?.remove();
 }
