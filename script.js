@@ -1254,53 +1254,63 @@ function processarEfeitoDoItem(identificadorDoItem) {
         exibirNotificacao("Os trilhos foram limpos. A rodada será reiniciada imediatamente.");
     }
 }
-// Adicione esta função ao final do seu script para detectar e gerenciar cartas que exigem múltiplas escolhas (Pick 2 / Pick 3)
 let cartasSelecionadasRodada = [];
 
-function obterQuantidadeNecessaria(textoCarta) {
-    let lacunas = (textoCarta.match(/___/g) || []).length;
-    if (textoCarta.includes("PICK 3") || textoCarta.includes("+")) {
-        return 3;
-    } else if (textoCarta.includes("PICK 2") || lacunas > 1) {
-        return lacunas > 1 ? lacunas : 2;
-    }
-    return 1;
-}
-
-function selecionarCartaBranca(idCarta, textoCartaAtual) {
-    let limitePermitido = obterQuantidadeNecessaria(textoCartaAtual);
-    let index = cartasSelecionadasRodada.indexOf(idCarta);
+// Função única que lida com a seleção e já atualiza o visual automaticamente
+function clicarCartaBranca(idCarta) {
+    let textoCartaAtual = document.getElementById("carta-pergunta").innerText;
+    let lacunas = (textoCartaAtual.match(/___/g) || []).length;
     
+    let limitePermitido = 1;
+    if (textoCartaAtual.includes("PICK 3") || textoCartaAtual.includes("+")) {
+        limitePermitido = 3;
+    } else if (textoCartaAtual.includes("PICK 2") || lacunas > 1) {
+        limitePermitido = lacunas > 1 ? lacunas : 2;
+    }
+
+    let index = cartasSelecionadasRodada.indexOf(idCarta);
     if (index > -1) {
-        // Se a carta já estiver selecionada, removemos da lista (permite trocar de ideia)
         cartasSelecionadasRodada.splice(index, 1);
     } else {
-        // Se ainda não atingiu o limite, adiciona
         if (cartasSelecionadasRodada.length < limitePermitido) {
             cartasSelecionadasRodada.push(idCarta);
         } else {
-            alert(`Você só pode selecionar até ${limitePermitido} cartas para esta rodada.`);
+            alert(`Esta carta exige exatamente ${limitePermitido} escolha(s).`);
             return;
         }
     }
-    atualizarVisualSelecao();
+
+    // Atualização visual integrada
+    document.querySelectorAll('.carta-branca').forEach(el => {
+        el.style.border = "2px solid #444";
+        el.style.backgroundColor = "#2e2e2e";
+    });
+    cartasSelecionadasRodada.forEach(id => {
+        let el = document.getElementById(id);
+        if (el) {
+            el.style.border = "2px solid #ff0055";
+            el.style.backgroundColor = "#550022";
+        }
+    });
 }
 
-function enviarCartasRodada(textoCartaAtual) {
-    let limitePermitido = obterQuantidadeNecessaria(textoCartaAtual);
+// Função única para validar e avançar o turno
+function confirmarEnvioCartas() {
+    let textoCartaAtual = document.getElementById("carta-pergunta").innerText;
+    let lacunas = (textoCartaAtual.match(/___/g) || []).length;
     
+    let limitePermitido = 1;
+    if (textoCartaAtual.includes("PICK 3") || textoCartaAtual.includes("+")) {
+        limitePermitido = 3;
+    } else if (textoCartaAtual.includes("PICK 2") || lacunas > 1) {
+        limitePermitido = lacunas > 1 ? lacunas : 2;
+    }
+
     if (cartasSelecionadasRodada.length < limitePermitido) {
-        alert(`Atenção: Esta carta exige a escolha de ${limitePermitido} cartas! Você selecionou apenas ${cartasSelecionadasRodada.length}.`);
+        alert(`Atenção: Você precisa selecionar ${limitePermitido} cartas para esta rodada!`);
         return;
     }
-    
-    // Armazena as cartas escolhidas e limpa o array para a próxima rodada
-    let cartasEnviadas = [...cartasSelecionadasRodada];
+
     cartasSelecionadasRodada = [];
     avancarTurno();
-}
-
-function atualizarVisualSelecao() {
-    // Insira aqui a manipulação visual do DOM para destacar as cartas selecionadas (ex: mudar a cor de fundo)
-    console.log("Cartas selecionadas atualmente:", cartasSelecionadasRodada);
 }
